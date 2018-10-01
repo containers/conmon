@@ -1,0 +1,53 @@
+%global debug_package %{nil}
+
+%global provider github
+%global provider_tld com
+%global project containers
+%global repo conmon
+# https://github.com/projectatomic/conmon
+%global provider_prefix %{provider}.%{provider_tld}/%{project}/%{repo}
+%global import_path %{provider_prefix}
+%global git0 https://%{import_path}
+%global commit0 e7805e25a8d31c3202787d98a01071853ded8b87
+%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
+
+Name: %{repo}
+Version: 0
+Release: 0.1.git%{shortcommit0}%{?dist}
+Summary: OCI container runtime monitor
+License: ASL 2.0
+URL: %{git0}
+Source0: %{git0}/archive/%{commit0}/%{name}-%{shortcommit0}.tar.gz
+ExclusiveArch: aarch64 %{arm} ppc64le s390x x86_64
+BuildRequires: gcc
+BuildRequires: glib2-devel
+BuildRequires: glibc-devel
+BuildRequires: git
+BuildRequires: pkgconfig
+
+%description
+%{summary}
+
+%prep
+%autosetup -Sgit -n %{name}-%{commit0}
+
+%build
+%{__make} all
+
+%install
+%{__make} PREFIX=%{buildroot}%{_usr} install
+
+%check
+
+#define license tag if not already defined
+%{!?_licensedir:%global license %doc}
+
+%files
+%license LICENSE
+%doc README.md
+%{_libexecdir}/crio/%{name}
+
+%changelog
+* Mon Oct 01 2018 Lokesh Mandvekar <lsm5@fedoraproject.org> - 0-0.1.gite7805e2
+- new package
+
