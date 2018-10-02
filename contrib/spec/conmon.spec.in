@@ -8,12 +8,12 @@
 %global provider_prefix %{provider}.%{provider_tld}/%{project}/%{repo}
 %global import_path %{provider_prefix}
 %global git0 https://%{import_path}
-%global commit0 e7805e25a8d31c3202787d98a01071853ded8b87
-%global shortcommit0 %(c=%{commit0}; echo ${c:0:7})
+%global commit0 #COMMIT#
+%global shortcommit0 %(c=%{commit0}; echo ${c:0:8})
 
 Name: %{repo}
 Version: 0
-Release: 0.1.git%{shortcommit0}%{?dist}
+Release: #COMMITDATE#.git%{shortcommit0}%{?dist}
 Summary: OCI container runtime monitor
 License: ASL 2.0
 URL: %{git0}
@@ -29,7 +29,7 @@ BuildRequires: pkgconfig
 %{summary}
 
 %prep
-%autosetup -Sgit -n %{name}-%{commit0}
+%autosetup -Sgit -n %{name}-%{shortcommit0}
 
 %build
 %{__make} all
