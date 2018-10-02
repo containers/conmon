@@ -1,0 +1,27 @@
+branches:
+  - master
+  - auto
+  - try
+
+container:
+    image: registry.fedoraproject.org/fedora:28
+    
+packages:
+    - make
+    - glib2-devel
+    - git
+    - gcc
+    - rpm-build
+
+tests:
+    - make
+    - make -f .rpmbuild/Makefile
+    - rpmbuild --rebuild conmon-*.src.rpm
+    - dnf -y install ~/rpmbuild/RPMS/x86_64/conmon*fc28.x86_64.rpm
+    - ls -l /usr/libexec/crio/conmon
+
+timeout: 20m
+
+required: true
+
+context: "Fedora build and package build/install"
