@@ -25,3 +25,49 @@ timeout: 20m
 required: true
 
 context: "Fedora build and package build/install"
+
+---
+
+host:
+    distro: fedora/28/cloud
+    specs:
+        ram: 8192
+        cpus: 4
+packages:
+    - btrfs-progs-devel
+    - glib2-devel
+    - glibc-devel
+    - glibc-static
+    - git
+    - gcc
+    - go-md2man
+    - gpgme-devel
+    - libassuan-devel
+    - libgpg-error-devel
+    - libseccomp-devel
+    - libselinux-devel
+    - ostree-devel
+    - pkgconfig
+    - make
+    - nc
+    - go-compilers-golang-compiler
+    - containers-common
+    - container-selinux
+    - runc
+    - containernetworking-plugins
+    - iptables
+    - slirp4netns
+
+tests:
+    - dnf -y reinstall container-selinux
+    - make install PREFIX=/usr
+    - sed 's/^expand-check.*/expand-check=0/g' -i /etc/selinux/semanage.conf
+    - sh test_libpod.sh
+
+required: true
+
+timeout: 90m
+context: "Fedora 28 Cloud"
+
+
+
