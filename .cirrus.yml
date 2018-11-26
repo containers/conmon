@@ -88,6 +88,29 @@ integration_task:
     integration_test_script: '$SCRIPT_BASE/integration_test.sh'
 
 
+# Verify conmon package can be built and installed on Fedora
+fedora_packaging_task:
+
+    # Runs within Cirrus's "community cluster"
+    container:
+        matrix:
+            image: "registry.fedoraproject.org/fedora:28"
+            image: "registry.fedoraproject.org/fedora:29"
+        cpu: 4
+        memory: 12
+
+    script:
+        - dnf install -y make glib2-devel git gcc rpm-build
+        - cd $CIRRUS_WORKING_DIR
+        - make
+        - make -f .rpmbuild/Makefile
+        - rpmbuild --rebuild conmon-*.src.rpm
+        - dnf -y install ~/rpmbuild/RPMS/x86_64/conmon*.x86_64.rpm
+        - ls -l /usr/libexec/crio/conmon
+
+    timeout_in: '20m'
+
+
 # Test building of new cache-images for future PR testing, in this PR.
 # Output images will be stored only for a very short time, then automaticly deleted.
 test_cache_images_task:
