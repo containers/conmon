@@ -28,8 +28,8 @@
 
 /* This mirrors Go's (*os.File). */
 struct file_t {
-  char *name;
-  int fd;
+	char *name;
+	int fd;
 };
 
 struct file_t recvfd(int sockfd);
