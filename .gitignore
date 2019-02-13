@@ -29,6 +29,7 @@
 *.dylib
 
 # Executables
+/bin/conmon
 *.exe
 *.out
 *.app
