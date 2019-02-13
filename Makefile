@@ -8,26 +8,33 @@ LIBEXECDIR ?= ${PREFIX}/libexec
 MANDIR ?= ${PREFIX}/share/man
 ETCDIR ?= ${DESTDIR}/etc
 
-all: bin/conmon
-
-src = $(wildcard *.c)
-obj = $(src:.c=.o)
+.PHONY: all
+all: bin bin/conmon
 
 override LIBS += $(shell pkg-config --libs glib-2.0)
 
 CFLAGS ?= -std=c99 -Os -Wall -Wextra
 override CFLAGS += $(shell pkg-config --cflags glib-2.0) -DVERSION=\"$(VERSION)\" -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
-bin/conmon:
+bin/conmon: src/conmon.o src/cmsg.o | bin
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+src/cmsg.o: src/cmsg.c src/cmsg.h
+
+src/conmon.o: src/conmon.c src/cmsg.h src/config.h
+
+bin:
 	mkdir -p bin
-	$(CC) $^ $(CFLAGS) $(LIBS) -c -o src/conmon.o src/conmon.c
-	$(CC) $^ $(CFLAGS) $(LIBS) -c -o src/cmsg.o src/cmsg.c
-	$(CC) -o bin/conmon src/config.h src/conmon.o src/cmsg.o $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 clean:
-	rm -f $(obj) bin/conmon
+	rm -f bin/conmon src/*.o
+	rmdir bin
 
+.PHONY: install install.bin
 install: install.bin
 
 install.bin: bin/conmon
