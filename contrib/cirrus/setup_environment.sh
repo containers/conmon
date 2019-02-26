@@ -60,6 +60,9 @@ then
         exit 0
     fi
 
+    # Owner/mode may have changed
+    setup_gopath
+
     case "$OS_REL_VER" in
         fedora-29) ;&  # Continue to the next item
         rhel-7)
