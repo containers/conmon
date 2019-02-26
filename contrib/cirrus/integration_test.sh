@@ -12,7 +12,7 @@ OS_RELEASE_VER $OS_RELEASE_VER
 
 cd "$GOSRC"
 case "$OS_REL_VER" in
-    fedora-29) ;;
+    fedora-29) ;&
     rhel-7)
         PATCH="$SRC/$SCRIPT_BASE/network_bats.patch"
         echo "WARNING: Applying $PATCH"
@@ -28,7 +28,6 @@ export CRIO_BINARY=/usr/bin/crio
 export CONMON_BINARY=/usr/libexec/crio/conmon
 export PAUSE_BINARY=/usr/libexec/crio/pause
 export CRIO_CNI_PLUGIN=/usr/libexec/cni
-
 
 echo "Executing cri-o integration tests (typical 10 - 20 min)"
 cd "$GOSRC"
