@@ -20,8 +20,8 @@ env:
     ####
     #### Cache-image names to test with
     ###
-    PRIOR_RHEL_CACHE_IMAGE_NAME: "rhel-7-conmon-34e54ce8"
-    FEDORA_CACHE_IMAGE_NAME: "fedora-29-conmon-34e54ce8"
+    PRIOR_RHEL_CACHE_IMAGE_NAME: "rhel-7-conmon-10ec3343"
+    FEDORA_CACHE_IMAGE_NAME: "fedora-29-conmon-10ec3343"
     #PRIOR_FEDORA_CACHE_IMAGE_NAME: "fedora-28-notready"
     #RHEL_CACHE_IMAGE_NAME: "rhel-8-notready"
     #CENTOS_CACHE_IMAGE_NAME: "centos-7-notready"
