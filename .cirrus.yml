@@ -14,8 +14,8 @@ env:
     # Save a little typing (path relative to $CIRRUS_WORKING_DIR)
     SCRIPT_BASE: "./contrib/cirrus"
     PACKER_BASE: "./contrib/cirrus/packer"
-    CRIO_REPO: "https://github.com/kubernetes-sigs/cri-o.git"
-    CRIO_SLUG: "github.com/kubernetes-sigs/cri-o"
+    CRIO_REPO: "https://github.com/cri-o/cri-o.git"
+    CRIO_SLUG: "github.com/cri-o/cri-o"
 
     ####
     #### Cache-image names to test with
