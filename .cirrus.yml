@@ -14,14 +14,14 @@ env:
     # Save a little typing (path relative to $CIRRUS_WORKING_DIR)
     SCRIPT_BASE: "./contrib/cirrus"
     PACKER_BASE: "./contrib/cirrus/packer"
-    CRIO_REPO: "https://github.com/kubernetes-sigs/cri-o.git"
-    CRIO_SLUG: "github.com/kubernetes-sigs/cri-o"
+    CRIO_REPO: "https://github.com/cri-o/cri-o.git"
+    CRIO_SLUG: "github.com/cri-o/cri-o"
 
     ####
     #### Cache-image names to test with
     ###
-    PRIOR_RHEL_CACHE_IMAGE_NAME: "rhel-7-conmon-34e54ce8"
-    FEDORA_CACHE_IMAGE_NAME: "fedora-29-conmon-34e54ce8"
+    PRIOR_RHEL_CACHE_IMAGE_NAME: "rhel-7-conmon-10ec3343"
+    FEDORA_CACHE_IMAGE_NAME: "fedora-29-conmon-10ec3343"
     #PRIOR_FEDORA_CACHE_IMAGE_NAME: "fedora-28-notready"
     #RHEL_CACHE_IMAGE_NAME: "rhel-8-notready"
     #CENTOS_CACHE_IMAGE_NAME: "centos-7-notready"
