@@ -1,6 +1,5 @@
-
 project('conmon', 'c',
-        version : '0.1',
+        version : run_command('cat', files('VERSION'),).stdout().strip(),
         license : 'Apache-2.0',
         default_options : [
                 'c_std=c99',
