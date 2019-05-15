@@ -8,7 +8,7 @@ Upon being launched, it double-forks to daemonize and detach from the parent tha
 
 While the container runs, conmon does two things:
 * Provides a socket for attaching to the container, holding open the container's standard streams and forwarding them over the socket.
-* Writes the contents of the container's streamas to a log file (or to the systemd journal) so they can be read after the container's death.
+* Writes the contents of the container's streams to a log file (or to the systemd journal) so they can be read after the container's death.
 
 Finally, upon the containers death, conmon will record its exit time and code to be read by the managing programs.
 
