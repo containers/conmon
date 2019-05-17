@@ -267,8 +267,10 @@ match_crio_tag() {
     req_env_var "
         GOSRC $GOSRC
     "
-    export CRIO_VER="$(rpm -q --qf '%{V}' cri-o)"
-    echo "Checking out CRI-O tag v$CRIO_VER to match installed rpm $(rpm -q cri-o)"
+    # export CRIO_VER="$(rpm -q --qf '%{V}' cri-o)"
+    # echo "Checking out CRI-O tag v$CRIO_VER to match installed rpm $(rpm -q cri-o)"
+    # instead of going off of an old RPM, update to latest and greatest CRI-O
+    export CRIO_VER="1.13.8"
     cd $GOSRC
     ooe.sh git remote update
     git checkout v$CRIO_VER | tail -1

@@ -13,12 +13,7 @@ OS_RELEASE_VER $OS_RELEASE_VER
 cd "$GOSRC"
 case "$OS_REL_VER" in
     fedora-29) ;;
-    rhel-7)
-        PATCH="$SRC/$SCRIPT_BASE/network_bats.patch"
-        echo "WARNING: Applying $PATCH"
-        cd "$GOSRC"
-        git apply --index --apply --ignore-space-change --recount "$PATCH"
-        ;;
+    rhel-7) ;;
     *) bad_os_id_ver ;;
 esac
 
