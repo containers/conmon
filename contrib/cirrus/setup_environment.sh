@@ -77,6 +77,10 @@ then
             echo "Configuring firewall/networking for integration tests"
             ooe.sh iptables -F
             ooe.sh iptables -t nat -I POSTROUTING -s 127.0.0.1 ! -d 127.0.0.1 -j MASQUERADE
+            echo "Setting read_only flag to false"
+            sudo sed -i 's/read_only = true/read_only = false/g' /etc/crio/crio.conf
+            echo "Removing nodev flag"
+            sudo sed -i 's/nodev//g' /etc/containers/storage.conf
             iptables -L -n -v
             ;;
         *) bad_os_id_ver ;;
