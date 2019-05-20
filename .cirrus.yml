@@ -34,8 +34,6 @@ env:
     PACKER_BUILDS: "fedora-29,rhel-7"
     # Version of packer to use
     PACKER_VER: "1.3.2"
-    # RHEL images require special access to cri-o and cri-tools packages
-    RHEL_CRIO_BASEURL: "https://cbs.centos.org/repos/paas7-crio-311-candidate/x86_64/os/"
     # Manually produced base-image names (see $SCRIPT_BASE/README.md)
     FEDORA_BASE_IMAGE: "fedora-cloud-base-29-1-2-1547237869"
     # RHEL image must be imported, google bills extra for their native image.

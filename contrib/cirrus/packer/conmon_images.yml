@@ -6,7 +6,6 @@ variables:
     SRC:
     SCRIPT_BASE:
     PACKER_BASE:
-    RHEL_CRIO_BASEURL:
     BUILT_IMAGE_SUFFIX:
     CRIO_REPO:
     CRIO_SLUG:
@@ -63,7 +62,6 @@ provisioners:
         - 'SRC=/tmp/conmon'
         - 'SCRIPT_BASE={{user `SCRIPT_BASE`}}'
         - 'PACKER_BASE={{user `PACKER_BASE`}}'
-        - 'RHEL_CRIO_BASEURL={{user `RHEL_CRIO_BASEURL`}}'
         - 'RHSM_COMMAND={{user `RHSM_COMMAND`}}'
         - 'BUILT_IMAGE_SUFFIX={{user `BUILT_IMAGE_SUFFIX`}}'
         - 'CRIO_REPO={{user `CRIO_REPO`}}'

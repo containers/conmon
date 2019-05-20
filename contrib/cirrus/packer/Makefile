@@ -71,9 +71,6 @@ endif
 ifndef BUILT_IMAGE_SUFFIX
 	$(error BUILT_IMAGE_SUFFIX is undefined, expected suffix string to make produced image names unique.)
 endif
-ifndef RHEL_CRIO_BASEURL
-	$(error RHEL_CRIO_BASEURL is undefined, expected yum repository baseurl for cri-o and cri-tools packages.)
-endif
 ifndef CRIO_REPO
 	$(error CRIO_REPO is undefined, expected URL to CRI-O repository to use)
 endif
@@ -116,7 +113,6 @@ conmon_images: cache_image_checkenv conmon_images.json packer
 		-var SRC=${SRC} \
 		-var SCRIPT_BASE=${SCRIPT_BASE} \
 		-var PACKER_BASE=${PACKER_BASE} \
-		-var RHEL_CRIO_BASEURL=${RHEL_CRIO_BASEURL} \
 		-var BUILT_IMAGE_SUFFIX=${BUILT_IMAGE_SUFFIX} \
 		-var CRIO_REPO=${CRIO_REPO} \
 		-var CRIO_SLUG=${CRIO_SLUG} \
