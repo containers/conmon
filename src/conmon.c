@@ -22,6 +22,8 @@
 #include <termios.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <sys/statfs.h>
+#include <linux/magic.h>
 
 #if __STDC_VERSION__ >= 199901L
 /* C99 or later */
@@ -34,6 +36,10 @@
 
 #include "cmsg.h"
 #include "config.h"
+
+#ifndef CGROUP2_SUPER_MAGIC
+#define CGROUP2_SUPER_MAGIC 0x63677270
+#endif
 
 static volatile pid_t container_pid = -1;
 static volatile pid_t create_pid = -1;
@@ -697,7 +703,9 @@ exit:
 	/* Clean up everything */
 	close(connfd);
 
-	return G_SOURCE_CONTINUE;
+	/* Since we've gotten our console from the runtime, we no longer need to
+	   be listening on this callback. */
+	return G_SOURCE_REMOVE;
 }
 
 static int get_exit_status(int status)
@@ -848,7 +856,7 @@ static char *setup_attach_socket(void)
 	return attach_symlink_dir_path;
 }
 
-static void setup_terminal_control_fifo()
+static int setup_terminal_control_fifo()
 {
 	_cleanup_free_ char *ctl_fifo_path = g_build_filename(opt_bundle_path, "ctl", NULL);
 	ninfof("ctl fifo path: %s", ctl_fifo_path);
@@ -869,18 +877,26 @@ static void setup_terminal_control_fifo()
 	int dummyfd = open(ctl_fifo_path, O_WRONLY | O_CLOEXEC);
 	if (dummyfd == -1)
 		pexit("Failed to open dummy writer for fifo");
-
 	g_unix_fd_add(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
 
 	ninfof("terminal_ctrl_fd: %d", terminal_ctrl_fd);
+	return dummyfd;
 }
 
 static void setup_oom_handling(int container_pid)
 {
 	/* Setup OOM notification for container process */
-	_cleanup_free_ char *memory_cgroup_path = process_cgroup_subsystem_path(container_pid, "memory");
+	_cleanup_free_ char *memory_cgroup_path = NULL;
 	_cleanup_close_ int cfd = -1;
+	struct statfs sfs;
 	int ofd = -1; /* Not closed */
+
+	if (statfs("/sys/fs/cgroup", &sfs) == 0 && sfs.f_type == CGROUP2_SUPER_MAGIC) {
+		nwarnf("cgroup v2 unified mode detected.  Skipping OOM handling");
+		return;
+	}
+
+	memory_cgroup_path = process_cgroup_subsystem_path(container_pid, "memory");
 	if (!memory_cgroup_path) {
 		nexit("Failed to get memory cgroup path");
 	}
@@ -954,6 +970,7 @@ int main(int argc, char *argv[])
 	GPtrArray *runtime_argv = NULL;
 	_cleanup_close_ int dev_null_r = -1;
 	_cleanup_close_ int dev_null_w = -1;
+	_cleanup_close_ int dummyfd = -1;
 	int fds[2];
 	int oom_score_fd = -1;
 
@@ -1290,11 +1307,10 @@ int main(int argc, char *argv[])
 		pexit("Failed to set handler for SIGCHLD");
 
 	if (csname != NULL) {
-		guint terminal_watch = g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
+		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
 		/* Process any SIGCHLD we may have missed before the signal handler was in place.  */
 		check_child_processes(pid_to_handler);
 		g_main_loop_run(main_loop);
-		g_source_remove(terminal_watch);
 	} else {
 		int ret;
 		/* Wait for our create child to exit with the return code. */
@@ -1347,7 +1363,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!opt_exec) {
-		setup_terminal_control_fifo();
+		dummyfd = setup_terminal_control_fifo();
 	}
 
 	/* Send the container pid back to parent */
