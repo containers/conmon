@@ -11,14 +11,8 @@ variables:
     TIMESTAMP:
     # Required for output from qemu builders
     TTYDEV:
-    # RHEL images require click-through agreements to obtain (required)
-    RHEL_BASE_IMAGE_NAME:
-    RHEL_IMAGE_FILE:
-    RHEL_CSUM_FILE:
 
     # These are also required, but come in via env-vars to protect contents
-    # RHEL requires a subscription to install/update packages
-    RHSM_COMMAND: '{{env `RHSM_COMMAND`}}'
     # Path to json file (required, likely ~/.config/gcloud/legacy_credentials/*/adc.json)
     GOOGLE_APPLICATION_CREDENTIALS: '{{env `GOOGLE_APPLICATION_CREDENTIALS`}}'
     # The complete project ID (required, not the short name)
@@ -38,7 +32,6 @@ variables:
 sensitive-variables:
     - 'GOOGLE_APPLICATION_CREDENTIALS'
     - 'GCP_PROJECT_ID'
-    - 'RHSM_COMMAND'
 
 # What images to produce in which cloud
 builders:
@@ -97,12 +90,6 @@ builders:
       ssh_private_key_file: 'cidata.ssh'
       ssh_username: 'root'
 
-    - <<: *nested_virt
-      name: 'rhel'
-      iso_url: 'file://{{user `RHEL_IMAGE_FILE`}}'
-      iso_checksum_url: 'file://{{user `RHEL_CSUM_FILE`}}'
-      disk_size: 10240
-
 provisioners:
     - type: 'shell'
       inline:
@@ -132,7 +119,6 @@ provisioners:
           - 'SRC=/tmp/conmon'
           - 'SCRIPT_BASE={{user `SCRIPT_BASE`}}'
           - 'PACKER_BASE={{user `PACKER_BASE`}}'
-          - 'RHSM_COMMAND={{user `RHSM_COMMAND`}}'
 
     - <<: *shell_script
       inline: ['{{user `SRC`}}/{{user `PACKER_BASE`}}/{{build_name}}_base-setup.sh']
@@ -143,7 +129,7 @@ provisioners:
 
 post-processors:
     - - type: "compress"
-        only: ['fedora', 'rhel']
+        only: ['fedora']
         output: '/tmp/{{build_name}}/disk.raw.tar.gz'
         format: '.tar.gz'
         compression_level: 9
@@ -157,9 +143,4 @@ post-processors:
         image_name: "{{user `FEDORA_BASE_IMAGE_NAME`}}-{{user `TIMESTAMP`}}"
         image_description: 'Based on {{user `FEDORA_IMAGE_URL`}}'
         image_family: '{{user `FEDORA_BASE_IMAGE_NAME`}}'
-      - <<: *gcp_import
-        only: ['rhel']
-        image_name: "{{user `RHEL_BASE_IMAGE_NAME`}}-{{user `TIMESTAMP`}}"
-        image_description: 'Based on {{user `RHEL_IMAGE_FILE`}}'
-        image_family: '{{user `RHEL_BASE_IMAGE_NAME`}}'
       - type: 'manifest'

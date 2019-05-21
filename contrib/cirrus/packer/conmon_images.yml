@@ -6,16 +6,13 @@ variables:
     SRC:
     SCRIPT_BASE:
     PACKER_BASE:
-    RHEL_CRIO_BASEURL:
     BUILT_IMAGE_SUFFIX:
     CRIO_REPO:
     CRIO_SLUG:
     FEDORA_BASE_IMAGE:
-    RHEL_BASE_IMAGE:
     # Protected credentials, decrypted by Cirrus at runtime
     GCE_SSH_USERNAME: '{{env `GCE_SSH_USERNAME`}}'
     GCP_PROJECT_ID: '{{env `GCP_PROJECT_ID`}}'
-    RHSM_COMMAND: '{{env `RHSM_COMMAND`}}'
     SERVICE_ACCOUNT: '{{env `SERVICE_ACCOUNT`}}'
     # Used to separate images produced during PR testing from those
     # produced from post-merge testing.  Must be empty for PR testing.
@@ -25,18 +22,15 @@ variables:
 sensitive-variables:
     - 'GCE_SSH_USERNAME'
     - 'GCP_PROJECT_ID'
-    - 'RHSM_COMMAND'
     - 'SERVICE_ACCOUNT'
 
 # What images to produce in which cloud
 builders:
-    #  v----- is a YAML anchor, allows referencing this object by name (below)
-    - &gce_hosted_image
-      name: 'rhel-7'
+    - name: 'fedora-29'
       type: 'googlecompute'
       image_name: '{{build_name}}{{user `BUILT_IMAGE_SUFFIX`}}'
       image_family: '{{build_name}}-conmon'
-      source_image: '{{user `RHEL_BASE_IMAGE`}}'
+      source_image: '{{user `FEDORA_BASE_IMAGE`}}'
       disk_size: 20
       project_id: '{{user `GCP_PROJECT_ID`}}'
       service_account_email: '{{user `SERVICE_ACCOUNT`}}'
@@ -45,11 +39,6 @@ builders:
       ssh_pty: 'true'
       # The only supported zone in Cirrus-CI, as of addition of this comment
       zone: 'us-central1-f'
-
-    #      v----- is a YAML alias, allows partial re-use of the anchor object
-    - <<: *gce_hosted_image
-      name: 'fedora-29'
-      source_image: '{{user `FEDORA_BASE_IMAGE`}}'
 
 # The brains of the operation, making actual modifications to the base-image.
 provisioners:
@@ -63,8 +52,6 @@ provisioners:
         - 'SRC=/tmp/conmon'
         - 'SCRIPT_BASE={{user `SCRIPT_BASE`}}'
         - 'PACKER_BASE={{user `PACKER_BASE`}}'
-        - 'RHEL_CRIO_BASEURL={{user `RHEL_CRIO_BASEURL`}}'
-        - 'RHSM_COMMAND={{user `RHSM_COMMAND`}}'
         - 'BUILT_IMAGE_SUFFIX={{user `BUILT_IMAGE_SUFFIX`}}'
         - 'CRIO_REPO={{user `CRIO_REPO`}}'
         - 'CRIO_SLUG={{user `CRIO_SLUG`}}'

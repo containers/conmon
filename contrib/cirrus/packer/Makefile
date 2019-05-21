@@ -62,17 +62,11 @@ cache_image_checkenv: check_common_env
 ifndef GCE_SSH_USERNAME
 	$(error GCE_SSH_USERNAME is undefined, expected user with ssh access to base-image.)
 endif
-ifndef RHSM_COMMAND
-	$(error RHSM_COMMAND is undefined, expected complete command-line to register/subscribe RHEL VM.)
-endif
 ifndef SERVICE_ACCOUNT
 	$(error SERVICE_ACCOUNT is undefined, expected GCE service account name for managing VMs.)
 endif
 ifndef BUILT_IMAGE_SUFFIX
 	$(error BUILT_IMAGE_SUFFIX is undefined, expected suffix string to make produced image names unique.)
-endif
-ifndef RHEL_CRIO_BASEURL
-	$(error RHEL_CRIO_BASEURL is undefined, expected yum repository baseurl for cri-o and cri-tools packages.)
 endif
 ifndef CRIO_REPO
 	$(error CRIO_REPO is undefined, expected URL to CRI-O repository to use)
@@ -83,9 +77,6 @@ endif
 ifndef FEDORA_BASE_IMAGE
 	$(error FEDORA_BASE_IMAGE is undefined, expected name of existing base-image.)
 endif
-ifndef RHEL_BASE_IMAGE
-	$(error RHEL_BASE_IMAGE is undefined, expected name of existing base-image.)
-endif
 
 .PHONY: base_image_checkenv
 base_image_checkenv: check_common_env
@@ -95,32 +86,19 @@ endif
 ifndef GOOGLE_APPLICATION_CREDENTIALS
 	$(error GOOGLE_APPLICATION_CREDENTIALS is undefined, expected path to JSON file.  See https://cloud.google.com/docs/authentication/end-user#creating_your_client_credentials)
 endif
-ifndef RHEL_IMAGE_FILE
-	$(error RHEL_IMAGE_FILE is undefined, expected full path to a rhel-server-ec2-*.raw.xz file)
-endif
-ifndef RHEL_CSUM_FILE
-	$(error RHEL_CSUM_FILE is undefined, expected full path to a rhel-server-ec2-*.raw.xz.SHA256SUM file)
-endif
-ifndef RHSM_COMMAND
-	$(error RHSM_COMMAND is undefined, expected string required for temporarily registering VM)
-endif
-
 
 .PHONY: conmon_images
 conmon_images: cache_image_checkenv conmon_images.json packer
 	@GCE_SSH_USERNAME=${GCE_SSH_USERNAME} \
 	GCP_PROJECT_ID=${GCP_PROJECT_ID} \
-	RHSM_COMMAND="${RHSM_COMMAND}" \
 	SERVICE_ACCOUNT="${SERVICE_ACCOUNT}" \
 	./packer build -only=${PACKER_BUILDS} \
 		-var SRC=${SRC} \
 		-var SCRIPT_BASE=${SCRIPT_BASE} \
 		-var PACKER_BASE=${PACKER_BASE} \
-		-var RHEL_CRIO_BASEURL=${RHEL_CRIO_BASEURL} \
 		-var BUILT_IMAGE_SUFFIX=${BUILT_IMAGE_SUFFIX} \
 		-var CRIO_REPO=${CRIO_REPO} \
 		-var CRIO_SLUG=${CRIO_SLUG} \
-		-var RHEL_BASE_IMAGE=${RHEL_BASE_IMAGE} \
 		-var FEDORA_BASE_IMAGE=${FEDORA_BASE_IMAGE} \
 		conmon_images.json
 	@echo ""
@@ -150,7 +128,6 @@ cidata.iso: user-data meta-data
 conmon_base_images: base_image_checkenv conmon_base_images.json cidata.iso cidata.ssh packer
 	@PACKER_CACHE_DIR=/tmp \
 	GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS}" \
-	RHSM_COMMAND="${RHSM_COMMAND}" \
 	GCP_PROJECT_ID=${GCP_PROJECT_ID} \
 		./packer build \
 			-var TIMESTAMP=${TIMESTAMP} \
@@ -158,9 +135,6 @@ conmon_base_images: base_image_checkenv conmon_base_images.json cidata.iso cidat
 			-var SRC=${SRC} \
 			-var PACKER_BASE=${PACKER_BASE} \
 			-var SCRIPT_BASE=${SCRIPT_BASE} \
-			-var RHEL_BASE_IMAGE_NAME=$(shell basename ${RHEL_IMAGE_FILE} | tr -d '[[:space:]]' | sed -r -e 's/\.x86_64\.qcow2//' | tr '[[:upper:]]' '[[:lower:]]' | tr '[[:punct:]]' '-') \
-			-var RHEL_IMAGE_FILE=${RHEL_IMAGE_FILE} \
-			-var RHEL_CSUM_FILE=${RHEL_CSUM_FILE} \
 			-only ${PACKER_BUILDS} \
 			conmon_base_images.json
 	@echo ""
