@@ -1,5 +1,5 @@
 
-PACKER_VER ?= 1.3.2
+PACKER_VER ?= 1.3.5
 PACKER_DIST_FILENAME := packer_${PACKER_VER}_linux_amd64.zip
 
 # Only needed for conmon_base_images target

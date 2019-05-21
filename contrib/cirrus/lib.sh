@@ -193,8 +193,8 @@ setup_gopath() {
         CRIO_SLUG $CRIO_SLUG
     "
     echo "Configuring persistent Go environment for all users"
-    sudo mkdir -p /var/tmp/go  # Works with atomic
-    sudo chown $USER:$USER /var/tmp/go
+    sudo mkdir -p /var/tmp/go/src  # Works with atomic
+    sudo chown -R $USER:$USER /var/tmp/go
     sudo chmod g=rws /var/tmp/go
     ENVLIB=/etc/profile.d/go.sh
     if ! grep -q GOPATH $ENVLIB
@@ -224,6 +224,7 @@ install_testing_deps() {
         GOPATH $GOPATH
         GOSRC $GOSRC
     "
+
     echo "Installing required go packages into \$GOPATH"
     for toolpath in \
         tools/godep \
@@ -231,9 +232,11 @@ install_testing_deps() {
         onsi/gomega \
         cloudflare/cfssl/cmd/... \
         jteeuwen/go-bindata/go-bindata \
-        cpuguy83/go-md2man
+        cpuguy83/go-md2man \
+        urfave/cli \
+        containers/image/storage
     do
-        go get -u "github.com/$toolpath"
+        go get -d "github.com/$toolpath"
     done
 
     echo "Installing latest upstream version of BATS"
