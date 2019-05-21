@@ -14,10 +14,13 @@ cd "$GOSRC"
 case "$OS_REL_VER" in
     fedora-29) ;&
     rhel-7)
-        PATCH="$SRC/$SCRIPT_BASE/network_bats.patch"
-        echo "WARNING: Applying $PATCH"
+        PATCH1="$SRC/$SCRIPT_BASE/network_bats.patch"
+        PATCH2="$SRC/$SCRIPT_BASE/spoof_travis.patch"
         cd "$GOSRC"
-        git apply --index --apply --ignore-space-change --recount "$PATCH"
+        echo "WARNING: Applying $PATCH1"
+        git apply --index --apply --ignore-space-change --recount "$PATCH1"
+        echo "WARNING: Applying $PATCH2"
+        git apply --index --apply --ignore-space-change --recount "$PATCH2"
         ;;
     *) bad_os_id_ver ;;
 esac
