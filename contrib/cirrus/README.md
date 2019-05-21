@@ -101,15 +101,6 @@ the ``cache_images`` Task) some input parameters are required:
        or [end-user
        credentials](https://cloud.google.com/docs/authentication/end-user#creating_your_client_credentials]
 
-    *  ``RHEL_IMAGE_FILE`` and ``RHEL_CSUM_FILE`` complete paths
-       to a `rhel-server*.qcow2` and it's cooresponding
-       checksum file.  These must be supplied manually because
-       they're not available directly via URL like other images.
-
-    * ``RHSM_COMMAND`` contains the complete string needed to register
-      the VM for installing package dependencies.  The VM will be de-registered
-      upon completion.
-
     *  CSV's of builders to use must be specified to ``PACKER_BUILDS``
        to limit the base-images produced.  For example,
        ``PACKER_BUILDS=fedora,image-builder-image``.
@@ -144,8 +135,6 @@ When ready, change to the ``packer`` sub-directory, and run:
 ```
 $ make conmon_base_images GCP_PROJECT_ID=<VALUE> \
     GOOGLE_APPLICATION_CREDENTIALS=<VALUE> \
-    RHEL_IMAGE_FILE=<VALUE> \
-    RHEL_CSUM_FILE=<VALUE> \
     PACKER_BUILDS=<OPTIONAL>
 ```
 

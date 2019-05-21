@@ -162,38 +162,13 @@ rh_finalize(){
     _finalize
 }
 
-rhel_exit_handler() {
-    set +ex
-    req_env_var "
-        RHSMCMD $RHSMCMD
-    "
-    cd /
-    sudo rm -rf "$RHSMCMD"
-    sudo subscription-manager unsubscribe --all
-    sudo subscription-manager remove --all
-    sudo subscription-manager unregister
-    sudo subscription-manager clean
-}
-
-rhsm_enable() {
-    req_env_var "
-        RHSM_COMMAND $RHSM_COMMAND
-    "
-    export RHSMCMD="$(mktemp)"
-    trap "rhel_exit_handler" EXIT
-    # Avoid logging sensitive details
-    echo "$RHSM_COMMAND" > "$RHSMCMD"
-    ooe.sh sudo bash "$RHSMCMD"
-    sudo rm -rf "$RHSMCMD"
-}
-
 setup_gopath() {
     req_env_var "
         CRIO_REPO $CRIO_REPO
         CRIO_SLUG $CRIO_SLUG
     "
     echo "Configuring persistent Go environment for all users"
-    sudo mkdir -p /var/tmp/go/src  # Works with atomic
+    sudo mkdir -p /var/tmp/go/src
     sudo chown -R $USER:$USER /var/tmp/go
     sudo chmod g=rws /var/tmp/go
     ENVLIB=/etc/profile.d/go.sh
