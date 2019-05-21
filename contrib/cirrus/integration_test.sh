@@ -34,4 +34,4 @@ export CRIO_CNI_PLUGIN=/usr/libexec/cni
 
 echo "Executing cri-o integration tests (typical 10 - 20 min)"
 cd "$GOSRC"
-timeout --foreground --kill-after=45m 30m ./test/test_runner.sh
+timeout --foreground --kill-after=90m 60m ./test/test_runner.sh
