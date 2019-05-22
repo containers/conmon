@@ -58,3 +58,8 @@ install: install.bin
 
 install.bin: bin/conmon
 	install ${SELINUXOPT} -D -m 755 bin/conmon $(LIBEXECDIR)/crio/conmon
+
+.PHONY: fmt
+fmt:
+	find . '(' -name '*.h' -o -name '*.c' ')'  -exec clang-format -i {} \+
+	git diff --exit-code
