@@ -23,7 +23,7 @@ endif
 
 override LIBS += $(shell pkg-config --libs glib-2.0)
 
-CFLAGS ?= -std=c99 -Os -Wall -Wextra
+CFLAGS ?= -std=c99 -Os -Wall -Wextra -Werror
 override CFLAGS += $(shell pkg-config --cflags glib-2.0) -DVERSION=\"$(VERSION)\" -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
 # Conditionally compile journald logging code if the libraries can be found
