@@ -45,7 +45,7 @@ BuildRequires: pkgconfig
 %files
 %license LICENSE
 %doc README.md
-%{_libexecdir}/crio/%{name}
+%{_usr}/bin/%{name}
 
 %changelog
 * Mon Oct 01 2018 Lokesh Mandvekar <lsm5@fedoraproject.org> - 0-0.1.gite7805e2
