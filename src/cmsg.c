@@ -66,7 +66,7 @@ ssize_t sendfd(int sockfd, struct file_t file)
 
 	/*
 	 * We need to send some other data along with the ancillary data,
-	 * otherwise the other side won't recieve any data. This is very
+	 * otherwise the other side won't receive any data. This is very
 	 * well-hidden in the documentation (and only applies to
 	 * SOCK_STREAM). See the bottom part of unix(7).
 	 */
@@ -119,7 +119,7 @@ struct file_t recvfd(int sockfd)
 		error("recvfd: failed to allocate file.tag buffer");
 
 	/*
-	 * We need to "recieve" the non-ancillary data even though we don't
+	 * We need to "receive" the non-ancillary data even though we don't
 	 * plan to use it at all. Otherwise, things won't work as expected.
 	 * See unix(7) and other well-hidden documentation.
 	 */
@@ -149,7 +149,7 @@ struct file_t recvfd(int sockfd)
 
 	fdptr = (int *)CMSG_DATA(cmsg);
 	if (!fdptr || *fdptr < 0)
-		error("recvfd: recieved invalid pointer");
+		error("recvfd: received invalid pointer");
 
 	file.fd = *fdptr;
 	return file;
