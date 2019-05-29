@@ -572,7 +572,10 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 	gboolean ret = G_SOURCE_REMOVE;
 
 	/* Drop the inotify events.  */
-	read(fd, &events, sizeof(events));
+	ssize_t num_read = read(fd, &events, sizeof(events));
+	if (num_read < 0) {
+		pwarn("Failed to read events");
+	}
 
 	if ((condition & G_IO_IN) != 0) {
 		ret = check_cgroup2_oom();
