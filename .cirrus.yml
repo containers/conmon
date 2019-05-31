@@ -97,7 +97,7 @@ fedora_packaging_task:
         - make -f .rpmbuild/Makefile
         - rpmbuild --rebuild conmon-*.src.rpm
         - dnf -y install ~/rpmbuild/RPMS/x86_64/conmon*.x86_64.rpm
-        - ls -l /usr/libexec/crio/conmon
+        - ls -l /usr/bin/conmon
 
     timeout_in: '20m'
 

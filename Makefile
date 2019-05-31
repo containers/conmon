@@ -62,11 +62,21 @@ clean:
 	rm -f bin/conmon src/*.o
 	rmdir bin
 
-.PHONY: install install.bin
+.PHONY: install install.bin install.crio install.podman podman crio
 install: install.bin
 
+podman: install.podman
+
+crio: install.crio
+
 install.bin: bin/conmon
+	install ${SELINUXOPT} -D -m 755 bin/conmon $(BINDIR)/conmon
+
+install.crio: bin/conmon
 	install ${SELINUXOPT} -D -m 755 bin/conmon $(LIBEXECDIR)/crio/conmon
+
+install.podman: bin/conmon
+	install ${SELINUXOPT} -D -m 755 bin/conmon $(LIBEXECDIR)/podman/conmon
 
 .PHONY: fmt
 fmt:

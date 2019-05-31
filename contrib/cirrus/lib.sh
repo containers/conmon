@@ -259,7 +259,7 @@ build_and_replace_conmon() {
 
     NEWNAME=.original_packaged_conmon
     echo "Renaming conmon binaries from RPMs"
-    find /usr/libexec -type f -name conmon |
+    find /usr -type f -name conmon |
     while read CONMON_FILEPATH
     do
         NEWPATH="$(dirname $CONMON_FILEPATH)/$NEWNAME"
@@ -271,8 +271,8 @@ build_and_replace_conmon() {
 
     ooe.sh make
     echo "Installing conmon"
-    ooe.sh sudo make install PREFIX=/usr
+    ooe.sh sudo make crio PREFIX=/usr
     # Use same version for podman in case ever needed
     ooe.sh sudo ln -fv /usr/libexec/crio/conmon /usr/libexec/podman/conmon
-    ooe.sh sudo restorecon -R /usr/libexec
+    ooe.sh sudo restorecon -R /usr/bin
 }
