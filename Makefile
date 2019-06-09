@@ -1,9 +1,7 @@
 VERSION := $(shell cat VERSION)
-PREFIX ?= ${DESTDIR}/usr/local
+PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
 LIBEXECDIR ?= ${PREFIX}/libexec
-MANDIR ?= ${PREFIX}/share/man
-ETCDIR ?= ${DESTDIR}/etc
 
 .PHONY: all git-vars
 all: git-vars bin bin/conmon
@@ -70,13 +68,13 @@ podman: install.podman
 crio: install.crio
 
 install.bin: bin/conmon
-	install ${SELINUXOPT} -D -m 755 bin/conmon $(BINDIR)/conmon
+	install ${SELINUXOPT} -D -m 755 bin/conmon $(DESTDIR)$(BINDIR)/conmon
 
 install.crio: bin/conmon
-	install ${SELINUXOPT} -D -m 755 bin/conmon $(LIBEXECDIR)/crio/conmon
+	install ${SELINUXOPT} -D -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/crio/conmon
 
 install.podman: bin/conmon
-	install ${SELINUXOPT} -D -m 755 bin/conmon $(LIBEXECDIR)/podman/conmon
+	install ${SELINUXOPT} -D -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/podman/conmon
 
 .PHONY: fmt
 fmt:
