@@ -20,9 +20,11 @@ env:
     TRAVIS: "true"
 
     ####
-    #### Cache-image names to test with
+    #### Image names to test with
     ###
     FEDORA_CACHE_IMAGE_NAME: 'fedora-29-conmon-75ea13be'
+    FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:29'
+    PRIOR_FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:28'
 
     ####
     #### Variables for composing new cache-images (used in PR testing) from
@@ -63,6 +65,9 @@ timeout_in: '120m'
 # testing for every platform
 integration_task:
 
+    depends_on:
+        - 'config'
+
     gce_instance:
         # Generate multiple parallel tasks, covering all possible
         # 'matrix' combinations.
@@ -85,8 +90,8 @@ fedora_packaging_task:
     # Runs within Cirrus's "community cluster"
     container:
         matrix:
-            image: "registry.fedoraproject.org/fedora:28"
-            image: "registry.fedoraproject.org/fedora:29"
+            image: "${FEDORA_CONTAINER_FQIN}"
+            image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
         cpu: 4
         memory: 12
 
@@ -101,6 +106,26 @@ fedora_packaging_task:
 
     timeout_in: '20m'
 
+# Verify calls to bin/config were saved
+config_task:
+    env:
+        GOSRC: $CIRRUS_WORKING_DIR
+    # Runs within Cirrus's "community cluster"
+    container:
+        matrix:
+               # fedora:28 doesn't have go mod by default
+               # and we should only need one check to make sure
+               # config changes were synced
+            image: "${FEDORA_CONTAINER_FQIN}"
+        cpu: 4
+        memory: 12
+
+    script:
+        - dnf install -y make glib2-devel git gcc rpm-build golang
+        - cd $CIRRUS_WORKING_DIR
+        - GO111MODULE=on go mod init github.com/containers/conmon
+        - make config
+        - ./hack/tree_status.sh
 
 # Test building of new cache-images for future PR testing, in this PR.
 # Output images will be stored only for a very short time, then automaticly deleted.
