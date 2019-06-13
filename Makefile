@@ -2,6 +2,10 @@ VERSION := $(shell cat VERSION)
 PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
 LIBEXECDIR ?= ${PREFIX}/libexec
+GO ?= go
+PROJECT := github.com/containers/conmon
+
+
 
 .PHONY: all git-vars
 all: git-vars bin bin/conmon
@@ -43,6 +47,10 @@ bin/conmon: src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o | bin
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
+
+config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runner/config/config_unix.go runner/config/config_windows.go
+	$(GO) build $(LDFLAGS) -tags "$(BUILDTAGS)" -o bin/config $(PROJECT)/cmd/conmon-config
+		( cd src && $(CURDIR)/bin/config )
 
 src/cmsg.o: src/cmsg.c src/cmsg.h
 
