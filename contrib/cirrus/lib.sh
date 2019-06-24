@@ -192,6 +192,11 @@ install_crio_repo() {
     echo "Cloning current CRI-O Source for faster access later"
     sudo rm -rf "$GOSRC"  # just in case
     ooe.sh git clone $CRIO_REPO $GOSRC
+
+    # Install CRI-O
+    cd crio
+    ooe.sh make PREFIX=/usr
+    ooe.sh sudo make install PREFIX=/usr
 }
 
 install_testing_deps() {
@@ -239,17 +244,6 @@ selinux_permissive(){
     echo "Entering SELinux Permissive mode, will switch to enforcing upon shell exit"
     trap "setenforce 1" EXIT
     setenforce 0
-}
-
-match_crio_tag() {
-    req_env_var "
-        GOSRC $GOSRC
-    "
-    export CRIO_VER="$(rpm -q --qf '%{V}' cri-o)"
-    echo "Checking out CRI-O tag v$CRIO_VER to match installed rpm $(rpm -q cri-o)"
-    cd $GOSRC
-    ooe.sh git remote update
-    git checkout v$CRIO_VER | tail -1
 }
 
 build_and_replace_conmon() {
