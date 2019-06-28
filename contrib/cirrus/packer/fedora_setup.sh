@@ -97,8 +97,6 @@ setup_gopath
 
 install_crio_repo  # git-repo for test-content
 
-match_crio_tag  # git repo to cri-o rpm version
-
 echo "Enabling localnet routing"
 echo "net.ipv4.conf.all.route_localnet = 1" | sudo tee /etc/sysctl.d/route_localnet.conf
 

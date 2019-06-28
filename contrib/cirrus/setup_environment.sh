@@ -65,7 +65,6 @@ then
 
     case "$OS_REL_VER" in
         fedora-29)
-            match_crio_tag  # in case it changed and to display version
             install_testing_deps
             build_and_replace_conmon
 
