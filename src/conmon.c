@@ -1127,7 +1127,7 @@ int main(int argc, char *argv[])
 	context = g_option_context_new("- conmon utility");
 	g_option_context_add_main_entries(context, opt_entries, "conmon");
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
-		g_print("option parsing failed: %s\n", error->message);
+		g_print("conmon: option parsing failed: %s\n", error->message);
 		exit(1);
 	}
 	if (opt_version) {
@@ -1136,7 +1136,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_cid == NULL) {
-		fprintf(stderr, "Container ID not provided. Use --cid\n");
+		fprintf(stderr, "conmon: Container ID not provided. Use --cid\n");
 		exit(EXIT_FAILURE);
 	}
 
