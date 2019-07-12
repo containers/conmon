@@ -92,7 +92,7 @@ static GOptionEntry opt_entries[] = {
 	 "Additional opts to pass to the restore or exec command. Can be specified multiple times", NULL},
 	{"runtime-arg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_runtime_args,
 	 "Additional arg to pass to the runtime. Can be specified multiple times", NULL},
-	{"attach", 0, 0, G_OPTION_ARG_NONE, &opt_attach, "Attach to an exec session", NULL},
+	{"exec-attach", 0, 0, G_OPTION_ARG_NONE, &opt_attach, "Attach to an exec session", NULL},
 	{"no-new-keyring", 0, 0, G_OPTION_ARG_NONE, &opt_no_new_keyring, "Do not create a new session keyring for the container", NULL},
 	{"no-pivot", 0, 0, G_OPTION_ARG_NONE, &opt_no_pivot, "Do not use pivot_root", NULL},
 	{"replace-listen-pid", 0, 0, G_OPTION_ARG_NONE, &opt_replace_listen_pid, "Replace listen pid if set for oci-runtime pid", NULL},
