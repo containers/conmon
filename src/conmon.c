@@ -994,12 +994,12 @@ static int setup_terminal_control_fifo()
 	return dummyfd;
 }
 
-static void setup_oom_handling_cgroup_v2(int container_pid)
+static void setup_oom_handling_cgroup_v2(int pid)
 {
 	_cleanup_close_ int ifd = -1;
 	int wd;
 
-	cgroup2_path = process_cgroup_subsystem_path(container_pid, true, "");
+	cgroup2_path = process_cgroup_subsystem_path(pid, true, "");
 	if (!cgroup2_path) {
 		nwarn("Failed to get cgroup path. Container may have exited");
 		return;
@@ -1024,14 +1024,14 @@ static void setup_oom_handling_cgroup_v2(int container_pid)
 	g_unix_fd_add(inotify_fd, G_IO_IN, oom_cb_cgroup_v2, NULL);
 }
 
-static void setup_oom_handling_cgroup_v1(int container_pid)
+static void setup_oom_handling_cgroup_v1(int pid)
 {
 	/* Setup OOM notification for container process */
 	_cleanup_free_ char *memory_cgroup_path = NULL;
 	_cleanup_close_ int cfd = -1;
 	int ofd = -1; /* Not closed */
 
-	memory_cgroup_path = process_cgroup_subsystem_path(container_pid, false, "memory");
+	memory_cgroup_path = process_cgroup_subsystem_path(pid, false, "memory");
 	if (!memory_cgroup_path) {
 		nwarn("Failed to get memory cgroup path. Container may have exited");
 		return;
@@ -1058,16 +1058,16 @@ static void setup_oom_handling_cgroup_v1(int container_pid)
 	g_unix_fd_add(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, NULL);
 }
 
-static void setup_oom_handling(int container_pid)
+static void setup_oom_handling(int pid)
 {
 	struct statfs sfs;
 
 	if (statfs("/sys/fs/cgroup", &sfs) == 0 && sfs.f_type == CGROUP2_SUPER_MAGIC) {
 		is_cgroup_v2 = TRUE;
-		setup_oom_handling_cgroup_v2(container_pid);
+		setup_oom_handling_cgroup_v2(pid);
 		return;
 	}
-	setup_oom_handling_cgroup_v1(container_pid);
+	setup_oom_handling_cgroup_v1(pid);
 }
 
 static void do_exit_command()
