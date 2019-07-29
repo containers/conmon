@@ -412,11 +412,12 @@ static const char *stdpipe_name(stdpipe_t pipe)
 
 static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 {
-	struct tm *tm;
+	static int tzset_called = 0;
+	struct tm tm;
 	struct timespec ts;
 	char off_sign = '+';
 	int off, len, err = -1;
-
+        
 	if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
 		/* If CLOCK_REALTIME is not supported, we set nano seconds to 0 */
 		if (errno == EINVAL) {
@@ -426,18 +427,23 @@ static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 		}
 	}
 
-	if ((tm = localtime(&ts.tv_sec)) == NULL)
+	if (!tzset_called) {
+		tzset();
+		tzset_called = 1;
+	}
+
+	if (localtime_r(&ts.tv_sec, &tm) == NULL)
 		return err;
 
 
-	off = (int)tm->tm_gmtoff;
-	if (tm->tm_gmtoff < 0) {
+	off = (int)tm.tm_gmtoff;
+	if (tm.tm_gmtoff < 0) {
 		off_sign = '-';
 		off = -off;
 	}
 
-	len = snprintf(buf, buflen, "%d-%02d-%02dT%02d:%02d:%02d.%09ld%c%02d:%02d %s ", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-		       tm->tm_hour, tm->tm_min, tm->tm_sec, ts.tv_nsec, off_sign, off / 3600, (off % 3600) / 60, pipename);
+	len = snprintf(buf, buflen, "%d-%02d-%02dT%02d:%02d:%02d.%09ld%c%02d:%02d %s ", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		       tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec, off_sign, off / 3600, (off % 3600) / 60, pipename);
 
 	if (len < buflen)
 		err = 0;
