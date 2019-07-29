@@ -1389,7 +1389,6 @@ int main(int argc, char *argv[])
 	if (create_pid < 0) {
 		pexit("Failed to fork the create command");
 	} else if (!create_pid) {
-		/* FIXME: This results in us not outputting runc error messages to crio's log. */
 		if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0)
 			pexit("Failed to set PDEATHSIG");
 		if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
