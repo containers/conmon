@@ -1,3 +1,5 @@
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/containers/conmon.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/containers/conmon/alerts/)
+
 # conmon
 
 An OCI container runtime monitor.
