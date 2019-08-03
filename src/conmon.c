@@ -1098,7 +1098,7 @@ static void do_exit_command()
 
 int main(int argc, char *argv[])
 {
-	int fd, ret;
+	int ret;
 	char cwd[PATH_MAX];
 	_cleanup_free_ char *default_pid_file = NULL;
 	_cleanup_free_ char *csname = NULL;
@@ -1122,6 +1122,7 @@ int main(int argc, char *argv[])
 	_cleanup_close_ int dummyfd = -1;
 	int fds[2];
 	int oom_score_fd = -1;
+	DIR *fdsdir = NULL;
 
 	/* Command line parameters */
 	context = g_option_context_new("- conmon utility");
@@ -1616,23 +1617,35 @@ int main(int argc, char *argv[])
 		exit_status = get_exit_status(container_status);
 	}
 
-	if (opt_exit_dir) {
-		_cleanup_free_ char *status_str = g_strdup_printf("%d", exit_status);
-		_cleanup_free_ char *exit_file_path = g_build_filename(opt_exit_dir, opt_cid, NULL);
-		if (!g_file_set_contents(exit_file_path, status_str, -1, &err))
-			nexitf("Failed to write %s to exit file: %s", status_str, err->message);
-	}
-
 	/*
 	 * Podman injects some fd's into the conmon process so that exposed ports are kept busy while
 	 * the container runs.  Close them before we notify the container exited, so that they can be
 	 * reused immediately.
 	 */
-	for (fd = 3;; fd++) {
-		if (fd == sync_pipe_fd || fd == attach_pipe_fd || fd == dev_null_r || fd == dev_null_w)
-			continue;
-		if (close(fd) < 0 && errno == EBADF)
-			break;
+	fdsdir = opendir("/proc/self/fd");
+	if (fdsdir != NULL) {
+		int fd;
+		int dfd = dirfd(fdsdir);
+		struct dirent *next;
+
+		for (next = readdir(fdsdir); next; next = readdir(fdsdir)) {
+			const char *name = next->d_name;
+			if (name[0] == '.')
+				continue;
+
+			fd = strtoll(name, NULL, 10);
+			if (fd == dfd || fd == sync_pipe_fd || fd == attach_pipe_fd || fd == dev_null_r || fd == dev_null_w)
+				continue;
+			close(fd);
+		}
+		closedir(fdsdir);
+	}
+
+	if (opt_exit_dir) {
+		_cleanup_free_ char *status_str = g_strdup_printf("%d", exit_status);
+		_cleanup_free_ char *exit_file_path = g_build_filename(opt_exit_dir, opt_cid, NULL);
+		if (!g_file_set_contents(exit_file_path, status_str, -1, &err))
+			nexitf("Failed to write %s to exit file: %s", status_str, err->message);
 	}
 
 	/* Send the command exec exit code back to the parent */
