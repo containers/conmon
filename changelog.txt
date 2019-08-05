@@ -1,0 +1,74 @@
+- Changelog for v1.0.0 (2019-08-05)
+  * conmon: close FDs before creating exit file
+  * add installation guide
+  * README.md: add LGTM.com badge
+  * utils: rename cid to log_cid
+  * conmon: drop FIXME comment
+  * main: do not shadow global variable container_pid
+  * ctr_logging: use localtime_r
+  * conmon: check it is valid pid before kill'ing it
+  * change conmon exec --attach option to exec-attach
+  * Update git-vars target to check for executable as well
+  * prefix logging with conmon:
+  * Build CRI-O from master instead of RPM
+  * Enable backwards compatibility
+  * use conmon for a sync'd exec
+
+- Changelog for v0.4.0 (2019-07-25)
+  * Use configurable make variable for pkg-config
+  * Fix linker error due to missing source files
+  * conmon: force unlink attach socket
+  * remove appendix
+
+- Changelog for v0.3.0 (2019-06-13)
+  * Update license to have owners and date of copyright
+  * Add cmd/config/config.go (#41)
+  * fix: separate DESTDIR variable from PREFIX
+  * Add podman and crio make target
+  * Add warning if read events failed
+  * Update build flags to include -Werror
+  * Fix typos (#31)
+  * conmon: support OOM monitor under cgroup v2 (#29)
+  * Update Makefile git shell commands
+  * Add .clang-format file
+  * fix silly syslog error (#22)
+  * Cleanup Cirrus implementation
+
+-- Changelog for v0.2.0 (2019-05-20)
+  * fix silly syslog error
+  * bump timeout
+  * Spoof self as travis to pass ctr_oom test
+  * cirrus: Set read_only flag to false
+  * disable rhel tests in favor of fedora tests
+  * Cirrus: Enable CRI-O intg. testing w/ Fedora
+  * properly set conmon logs
+  * Remove redundant source remove
+  * conmon: detect cgroup2 and skip OOM handling
+  * fix cross-compilation
+  * fixes assumption that socklen_t is always an unsigned long
+  * Fix coverity scan problem
+  * Fix small typo in README
+  * Add VERSION file
+  * use sd_journal_sendv
+  * do not leak fd when creating oom file
+  * Log oom_handling_score failure to debug
+  * Small tweaks to journald logging
+  * Adjust OOM score to low value
+  * Add journald logging option
+  * allow to specify additional arguments to the OCI runtime
+  * updated README
+  * Cirrus: Fix image names
+  * Fix CRI-O repo. references
+  * Update Conmon from CRI-O master branch
+  * Add Meson build configuration
+  * Fix Makefile to rebuild when sources are touched
+  * Add path to conmon executable to gitignore
+  * Remove executable bit from C header file
+  * Migrate PAPR build/install test to Cirrus
+  * cirrus: Remove faulty cri-o 1.11 intg. test
+  * Cirrus: Add CRI-O Integration testing for RHEL
+  * Update conmon source to latest from cri-o
+  * Do not overflow local buffer
+  * Initial PAPR CI check-in
+  * contrib/spec: initial rpm spec file addition
+  * Initial code checking from crio
