@@ -33,6 +33,14 @@ extern log_level_t log_level;
 extern char *log_cid;
 extern gboolean use_syslog;
 
+#define _pexit(s) \
+	do { \
+		fprintf(stderr, "[conmon:e]: %s %s\n", s, strerror(errno)); \
+		if (use_syslog) \
+			syslog(LOG_ERR, "conmon %.20s <error>: %s %s\n", log_cid, s, strerror(errno)); \
+		_exit(EXIT_FAILURE); \
+	} while (0)
+
 #define pexit(s) \
 	do { \
 		fprintf(stderr, "[conmon:e]: %s %s\n", s, strerror(errno)); \

@@ -1072,8 +1072,31 @@ static void setup_oom_handling(int pid)
 
 static void do_exit_command()
 {
+	pid_t exit_pid;
 	gchar **args;
 	size_t n_args = 0;
+
+	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
+		_pexit("Failed to reset signal for SIGCHLD");
+	}
+
+	exit_pid = fork();
+	if (exit_pid < 0) {
+		_pexit("Failed to fork");
+	}
+
+	if (exit_pid) {
+		int ret, exit_status = 0;
+
+		do
+			ret = waitpid(exit_pid, &exit_status, 0);
+		while (ret < 0 && errno == EINTR);
+
+		if (exit_status)
+			_exit(exit_status);
+
+		return;
+	}
 
 	/* Count the additional args, if any.  */
 	if (opt_exit_args)
@@ -1655,5 +1678,5 @@ int main(int argc, char *argv[])
 	if (attach_symlink_dir_path != NULL && unlink(attach_symlink_dir_path) == -1 && errno != ENOENT)
 		pexit("Failed to remove symlink for attach socket directory");
 
-	return EXIT_SUCCESS;
+	return exit_status;
 }
