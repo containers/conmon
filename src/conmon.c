@@ -116,7 +116,7 @@ static GOptionEntry opt_entries[] = {
 	{"version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print the version and exit", NULL},
 	{"syslog", 0, 0, G_OPTION_ARG_NONE, &opt_syslog, "Log to syslog (use with cgroupfs cgroup manager)", NULL},
 	{"log-level", 0, 0, G_OPTION_ARG_STRING, &opt_log_level, "Print debug logs based on log level", NULL},
-	{NULL}};
+	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 #define CGROUP_ROOT "/sys/fs/cgroup"
 #define OOM_SCORE "-999"
