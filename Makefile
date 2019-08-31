@@ -66,8 +66,7 @@ bin:
 
 .PHONY: clean
 clean:
-	rm -f bin/conmon src/*.o
-	rmdir bin
+	rm -rf bin/ src/*.o
 
 .PHONY: install install.bin install.crio install.podman podman crio
 install: install.bin
