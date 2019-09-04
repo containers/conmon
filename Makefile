@@ -43,6 +43,25 @@ else ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0" || echo "1"), 0
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=0
 endif
 
+define DOCKERFILE
+	FROM alpine:latest
+	RUN apk add --update --no-cache bash make git gcc pkgconf libc-dev glib-dev glib-static
+	COPY . /go/src/$(PROJECT)
+	WORKDIR /go/src/$(PROJECT)
+	RUN make static
+endef
+export DOCKERFILE
+
+containerized: bin
+	$(eval PODMAN ?= $(if $(shell podman -v),podman,docker))
+	echo "$$DOCKERFILE" | $(PODMAN) build --force-rm -t conmon-build -f - .
+	CTR=`$(PODMAN) create conmon-build` \
+		&& $(PODMAN) cp $$CTR:/go/src/$(PROJECT)/bin/conmon bin/conmon \
+		&& $(PODMAN) rm $$CTR
+
+static:
+	$(MAKE) git-vars bin/conmon PKG_CONFIG='$(PKG_CONFIG) --static' CFLAGS='-static' LDFLAGS='$(LDFLAGS) -s -w -static' LIBS='$(LIBS)'
+
 bin/conmon: src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o | bin
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
