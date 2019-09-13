@@ -676,7 +676,7 @@ static void resize_winsz(int height, int width)
 	ws.ws_col = width;
 	ret = ioctl(masterfd_stdout, TIOCSWINSZ, &ws);
 	if (ret == -1) {
-		nwarn("Failed to set process pty terminal size");
+		pwarn("Failed to set process pty terminal size");
 	}
 }
 
@@ -794,6 +794,11 @@ exit:
 	 * stdout. stderr is ignored. */
 	masterfd_stdin = console.fd;
 	masterfd_stdout = console.fd;
+
+	/* now that we've set masterfd_stdout, we can register the ctrl_cb
+	 * if we didn't set it here, we'd risk attempting to run ioctl on
+	 * a negative fd, and fail to resize the window */
+	g_unix_fd_add(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
 
 	/* Clean up everything */
 	close(connfd);
@@ -988,7 +993,6 @@ static int setup_terminal_control_fifo()
 	int dummyfd = open(ctl_fifo_path, O_WRONLY | O_CLOEXEC);
 	if (dummyfd == -1)
 		pexit("Failed to open dummy writer for fifo");
-	g_unix_fd_add(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
 
 	ninfof("terminal_ctrl_fd: %d", terminal_ctrl_fd);
 	return dummyfd;
@@ -1315,6 +1319,11 @@ int main(int argc, char *argv[])
 
 		masterfd_stdout = fds[0];
 		slavefd_stdout = fds[1];
+
+		/* now that we've set masterfd_stdout, we can register the ctrl_cb
+		 * if we didn't set it here, we'd risk attempting to run ioctl on
+		 * a negative fd, and fail to resize the window */
+		g_unix_fd_add(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
 	}
 
 	/* We always create a stderr pipe, because that way we can capture
