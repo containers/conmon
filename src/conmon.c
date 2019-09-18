@@ -605,7 +605,6 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 	return ret;
 }
 
-#define CONN_SOCK_BUF_SIZE 32 * 1024 /* Match the write size in CopyDetachable */
 static gboolean conn_sock_cb(int fd, GIOCondition condition, gpointer user_data)
 {
 	char buf[CONN_SOCK_BUF_SIZE];
