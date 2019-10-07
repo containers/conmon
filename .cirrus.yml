@@ -54,7 +54,7 @@ env:
 # and storage.
 gcp_credentials: ENCRYPTED[13e51806369f650e6ccc326338deeb3c24052fc0a7be29beef2b96da551aed3200abbb6c6406a936bb4388fb2758405c]
 
-# Default compute settings unless overriden within tasks (below)
+# Default compute settings unless overridden within tasks (below)
 gce_instance: {"image_project": "conmon-222014", "zone": "us-central1-f", "cpu": 4, "memory": "16Gb", "disk": 200, "image_name": "no-image-specified-in-task"}
 
 # Default timeout for each task
@@ -72,7 +72,7 @@ integration_task:
         # Generate multiple parallel tasks, covering all possible
         # 'matrix' combinations.
         matrix:
-            # Images are generated separetly, from build_images_task (below)
+            # Images are generated separately, from build_images_task (below)
             image_name: "${FEDORA_CACHE_IMAGE_NAME}"
 
     env:
@@ -128,7 +128,7 @@ config_task:
         - ./hack/tree_status.sh
 
 # Test building of new cache-images for future PR testing, in this PR.
-# Output images will be stored only for a very short time, then automaticly deleted.
+# Output images will be stored only for a very short time, then automatically deleted.
 test_cache_images_task:
 
     only_if: >-
@@ -188,3 +188,18 @@ cache_images_task:
 
     setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
     cache_images_script: '$SCRIPT_BASE/build_vm_images.sh'
+
+# Build the static binary
+static_binary_task:
+    depends_on:
+        - 'config'
+    gce_instance:
+        image_name: "${FEDORA_BASE_IMAGE}"
+        cpu: 4
+        memory: 4
+        disk: 200
+    script:
+        - dnf install -y podman make git gcc
+        - make containerized
+    binaries_artifacts:
+        path: "bin/conmon"
