@@ -42,6 +42,7 @@
 #define CGROUP2_SUPER_MAGIC 0x63677270
 #endif
 
+static int sync_pipe_fd = -1;
 static volatile pid_t container_pid = -1;
 static volatile pid_t create_pid = -1;
 static gboolean opt_version = FALSE;
@@ -843,7 +844,7 @@ static void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED 
 	g_main_loop_quit(main_loop);
 }
 
-static void write_sync_fd(int sync_pipe_fd, int res, const char *message)
+static void write_sync_fd(int fd, int res, const char *message)
 {
 	_cleanup_free_ char *escaped_message = NULL;
 	_cleanup_free_ char *json = NULL;
@@ -858,7 +859,7 @@ static void write_sync_fd(int sync_pipe_fd, int res, const char *message)
 
 	ssize_t len;
 
-	if (sync_pipe_fd == -1)
+	if (fd == -1)
 		return;
 
 	if (message) {
@@ -869,7 +870,7 @@ static void write_sync_fd(int sync_pipe_fd, int res, const char *message)
 	}
 
 	len = strlen(json);
-	if (write_all(sync_pipe_fd, json, len) != len) {
+	if (write_all(fd, json, len) != len) {
 		pexit("Unable to send container stderr message to parent");
 	}
 }
@@ -1079,6 +1080,11 @@ static void do_exit_command()
 	gchar **args;
 	size_t n_args = 0;
 
+	if (sync_pipe_fd > 0) {
+		close(sync_pipe_fd);
+		sync_pipe_fd = -1;
+	}
+
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
@@ -1137,7 +1143,6 @@ int main(int argc, char *argv[])
 	int slavefd_stderr = -1;
 	char buf[BUF_SIZE];
 	int num_read;
-	int sync_pipe_fd = -1;
 	int attach_pipe_fd = -1;
 	int start_pipe_fd = -1;
 	GError *error = NULL;
@@ -1588,7 +1593,7 @@ int main(int argc, char *argv[])
 	 * conmon to only send one value down this pipe, which will later be the exit code
 	 * Thus, if we are legacy and we are exec, skip this write.
 	 */
-	if (opt_api_version >= 1 || !opt_exec)
+	if ((opt_api_version >= 1 || !opt_exec) && sync_pipe_fd >= 0)
 		write_sync_fd(sync_pipe_fd, container_pid, NULL);
 
 	setup_oom_handling(container_pid);
@@ -1680,7 +1685,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Send the command exec exit code back to the parent */
-	if (opt_exec)
+	if (opt_exec && sync_pipe_fd >= 0)
 		write_sync_fd(sync_pipe_fd, exit_status, exit_message);
 
 	if (attach_symlink_dir_path != NULL && unlink(attach_symlink_dir_path) == -1 && errno != ENOENT)
