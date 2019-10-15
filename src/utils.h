@@ -25,6 +25,7 @@ typedef enum {
 	WARN_LEVEL,
 	INFO_LEVEL,
 	DEBUG_LEVEL,
+	TRACE_LEVEL,
 } log_level_t;
 
 // Default log level is Warning, This will be configured before any logging
@@ -131,6 +132,24 @@ extern gboolean use_syslog;
 			fprintf(stderr, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <ndebug>: " fmt " \n", log_cid, ##__VA_ARGS__); \
+		} while (0); \
+	}
+
+#define ntrace(s) \
+	if (log_level >= TRACE_LEVEL) { \
+		do { \
+			fprintf(stderr, "[conmon:d]: %s\n", s); \
+			if (use_syslog) \
+				syslog(LOG_INFO, "conmon %.20s <ntrace>: %s\n", log_cid, s); \
+		} while (0); \
+	}
+
+#define ntracef(fmt, ...) \
+	if (log_level >= TRACE_LEVEL) { \
+		do { \
+			fprintf(stderr, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
+			if (use_syslog) \
+				syslog(LOG_INFO, "conmon %.20s <ntrace>: " fmt " \n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
 	}
 
