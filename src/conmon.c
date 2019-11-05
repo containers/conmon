@@ -993,6 +993,7 @@ static int setup_terminal_control_fifo()
 	int dummyfd = open(ctl_fifo_path, O_WRONLY | O_CLOEXEC);
 	if (dummyfd == -1)
 		pexit("Failed to open dummy writer for fifo");
+	g_unix_fd_add(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
 
 	ninfof("terminal_ctrl_fd: %d", terminal_ctrl_fd);
 	return dummyfd;
