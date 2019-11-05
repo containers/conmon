@@ -51,6 +51,8 @@ static size_t name_len = 0;
 static char *container_id_full = NULL;
 static char *container_id = NULL;
 static char *container_name = NULL;
+static char *container_tag = NULL;
+static size_t container_tag_len;
 
 static void parse_log_path(char *log_config);
 static const char *stdpipe_name(stdpipe_t pipe);
@@ -68,7 +70,7 @@ static void reopen_k8s_file(void);
  * (currently just k8s log file), it will also open the log_fd for that specific
  * log file.
  */
-void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuuid_, char *name_)
+void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuuid_, char *name_, char *tag)
 {
 	log_size_max = log_size_max_;
 	if (log_drivers == NULL)
@@ -102,6 +104,10 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 		/* Setup some sd_journal_sendv arguments that won't change */
 		container_id_full = g_strdup_printf("CONTAINER_ID_FULL=%s", cuuid);
 		container_id = g_strdup_printf("CONTAINER_ID=%s", short_cuuid);
+		if (tag) {
+			container_tag = g_strdup_printf("CONTAINER_TAG=%s", tag);
+			container_tag_len = strlen (container_tag);
+		}
 
 		/* To maintain backwards compatibility with older versions of conmon, we need to skip setting
 		 * the name value if it isn't present
@@ -200,6 +206,9 @@ int write_journald(int pipe, char *buf, ssize_t buflen)
 			return -1;
 
 		if (writev_buffer_append_segment(-1, &bufv, container_id, TRUNC_ID_LEN + CID_EQ_LEN) < 0)
+			return -1;
+
+		if (container_tag && writev_buffer_append_segment(-1, &bufv, container_tag, container_tag_len) < 0)
 			return -1;
 
 		/* only print the name if we have a name to print */
