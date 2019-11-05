@@ -156,7 +156,7 @@ extern gboolean use_syslog;
 /* Set the log level for this call. log level defaults to warning.
    parse the string value of level_name to the appropriate log_level_t enum value
 */
-void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_);
+void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag);
 
 #define _cleanup_(x) __attribute__((cleanup(x)))
 

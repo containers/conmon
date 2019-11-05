@@ -8,9 +8,12 @@ gboolean use_syslog = FALSE;
 /* Set the log level for this call. log level defaults to warning.
    parse the string value of level_name to the appropriate log_level_t enum value
 */
-void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_)
+void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag)
 {
-	log_cid = cid_;
+	if (tag == NULL)
+		log_cid = cid_;
+	else
+		log_cid = g_strdup_printf("%s: %s", cid_, tag);
 	use_syslog = syslog_;
 	// log_level is initialized as Warning, no need to set anything
 	if (level_name == NULL)
