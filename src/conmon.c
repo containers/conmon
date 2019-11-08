@@ -690,7 +690,7 @@ static void resize_winsz(int height, int width)
  * line_process_func should return TRUE if it succeeds, and FALSE if it fails
  * to process the line.
  */
-static gboolean read_from_ctrl_buffer(int fd, gboolean(*line_process_func)(char*,int))
+static gboolean read_from_ctrl_buffer(int fd, gboolean(*line_process_func)(char*))
 {
 	static char ctlbuf[CTLBUFSZ];
 	static int readsz = CTLBUFSZ - 1;
@@ -710,7 +710,7 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean(*line_process_func)(char*
 	char *newline = strchrnul(beg, '\n');
 	/* Process each message which ends with a line */
 	while (*newline != '\0') {
-		if (!line_process_func(ctlbuf, num_read)) {
+		if (!line_process_func(ctlbuf)) {
 			return G_SOURCE_CONTINUE;
 		}
 		beg = newline + 1;
@@ -749,26 +749,29 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean(*line_process_func)(char*
  * and either writes to the winsz fd (to handle terminal resize events)
  * or reopens log files.
  */
-static gboolean process_terminal_ctrl_line(char* line, int len)
+static gboolean process_terminal_ctrl_line(char* line)
 {
 	int ctl_msg_type, height, width, ret = -1;
+	_cleanup_free_ char *hw_str = NULL;
 
+	// while the height and width won't be used in this function,
+	// we want to remove them from the buffer anyway
 	ret = sscanf(line, "%d %d %d\n", &ctl_msg_type, &height, &width);
 	if (ret != 3) {
 		nwarn("Failed to sscanf message");
 		return FALSE;
 	}
 
-	ninfof("Message type: %d, Height: %d, Width: %d", ctl_msg_type, height, width);
+	ninfof("Message type: %d", ctl_msg_type);
 	switch (ctl_msg_type) {
-	// This matches what we write from container_attach.go
-	case 1:
-		if (write(winsz_fd_w, line, len) < 0) {
+	case WIN_RESIZE_EVENT:
+		hw_str = g_strdup_printf("%d %d\n", height, width);
+		if (write(winsz_fd_w, hw_str, strlen(hw_str)) < 0) {
 			nwarn("Failed to write to window resizing fd. A resize event may have been dropped");
 			return FALSE;
 		}
 		break;
-	case 2:
+	case REOPEN_LOGS_EVENT:
 		reopen_log_files();
 		break;
 	default:
@@ -791,19 +794,15 @@ static gboolean ctrl_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNU
  * after the terminal_ctrl fd receives a winsz event.
  * It reads a height and length, and resizes the pty with it.
  */
-static gboolean process_winsz_ctrl_line(char * line, G_GNUC_UNUSED int len)
+static gboolean process_winsz_ctrl_line(char * line)
 {
-	int ctl_msg_type, height, width, ret = -1;
-	ret = sscanf(line, "%d %d %d\n", &ctl_msg_type, &height, &width);
-	if (ret != 3) {
+	int height, width, ret = -1;
+	ret = sscanf(line, "%d %d\n", &height, &width);
+	ninfof("Height: %d, Width: %d", height, width);
+	if (ret != 2) {
 		nwarn("Failed to sscanf message");
 		return FALSE;
 	}
-	if (ctl_msg_type != 1) {
-		ninfof("Unknown message type: %d", ctl_msg_type);
-		return FALSE;
-	}
-	ninfof("Message type: %d, Height: %d, Width: %d", ctl_msg_type, height, width);
 	resize_winsz(height, width);
 	return TRUE;
 }
