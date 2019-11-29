@@ -1480,6 +1480,20 @@ int main(int argc, char *argv[])
 	add_argv(runtime_argv, opt_cid, NULL);
 	end_argv(runtime_argv);
 
+	/* Setup endpoint for attach */
+	_cleanup_free_ char *attach_symlink_dir_path = NULL;
+	if (opt_bundle_path != NULL) {
+		attach_symlink_dir_path = setup_attach_socket();
+		dummyfd = setup_terminal_control_fifo();
+		setup_console_fifo();
+
+		if (opt_attach) {
+			ndebug("sending attach message to parent");
+			write_sync_fd(attach_pipe_fd, 0, NULL);
+			ndebug("sent attach message to parent");
+		}
+	}
+
 	sigset_t mask, oldmask;
 	if ((sigemptyset(&mask) < 0) || (sigaddset(&mask, SIGTERM) < 0) || (sigaddset(&mask, SIGQUIT) < 0) || (sigaddset(&mask, SIGINT) < 0)
 	    || sigprocmask(SIG_BLOCK, &mask, &oldmask) < 0)
@@ -1587,20 +1601,6 @@ int main(int argc, char *argv[])
 		close(slavefd_stdout);
 	if (slavefd_stderr > -1)
 		close(slavefd_stderr);
-
-	/* Setup endpoint for attach */
-	_cleanup_free_ char *attach_symlink_dir_path = NULL;
-	if (opt_bundle_path != NULL) {
-		attach_symlink_dir_path = setup_attach_socket();
-		dummyfd = setup_terminal_control_fifo();
-		setup_console_fifo();
-
-		if (opt_attach) {
-			ndebug("sending attach message to parent");
-			write_sync_fd(attach_pipe_fd, 0, NULL);
-			ndebug("sent attach message to parent");
-		}
-	}
 
 	if (csname != NULL) {
 		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
