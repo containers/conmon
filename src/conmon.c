@@ -588,11 +588,12 @@ static gboolean check_cgroup2_oom()
 
 static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
-	struct inotify_event events[10];
+	size_t events_size = sizeof(struct inotify_event) + NAME_MAX + 1;
+	char events[events_size];
 	gboolean ret = G_SOURCE_REMOVE;
 
 	/* Drop the inotify events.  */
-	if (read(fd, &events, sizeof(events) < 0)) {
+	if (read(fd, &events, events_size) < 0) {
 		pwarn("failed to read events");
 	}
 
