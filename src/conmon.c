@@ -37,6 +37,7 @@
 
 #include "cmsg.h"
 #include "config.h"
+#include "log_rate.h"
 
 #ifndef CGROUP2_SUPER_MAGIC
 #define CGROUP2_SUPER_MAGIC 0x63677270
@@ -359,7 +360,7 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 		// Always null terminate the buffer, just in case.
 		buf[num_read] = '\0';
 
-		bool written = write_to_logs(pipe, buf, num_read);
+		bool written = log_rate_write_to_logs(pipe, buf, num_read);
 		if (!written)
 			return written;
 
