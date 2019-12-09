@@ -22,7 +22,7 @@ static struct timespec start_of_this_period;
 static struct timespec subtract_timespecs(const struct timespec* first, const struct timespec* second);
 static int64_t subtract_timespecs_nano(const struct timespec* first, const struct timespec* second);
 static void write_io_bufs(stdpipe_t pipe, char* buf, ssize_t count);
-static void sleep_for_the_rest_of_this_period(const struct timespec* start_of_this_period);
+static void sleep_for_the_rest_of_this_period();
 static void start_new_period();
 
 void log_rate_init() {
@@ -46,7 +46,7 @@ bool log_rate_write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read) {
 			bytes_written_this_period += bytes_we_can_write;
 			buf_start += bytes_we_can_write;
 			bytes_remaining = num_read - bytes_we_can_write;
-			sleep_for_the_rest_of_this_period(&start_of_this_period);
+			sleep_for_the_rest_of_this_period();
 			start_new_period();
 		}
 	} else {
@@ -58,12 +58,12 @@ bool log_rate_write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read) {
 
 	for (ssize_t i = 0; i < chunks; ++i) {
 		write_io_bufs(pipe, buf_start + i * BYTES_PER_PERIOD, BYTES_PER_PERIOD);
-		sleep_for_the_rest_of_this_period(&start_of_this_period);
+		sleep_for_the_rest_of_this_period();
 		start_new_period();
 	}
 	if (remainder != 0) {
 	    if (bytes_written_this_period + remainder > BYTES_PER_PERIOD) {
-		    sleep_for_the_rest_of_this_period(&start_of_this_period);
+		    sleep_for_the_rest_of_this_period();
 		    start_new_period();
 	    }
 	    write_io_bufs(pipe, buf_start + (chunks * BYTES_PER_PERIOD), remainder);
@@ -91,11 +91,11 @@ void write_io_bufs(stdpipe_t pipe, char* buf, ssize_t count) {
 	write_to_logs(pipe, buf + count - remainder, remainder);
 }
 
-void sleep_for_the_rest_of_this_period(const struct timespec* start_of_this_period) {
+void sleep_for_the_rest_of_this_period() {
 	int ret;
 	struct timespec now, sleep, diff;
 	clock_gettime(CLOCK_MONOTONIC, &now);
-	diff = subtract_timespecs(&now, start_of_this_period);
+	diff = subtract_timespecs(&now, &start_of_this_period);
 	sleep = subtract_timespecs(&secs_per_period, &diff);
 	if (sleep.tv_sec < 0 || sleep.tv_nsec < 0)
 		nexit("negative sleep");
