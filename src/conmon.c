@@ -57,6 +57,7 @@ static char *opt_cuuid = NULL;
 static char *opt_name = NULL;
 static char *opt_runtime_path = NULL;
 static char *opt_bundle_path = NULL;
+static char *opt_persist_path = NULL;
 static char *opt_container_pid_file = NULL;
 static char *opt_conmon_pid_file = NULL;
 static gboolean opt_systemd_cgroup = FALSE;
@@ -99,6 +100,7 @@ static GOptionEntry opt_entries[] = {
 	{"no-pivot", 0, 0, G_OPTION_ARG_NONE, &opt_no_pivot, "Do not use pivot_root", NULL},
 	{"replace-listen-pid", 0, 0, G_OPTION_ARG_NONE, &opt_replace_listen_pid, "Replace listen pid if set for oci-runtime pid", NULL},
 	{"bundle", 'b', 0, G_OPTION_ARG_STRING, &opt_bundle_path, "Bundle path", NULL},
+	{"persist-dir", '0', 0, G_OPTION_ARG_STRING, &opt_persist_path, "Persistent directory for a container that can be used for storing container data", NULL},
 	{"pidfile", 0, 0, G_OPTION_ARG_STRING, &opt_container_pid_file, "PID file (DEPRECATED)", NULL},
 	{"container-pidfile", 'p', 0, G_OPTION_ARG_STRING, &opt_container_pid_file, "Container PID file", NULL},
 	{"conmon-pidfile", 'P', 0, G_OPTION_ARG_STRING, &opt_conmon_pid_file, "Conmon daemon PID file", NULL},
@@ -1750,8 +1752,20 @@ int main(int argc, char *argv[])
 		closedir(fdsdir);
 	}
 
+	_cleanup_free_ char *status_str = g_strdup_printf("%d", exit_status);
+
+	/* Write the exit file to container persistent directory if it is specified */
+	if (opt_persist_path) {
+		_cleanup_free_ char *ctr_exit_file_path = g_build_filename(opt_persist_path, "exit", NULL);
+		if (!g_file_set_contents(ctr_exit_file_path, status_str, -1, &err))
+			nexitf("Failed to write %s to container exit file: %s", status_str, err->message);
+	}
+
+	/*
+	 * Writing to this directory helps if a daemon process wants to monitor all container exits
+	 * using inotify.
+	 */
 	if (opt_exit_dir) {
-		_cleanup_free_ char *status_str = g_strdup_printf("%d", exit_status);
 		_cleanup_free_ char *exit_file_path = g_build_filename(opt_exit_dir, opt_cid, NULL);
 		if (!g_file_set_contents(exit_file_path, status_str, -1, &err))
 			nexitf("Failed to write %s to exit file: %s", status_str, err->message);
