@@ -42,10 +42,11 @@ executable('conmon',
             'src/cmsg.h',
             'src/ctr_logging.c',
             'src/ctr_logging.h',
+            'src/log_rate.c',
+            'src/log_rate.h',
             'src/utils.c',
             'src/utils.h'],
            dependencies : [glib],
            install : true,
            install_dir : join_paths(get_option('libexecdir'), 'podman'),
 )
-
