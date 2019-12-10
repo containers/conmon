@@ -80,6 +80,8 @@ static gchar **opt_exit_args = NULL;
 static gboolean opt_replace_listen_pid = FALSE;
 static char *opt_log_level = NULL;
 static char *opt_log_tag = NULL;
+static char *opt_log_policy = NULL;
+static char *opt_log_rate_limit = NULL;
 static GOptionEntry opt_entries[] = {
 	{"terminal", 't', 0, G_OPTION_ARG_NONE, &opt_terminal, "Terminal", NULL},
 	{"stdin", 'i', 0, G_OPTION_ARG_NONE, &opt_stdin, "Stdin", NULL},
@@ -120,6 +122,8 @@ static GOptionEntry opt_entries[] = {
 	{"syslog", 0, 0, G_OPTION_ARG_NONE, &opt_syslog, "Log to syslog (use with cgroupfs cgroup manager)", NULL},
 	{"log-level", 0, 0, G_OPTION_ARG_STRING, &opt_log_level, "Print debug logs based on log level", NULL},
 	{"log-tag", 0, 0, G_OPTION_ARG_STRING, &opt_log_tag, "Additional tag to use for logging", NULL},
+	{"log-policy", 0, 0, G_OPTION_ARG_STRING, &opt_log_policy, "Log policy", NULL},
+	{"log-rate-limit", 0, 0, G_OPTION_ARG_STRING, &opt_log_rate_limit, "Log rate limit", NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 #define CGROUP_ROOT "/sys/fs/cgroup"
@@ -1304,6 +1308,22 @@ int main(int argc, char *argv[])
 	}
 
 	configure_log_drivers(opt_log_path, opt_log_size_max, opt_cid, opt_name, opt_log_tag);
+
+	log_policy_t log_policy;
+	if (!log_rate_parse_policy(opt_log_policy, &log_policy)) {
+		nexitf("Invalid log policy %s", opt_log_policy);
+	}
+	size_t log_rate_limit;
+	if (!log_rate_parse_rate_limit(opt_log_rate_limit, &log_rate_limit)) {
+		nexitf("Invalid log rate limit %s", opt_log_rate_limit);
+	}
+	if ((log_policy == PASSTHROUGH || log_policy == IGNORE) && log_rate_limit != 0) {
+		nexitf("Log rate limit not supported for log policy %s", opt_log_policy);
+	}
+	if ((log_policy == BACKPRESSURE || log_policy == DROP) && log_rate_limit == 0) {
+		nexitf("Log rate limit not provided for log policy %s. Use --log-rate-limit", opt_log_policy);
+	}	
+	log_rate_init(log_policy, log_rate_limit);
 
 	start_pipe_fd = get_pipe_fd_from_env("_OCI_STARTPIPE");
 	if (start_pipe_fd > 0) {
