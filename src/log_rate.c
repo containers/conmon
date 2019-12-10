@@ -59,8 +59,8 @@ bool log_rate_parse_rate_limit(const char* rate_limit_string, size_t* rate_limit
 	}
 	char* endptr;
 	errno = 0;
-	size_t unscaled_rate_limit = strtol(rate_limit_string, &endptr, 10);
-	if (errno != 0) {
+	long unscaled_rate_limit = strtol(rate_limit_string, &endptr, 10);
+	if (errno != 0 || unscaled_rate_limit <= 0) {
 		return false;
 	}
 	size_t scale = 1;
