@@ -1721,7 +1721,11 @@ int main(int argc, char *argv[])
 	const char *exit_message = NULL;
 
 	if (timed_out) {
-		if (container_pid > 0)
+		pid_t process_group = getpgid(container_pid);
+
+		if (process_group > 0)
+			kill(-process_group, SIGKILL);
+		else
 			kill(container_pid, SIGKILL);
 		exit_message = "command timed out";
 	} else {
