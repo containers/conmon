@@ -547,6 +547,28 @@ static bool has_v1_oom()
 	return false;
 }
 
+/* write the appropriate files to tell the caller there was an oom event
+ * this can be used for v1 and v2 OOMS
+ * returns 0 on success, negative value on failure
+ */
+static int write_oom_files() {
+	_cleanup_close_ int oom_fd = -1;
+	ninfo("OOM received");
+	if (opt_persist_path) {
+		_cleanup_close_ int ctr_oom_fd = -1;
+		_cleanup_free_ char *ctr_oom_file_path = g_build_filename(opt_persist_path, "oom", NULL);
+		ctr_oom_fd = open(ctr_oom_file_path, O_CREAT, 0666);
+		if (ctr_oom_fd < 0) {
+			nwarn("Failed to write oom file");
+		}
+	}
+	oom_fd = open("oom", O_CREAT, 0666);
+	if (oom_fd < 0) {
+		nwarn("Failed to write oom file");
+	}
+	return oom_fd >= 0 ? 0 : -1;
+}
+
 static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
 	uint64_t oom_event;
@@ -560,22 +582,10 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED g
 		}
 
 		if (num_read > 0 && has_v1_oom()) {
-			_cleanup_close_ int oom_fd = -1;
 			if (num_read != sizeof(uint64_t))
 				nwarn("Failed to read full oom event from eventfd");
-			ninfo("OOM received");
-			oom_fd = open("oom", O_CREAT, 0666);
-			if (oom_fd < 0) {
-				nwarn("Failed to write oom file");
-			}
-			if (opt_persist_path) {
-				_cleanup_close_ int ctr_oom_fd = -1;
-				_cleanup_free_ char *ctr_oom_file_path = g_build_filename(opt_persist_path, "oom", NULL);
-				ctr_oom_fd = open(ctr_oom_file_path, O_CREAT, 0666);
-				if (ctr_oom_fd < 0) {
-					nwarn("Failed to write oom file");
-				}
-			}
+			write_oom_files();
+
 			return G_SOURCE_CONTINUE;
 		}
 	}
@@ -618,13 +628,7 @@ static gboolean check_cgroup2_oom()
 		}
 
 		if (counter != last_counter) {
-			_cleanup_close_ int oom_fd = -1;
-
-			ninfo("OOM received");
-			oom_fd = open("oom", O_CREAT, 0666);
-			if (oom_fd < 0) {
-				nwarn("Failed to write oom file");
-			} else {
+			if (write_oom_files() == 0) {
 				last_counter = counter;
 			}
 		}
