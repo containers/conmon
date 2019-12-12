@@ -659,20 +659,33 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 
 static gboolean conn_sock_cb(int fd, GIOCondition condition, gpointer user_data)
 {
-	char buf[CONN_SOCK_BUF_SIZE];
-	ssize_t num_read = 0;
 	struct conn_sock_s *sock = (struct conn_sock_s *)user_data;
+	ssize_t num_read = 0;
 
 	if ((condition & G_IO_IN) != 0) {
-		num_read = read(fd, buf, CONN_SOCK_BUF_SIZE);
-		if (num_read < 0)
+		num_read = splice(fd, NULL, masterfd_stdin, NULL, 1 << 20, 0);
+		if (num_read > 0)
 			return G_SOURCE_CONTINUE;
 
-		if (num_read > 0 && masterfd_stdin >= 0) {
-			if (write_all(masterfd_stdin, buf, num_read) < 0) {
+		if (num_read < 0) {
+			if (errno != ESPIPE && errno != EINVAL) {
 				nwarn("Failed to write to container stdin");
+			} else {
+				/* Fallback to read-write.  This may lock if the consumer
+				   doesn't read all the data.  */
+				char buf[CONN_SOCK_BUF_SIZE];
+
+				num_read = read(fd, buf, CONN_SOCK_BUF_SIZE);
+				if (num_read < 0)
+					return G_SOURCE_CONTINUE;
+
+				if (num_read > 0 && masterfd_stdin >= 0) {
+					if (write_all(masterfd_stdin, buf, num_read) < 0) {
+						nwarn("Failed to write to container stdin");
+					}
+					return G_SOURCE_CONTINUE;
+				}
 			}
-			return G_SOURCE_CONTINUE;
 		}
 	}
 
