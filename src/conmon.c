@@ -531,6 +531,14 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED g
 			if (oom_fd < 0) {
 				nwarn("Failed to write oom file");
 			}
+			if (opt_persist_path) {
+				_cleanup_close_ int ctr_oom_fd = -1;
+				_cleanup_free_ char *ctr_oom_file_path = g_build_filename(opt_persist_path, "oom", NULL);
+				ctr_oom_fd = open(ctr_oom_file_path, O_CREAT, 0666);
+				if (ctr_oom_fd < 0) {
+					nwarn("Failed to write oom file");
+				}
+			}
 			return G_SOURCE_CONTINUE;
 		}
 	}
