@@ -42,6 +42,7 @@
 #define CGROUP2_SUPER_MAGIC 0x63677270
 #endif
 
+static int memory_cgroup_v1_oom_control_fd = -1;
 static int sync_pipe_fd = -1;
 static volatile pid_t container_pid = -1;
 static volatile pid_t create_pid = -1;
@@ -510,6 +511,42 @@ static gboolean timeout_cb(G_GNUC_UNUSED gpointer user_data)
 	return G_SOURCE_REMOVE;
 }
 
+/* When running with cgroup v1, check whether the "oom_kill" counter in the oom_control file is > 0.  */
+static bool has_v1_oom()
+{
+	_cleanup_free_ char *line = NULL;
+	_cleanup_fclose_ FILE *fp = NULL;
+	_cleanup_close_ int fd = -1;
+	size_t len = 0;
+	ssize_t read;
+
+	if (memory_cgroup_v1_oom_control_fd < 0)
+		return false;
+
+	/* dup the file descriptor so it can be owned by FP without changing the original fd.  */
+	fd = dup(memory_cgroup_v1_oom_control_fd);
+	if (fd < 0)
+		return false;
+
+	fp = fdopen(fd, "r");
+	if (fp)
+		fd = -1;
+
+	while ((read = getline(&line, &len, fp)) != -1) {
+		long int counter;
+
+		if (read < 11 || memcmp(line, "oom_kill ", 9))
+			continue;
+
+		counter = strtol(&line[9], NULL, 10);
+		if (counter == LONG_MAX) {
+			nwarnf("Failed to parse %s", &line[4]);
+		}
+		return counter > 0;
+	}
+	return false;
+}
+
 static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
 	uint64_t oom_event;
@@ -522,7 +559,7 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED g
 			return G_SOURCE_CONTINUE;
 		}
 
-		if (num_read > 0) {
+		if (num_read > 0 && has_v1_oom()) {
 			_cleanup_close_ int oom_fd = -1;
 			if (num_read != sizeof(uint64_t))
 				nwarn("Failed to read full oom event from eventfd");
@@ -1115,7 +1152,6 @@ static void setup_oom_handling_cgroup_v1(int pid)
 	/* Setup OOM notification for container process */
 	_cleanup_free_ char *memory_cgroup_path = NULL;
 	_cleanup_close_ int cfd = -1;
-	int ofd = -1; /* Not closed */
 
 	memory_cgroup_path = process_cgroup_subsystem_path(pid, false, "memory");
 	if (!memory_cgroup_path) {
@@ -1131,13 +1167,15 @@ static void setup_oom_handling_cgroup_v1(int pid)
 	}
 
 	_cleanup_free_ char *memory_cgroup_file_oom_path = g_build_filename(memory_cgroup_path, "memory.oom_control", NULL);
-	if ((ofd = open(memory_cgroup_file_oom_path, O_RDONLY | O_CLOEXEC)) == -1)
+
+	memory_cgroup_v1_oom_control_fd = open(memory_cgroup_file_oom_path, O_RDONLY | O_CLOEXEC);
+	if (memory_cgroup_v1_oom_control_fd == -1)
 		pexitf("Failed to open %s", memory_cgroup_file_oom_path);
 
 	if ((oom_event_fd = eventfd(0, EFD_CLOEXEC)) == -1)
 		pexit("Failed to create eventfd");
 
-	_cleanup_free_ char *data = g_strdup_printf("%d %d", oom_event_fd, ofd);
+	_cleanup_free_ char *data = g_strdup_printf("%d %d", oom_event_fd, memory_cgroup_v1_oom_control_fd);
 	if (write_all(cfd, data, strlen(data)) < 0)
 		pexit("Failed to write to cgroup.event_control");
 
