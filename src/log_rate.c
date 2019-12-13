@@ -30,7 +30,8 @@ static void write_io_bufs(stdpipe_t pipe, char* buf, ssize_t count);
 static void sleep_for_the_rest_of_this_period();
 static void start_new_period();
 
-bool log_rate_parse_policy(const char* policy_string, log_policy_t* policy) {
+bool log_rate_parse_policy(const char* policy_string, log_policy_t* policy)
+{
 	if (policy_string == NULL) {
 		*policy = PASSTHROUGH;
 		return true;
@@ -52,7 +53,8 @@ bool log_rate_parse_policy(const char* policy_string, log_policy_t* policy) {
 	}
 }
 
-bool log_rate_parse_rate_limit(const char* rate_limit_string, size_t* rate_limit) {
+bool log_rate_parse_rate_limit(const char* rate_limit_string, size_t* rate_limit)
+{
 	if (rate_limit_string == NULL) {
 		rate_limit = 0;
 		return true;
@@ -89,13 +91,15 @@ bool log_rate_parse_rate_limit(const char* rate_limit_string, size_t* rate_limit
 	return true;
 }
 
-void log_rate_init(log_policy_t policy, size_t rate_limit) {
+void log_rate_init(log_policy_t policy, size_t rate_limit)
+{
 	log_policy = policy;
 	bytes_per_period = rate_limit;
 	start_new_period();
 }
 
-bool log_rate_write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read) {
+bool log_rate_write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
+{
 	struct timespec now;
 	switch (log_policy) {
 	case BACKPRESSURE:
@@ -159,27 +163,32 @@ bool log_rate_write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read) {
 	return true;
 }
 
-int64_t add_timespecs_nano(const struct timespec* first, const struct timespec* second) {
+int64_t add_timespecs_nano(const struct timespec* first, const struct timespec* second)
+{
 	return (first->tv_sec + second->tv_sec) * BILLION + first->tv_nsec + second->tv_nsec;
 }
 
-struct timespec add_timespecs(const struct timespec* first, const struct timespec* second) {
+struct timespec add_timespecs(const struct timespec* first, const struct timespec* second)
+{
 	int64_t sum_nanoseconds = add_timespecs_nano(first, second);
 	struct timespec ret = {sum_nanoseconds / BILLION, sum_nanoseconds % BILLION};
 	return ret;
 }
 
-struct timespec subtract_timespecs(const struct timespec* first, const struct timespec* second) {
+struct timespec subtract_timespecs(const struct timespec* first, const struct timespec* second)
+{
 	int64_t diff_nanoseconds = subtract_timespecs_nano(first, second);
 	struct timespec ret = {diff_nanoseconds / BILLION, diff_nanoseconds % BILLION};
 	return ret;
 }
 
-int64_t subtract_timespecs_nano(const struct timespec* first, const struct timespec* second) {
+int64_t subtract_timespecs_nano(const struct timespec* first, const struct timespec* second)
+{
 	return (first->tv_sec - second->tv_sec) * BILLION + first->tv_nsec - second->tv_nsec;
 }
 
-void write_io_bufs(stdpipe_t pipe, char* buf, ssize_t count) {
+void write_io_bufs(stdpipe_t pipe, char* buf, ssize_t count)
+{
 	ssize_t chunks = count / IO_BUF_SIZE;
 	ssize_t remainder = count % IO_BUF_SIZE;
 	for (int i = 0; i < chunks; ++i) {
@@ -188,7 +197,8 @@ void write_io_bufs(stdpipe_t pipe, char* buf, ssize_t count) {
 	write_to_logs(pipe, buf + count - remainder, remainder);
 }
 
-void sleep_for_the_rest_of_this_period() {
+void sleep_for_the_rest_of_this_period()
+{
 	int ret;
 	struct timespec now, sleep, diff;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -207,7 +217,8 @@ void sleep_for_the_rest_of_this_period() {
 	} while (ret == -1 && errno == EINTR);
 }
 
-void start_new_period() {
+void start_new_period()
+{
 	bytes_written_this_period = 0;
 	clock_gettime(CLOCK_MONOTONIC, &start_of_this_period);
 }
