@@ -58,9 +58,9 @@ bool log_rate_parse_rate_limit(const char* rate_limit_string, size_t* rate_limit
 		return true;
 	}
 	char* endptr;
-	errno = 0;
-	long unscaled_rate_limit = strtol(rate_limit_string, &endptr, 10);
-	if (errno != 0 || unscaled_rate_limit <= 0) {
+	long ret = strtol(rate_limit_string, &endptr, 10);
+	if ((errno == ERANGE && (ret == LONG_MAX || ret == LONG_MIN)) ||
+	    (errno != 0 && ret == 0) || (endptr == rate_limit_string) || ret <= 0) {
 		return false;
 	}
 	size_t scale = 1;
@@ -82,7 +82,10 @@ bool log_rate_parse_rate_limit(const char* rate_limit_string, size_t* rate_limit
 	default:
 		return false;
 	}
-	*rate_limit = unscaled_rate_limit * scale;
+	if (*endptr != '\0' && *(++endptr) != '\0') {
+		return false;
+	}
+	*rate_limit = ret * scale;
 	return true;
 }
 
