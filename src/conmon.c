@@ -1565,7 +1565,7 @@ int main(int argc, char *argv[])
 			errno = 0;
 			int lpid = strtol(listenpid, NULL, 10);
 			if (errno != 0 || lpid <= 0)
-				pexitf("Invalid LISTEN_PID %10s", listenpid);
+				pexitf("Invalid LISTEN_PID %.10s", listenpid);
 			if (opt_replace_listen_pid || lpid == getppid()) {
 				gchar *pidstr = g_strdup_printf("%d", getpid());
 				if (!pidstr)
