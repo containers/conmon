@@ -1356,8 +1356,7 @@ int main(int argc, char *argv[])
 		if (opt_conmon_pid_file) {
 			char content[12];
 			sprintf(content, "%i", main_pid);
-			g_file_set_contents(opt_conmon_pid_file, content, strlen(content), &err);
-			if (err) {
+			if (!g_file_set_contents(opt_conmon_pid_file, content, strlen(content), &err)) {
 				nexitf("Failed to write conmon pidfile: %s", err->message);
 			}
 		}
@@ -1676,8 +1675,7 @@ int main(int argc, char *argv[])
 		nexit("Runtime did not set up terminal");
 
 	/* Read the pid so we can wait for the process to exit */
-	g_file_get_contents(opt_container_pid_file, &contents, NULL, &err);
-	if (err) {
+	if (!g_file_get_contents(opt_container_pid_file, &contents, NULL, &err)) {
 		nwarnf("Failed to read pidfile: %s", err->message);
 		g_error_free(err);
 		exit(1);
