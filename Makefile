@@ -5,6 +5,8 @@ LIBEXECDIR ?= ${PREFIX}/libexec
 GO ?= go
 PROJECT := github.com/containers/conmon
 PKG_CONFIG ?= pkg-config
+HEADERS := $(wildcard src/*.h)
+OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o
 
 
 
@@ -62,10 +64,10 @@ containerized: bin
 static:
 	$(MAKE) git-vars bin/conmon PKG_CONFIG='$(PKG_CONFIG) --static' CFLAGS='-static' LDFLAGS='$(LDFLAGS) -s -w -static' LIBS='$(LIBS)'
 
-bin/conmon: src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o | bin
+bin/conmon: $(OBJS) | bin
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-%.o: %.c
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runner/config/config_unix.go runner/config/config_windows.go
@@ -74,14 +76,6 @@ config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runn
 
 test: git-vars runner/conmon_test/*.go runner/conmon/*.go
 	$(GO) test $(LDFLAGS) -tags "$(BUILDTAGS)" $(PROJECT)/runner/conmon_test/
-
-src/cmsg.o: src/cmsg.c src/cmsg.h
-
-src/utils.o: src/utils.c src/utils.h
-
-src/ctr_logging.o: src/ctr_logging.c src/ctr_logging.h src/utils.h
-
-src/conmon.o: src/conmon.c src/cmsg.h src/config.h src/utils.h src/ctr_logging.h
 
 bin:
 	mkdir -p bin

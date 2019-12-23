@@ -205,5 +205,6 @@ typedef struct {
 	struct iovec iov[WRITEV_BUFFER_N_IOV];
 } writev_buffer_t;
 
+ssize_t write_all(int fd, const void *buf, size_t count);
 
 #endif /* !defined(UTILS_H) */
