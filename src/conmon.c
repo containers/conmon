@@ -1750,7 +1750,7 @@ int main(int argc, char *argv[])
 			kill(-process_group, SIGKILL);
 		else
 			kill(container_pid, SIGKILL);
-		exit_message = "command timed out";
+		exit_message = TIMED_OUT_MESSAGE;
 	} else {
 		exit_status = get_exit_status(container_status);
 	}
