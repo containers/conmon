@@ -8,5 +8,6 @@
 #define DEFAULT_SOCKET_PATH "/var/run/crio"
 #define WIN_RESIZE_EVENT 1
 #define REOPEN_LOGS_EVENT 2
+#define TIMED_OUT_MESSAGE "command timed out"
 
 #endif // CONFIG_H
