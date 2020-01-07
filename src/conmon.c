@@ -1547,16 +1547,22 @@ int main(int argc, char *argv[])
 			slavefd_stdin = dev_null_r;
 		if (dup2(slavefd_stdin, STDIN_FILENO) < 0)
 			pexit("Failed to dup over stdin");
+		if (fchmod(STDIN_FILENO, 0777) < 0)
+			nwarn("Failed to chown stdin");
 
 		if (slavefd_stdout < 0)
 			slavefd_stdout = dev_null_w;
 		if (dup2(slavefd_stdout, STDOUT_FILENO) < 0)
 			pexit("Failed to dup over stdout");
+		if (fchmod(STDOUT_FILENO, 0777) < 0)
+			nwarn("Failed to chown stdout");
 
 		if (slavefd_stderr < 0)
 			slavefd_stderr = slavefd_stdout;
 		if (dup2(slavefd_stderr, STDERR_FILENO) < 0)
 			pexit("Failed to dup over stderr");
+		if (fchmod(STDERR_FILENO, 0777) < 0)
+			nwarn("Failed to chown stderr");
 
 		/* If LISTEN_PID env is set, we need to set the LISTEN_PID
 		   it to the new child process */
