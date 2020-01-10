@@ -83,6 +83,9 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 		k8s_log_fd = open(k8s_log_path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
 		if (k8s_log_fd < 0)
 			pexit("Failed to open log file");
+
+		if (!use_journald_logging && tag)
+			nexit("k8s-file doesn't support --log-tag");
 	}
 
 	if (use_journald_logging) {
