@@ -100,7 +100,8 @@ static GOptionEntry opt_entries[] = {
 	{"no-pivot", 0, 0, G_OPTION_ARG_NONE, &opt_no_pivot, "Do not use pivot_root", NULL},
 	{"replace-listen-pid", 0, 0, G_OPTION_ARG_NONE, &opt_replace_listen_pid, "Replace listen pid if set for oci-runtime pid", NULL},
 	{"bundle", 'b', 0, G_OPTION_ARG_STRING, &opt_bundle_path, "Bundle path", NULL},
-	{"persist-dir", '0', 0, G_OPTION_ARG_STRING, &opt_persist_path, "Persistent directory for a container that can be used for storing container data", NULL},
+	{"persist-dir", '0', 0, G_OPTION_ARG_STRING, &opt_persist_path,
+	 "Persistent directory for a container that can be used for storing container data", NULL},
 	{"pidfile", 0, 0, G_OPTION_ARG_STRING, &opt_container_pid_file, "PID file (DEPRECATED)", NULL},
 	{"container-pidfile", 'p', 0, G_OPTION_ARG_STRING, &opt_container_pid_file, "Container PID file", NULL},
 	{"conmon-pidfile", 'P', 0, G_OPTION_ARG_STRING, &opt_conmon_pid_file, "Conmon daemon PID file", NULL},
@@ -514,7 +515,8 @@ static gboolean timeout_cb(G_GNUC_UNUSED gpointer user_data)
  * this can be used for v1 and v2 OOMS
  * returns 0 on success, negative value on failure
  */
-static int write_oom_files() {
+static int write_oom_files()
+{
 	_cleanup_close_ int oom_fd = -1;
 	ninfo("OOM received");
 	if (opt_persist_path) {
@@ -718,7 +720,7 @@ static void resize_winsz(int height, int width)
  * line_process_func should return TRUE if it succeeds, and FALSE if it fails
  * to process the line.
  */
-static gboolean read_from_ctrl_buffer(int fd, gboolean(*line_process_func)(char*))
+static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char *))
 {
 	static char ctlbuf[CTLBUFSZ];
 	static int readsz = CTLBUFSZ - 1;
@@ -777,7 +779,7 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean(*line_process_func)(char*
  * and either writes to the winsz fd (to handle terminal resize events)
  * or reopens log files.
  */
-static gboolean process_terminal_ctrl_line(char* line)
+static gboolean process_terminal_ctrl_line(char *line)
 {
 	int ctl_msg_type, height, width, ret = -1;
 	_cleanup_free_ char *hw_str = NULL;
@@ -822,7 +824,7 @@ static gboolean ctrl_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNU
  * after the terminal_ctrl fd receives a winsz event.
  * It reads a height and length, and resizes the pty with it.
  */
-static gboolean process_winsz_ctrl_line(char * line)
+static gboolean process_winsz_ctrl_line(char *line)
 {
 	int height, width, ret = -1;
 	ret = sscanf(line, "%d %d\n", &height, &width);
@@ -1062,7 +1064,8 @@ static char *setup_attach_socket(void)
 	return attach_symlink_dir_path;
 }
 
-static void setup_fifo(int *fifo_r, int *fifo_w, char * filename, char* error_var_name) {
+static void setup_fifo(int *fifo_r, int *fifo_w, char *filename, char *error_var_name)
+{
 	_cleanup_free_ char *fifo_path = g_build_filename(opt_bundle_path, filename, NULL);
 
 	if (!fifo_r || !fifo_w)
@@ -1078,7 +1081,8 @@ static void setup_fifo(int *fifo_r, int *fifo_w, char * filename, char* error_va
 		pexitf("Failed to open %s write half", error_var_name);
 }
 
-static void setup_console_fifo() {
+static void setup_console_fifo()
+{
 	setup_fifo(&winsz_fd_r, &winsz_fd_w, "winsz", "window resize control fifo");
 	ninfof("winsz read side: %d, winsz write side: %d", winsz_fd_r, winsz_fd_r);
 }
