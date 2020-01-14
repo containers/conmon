@@ -84,6 +84,28 @@ integration_task:
     setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
     integration_test_script: '$SCRIPT_BASE/integration_test.sh'
 
+# this task runs the conmon unit tests
+unit_task:
+    env:
+        GOSRC: $CIRRUS_WORKING_DIR
+
+    depends_on:
+        - 'config'
+        - 'fmt'
+
+    gce_instance:
+        matrix:
+            # Images are generated separately, from build_images_task (below)
+            image_name: "${FEDORA_CACHE_IMAGE_NAME}"
+
+    script:
+        - dnf install -y make glib2-devel git gcc golang
+        - cd $CIRRUS_WORKING_DIR
+        - make
+        - make install PREFIX=/usr # currently, the conmon location is hardcoded to /usr/bin/conmon
+        - GOCACHE=/tmp/go-build make vendor
+        - make test
+
 
 # Verify conmon package can be built and installed on Fedora
 fedora_packaging_task:
@@ -122,7 +144,7 @@ config_task:
         memory: 12
 
     script:
-        - dnf install -y make glib2-devel git gcc rpm-build golang
+        - dnf install -y make glib2-devel git gcc golang
         - cd $CIRRUS_WORKING_DIR
         - GO111MODULE=on go mod init github.com/containers/conmon
         - make config
@@ -143,7 +165,7 @@ fmt_task:
         memory: 12
 
     script:
-        - dnf install -y make glib2-devel git gcc rpm-build clang
+        - dnf install -y make glib2-devel git gcc rpm-build clang golang
         - cd $CIRRUS_WORKING_DIR
         - make fmt
         - ./hack/tree_status.sh

@@ -72,6 +72,9 @@ config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runn
 	$(GO) build $(LDFLAGS) -tags "$(BUILDTAGS)" -o bin/config $(PROJECT)/cmd/conmon-config
 		( cd src && $(CURDIR)/bin/config )
 
+test: git-vars runner/conmon_test/*.go runner/conmon/*.go
+	$(GO) test $(LDFLAGS) -tags "$(BUILDTAGS)" $(PROJECT)/runner/conmon_test/
+
 src/cmsg.o: src/cmsg.c src/cmsg.h
 
 src/utils.o: src/utils.c src/utils.h
@@ -82,6 +85,14 @@ src/conmon.o: src/conmon.c src/cmsg.h src/config.h src/utils.h src/ctr_logging.h
 
 bin:
 	mkdir -p bin
+
+vendor:
+	export GO111MODULE=on \
+		$(GO) mod tidy && \
+		$(GO) mod vendor && \
+		$(GO) mod verify
+
+.PHONY: vendor
 
 .PHONY: clean
 clean:
@@ -105,5 +116,6 @@ install.podman: bin/conmon
 
 .PHONY: fmt
 fmt:
-	find . '(' -name '*.h' -o -name '*.c' ')'  -exec clang-format -i {} \+
+	find . '(' -name '*.h' -o -name '*.c' ! -path './vendor/*' ')'  -exec clang-format -i {} \+
+	find . -name '*.go' ! -path './vendor/*' -exec gofmt -s -w {} \+
 	git diff --exit-code
