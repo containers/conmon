@@ -68,7 +68,7 @@ then
             install_testing_deps
             build_and_replace_conmon
 
-            cd "$GOSRC"  # cri-o source
+            cd "$CRIO_SRC"  # cri-o source
             echo "Building binaries required for testing"
             ooe.sh make test-binaries
 

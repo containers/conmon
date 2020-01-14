@@ -166,18 +166,28 @@ setup_gopath() {
     req_env_var "
         CRIO_REPO $CRIO_REPO
         CRIO_SLUG $CRIO_SLUG
+        CONMON_SLUG $CONMON_SLUG
     "
     echo "Configuring persistent Go environment for all users"
     sudo mkdir -p /var/tmp/go/src
     sudo chown -R $USER:$USER /var/tmp/go
     sudo chmod g=rws /var/tmp/go
     ENVLIB=/etc/profile.d/go.sh
+	# configure GOPATH if not set
     if ! grep -q GOPATH $ENVLIB
     then
         sudo tee "$ENVLIB" << EOF
 export GOPATH=/var/tmp/go
-export GOSRC=\$GOPATH/src/$CRIO_SLUG
 export PATH=\$PATH:\$GOPATH/bin
+EOF
+    source $ENVLIB
+    fi
+
+	# configure CRIO_SRC if not set
+    if ! grep -q CRIO_SRC $ENVLIB
+    then
+        sudo tee "$ENVLIB" << EOF
+export CRIO_SRC=\$GOPATH/src/$CRIO_SLUG
 EOF
     source $ENVLIB
     fi
@@ -186,12 +196,12 @@ EOF
 install_crio_repo() {
     req_env_var "
         GOPATH $GOPATH
-        GOSRC $GOSRC
+        CRIO_SRC $CRIO_SRC
         CRIO_REPO $CRIO_REPO
     "
     echo "Cloning current CRI-O Source for faster access later"
-    sudo rm -rf "$GOSRC"  # just in case
-    ooe.sh git clone $CRIO_REPO $GOSRC
+    sudo rm -rf "$CRIO_SRC"  # just in case
+    ooe.sh git clone $CRIO_REPO $CRIO_SRC
 
     # Install CRI-O
     cd crio
@@ -202,7 +212,7 @@ install_crio_repo() {
 install_testing_deps() {
     req_env_var "
         GOPATH $GOPATH
-        GOSRC $GOSRC
+        CRIO_SRC $CRIO_SRC
     "
 
     echo "Installing required go packages into \$GOPATH"
@@ -226,7 +236,7 @@ install_testing_deps() {
     rm -rf /tmp/bats
 
     echo "Installing helper script for CNI plugin test"
-    cd "$GOSRC"
+    cd "$CRIO_SRC"
     sudo mkdir -p /opt/cni/bin/
     # Search path for helper is difficult to control
     ooe.sh sudo install -D -m 0755 test/cni_plugin_helper.bash /usr/libexec/cni/
