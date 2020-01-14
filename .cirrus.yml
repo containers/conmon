@@ -67,6 +67,7 @@ integration_task:
 
     depends_on:
         - 'config'
+        - 'fmt'
 
     gce_instance:
         # Generate multiple parallel tasks, covering all possible
@@ -125,6 +126,26 @@ config_task:
         - cd $CIRRUS_WORKING_DIR
         - GO111MODULE=on go mod init github.com/containers/conmon
         - make config
+        - ./hack/tree_status.sh
+
+# Verify code was fmt'ed properly
+fmt_task:
+    env:
+        GOSRC: $CIRRUS_WORKING_DIR
+    # Runs within Cirrus's "community cluster"
+    container:
+        matrix:
+               # fedora:28 doesn't have go mod by default
+               # and we should only need one check to make sure
+               # config changes were synced
+            image: "${FEDORA_CONTAINER_FQIN}"
+        cpu: 4
+        memory: 12
+
+    script:
+        - dnf install -y make glib2-devel git gcc rpm-build clang
+        - cd $CIRRUS_WORKING_DIR
+        - make fmt
         - ./hack/tree_status.sh
 
 # Test building of new cache-images for future PR testing, in this PR.
@@ -193,6 +214,7 @@ cache_images_task:
 static_binary_task:
     depends_on:
         - 'config'
+        - 'fmt'
     gce_instance:
         image_name: "${FEDORA_BASE_IMAGE}"
         cpu: 4

@@ -109,7 +109,7 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 		container_id = g_strdup_printf("CONTAINER_ID=%s", short_cuuid);
 		if (tag) {
 			container_tag = g_strdup_printf("CONTAINER_TAG=%s", tag);
-			container_tag_len = strlen (container_tag);
+			container_tag_len = strlen(container_tag);
 		}
 
 		/* To maintain backwards compatibility with older versions of conmon, we need to skip setting
@@ -433,7 +433,7 @@ static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 	struct timespec ts;
 	char off_sign = '+';
 	int off, len, err = -1;
-        
+
 	if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
 		/* If CLOCK_REALTIME is not supported, we set nano seconds to 0 */
 		if (errno == EINVAL) {
