@@ -9,8 +9,7 @@ type ConmonOption func(*ConmonInstance) error
 
 func WithVersion() ConmonOption {
 	return func(ci *ConmonInstance) error {
-		ci.args = append(ci.args, "--version")
-		return nil
+		return ci.addArgs("--version")
 	}
 }
 
@@ -37,22 +36,19 @@ func WithPath(path string) ConmonOption {
 
 func WithContainerID(ctrID string) ConmonOption {
 	return func(ci *ConmonInstance) error {
-		ci.args = append(ci.args, "--cid", ctrID)
-		return nil
+		return ci.addArgs("--cid", ctrID)
 	}
 }
 
 func WithContainerUUID(ctrUUID string) ConmonOption {
 	return func(ci *ConmonInstance) error {
-		ci.args = append(ci.args, "--cuuid", ctrUUID)
-		return nil
+		return ci.addArgs("--cuuid", ctrUUID)
 	}
 }
 
 func WithRuntimePath(path string) ConmonOption {
 	return func(ci *ConmonInstance) error {
-		ci.args = append(ci.args, "--runtime", path)
-		return nil
+		return ci.addArgs("--runtime", path)
 	}
 }
 
@@ -62,7 +58,11 @@ func WithLogDriver(driver, path string) ConmonOption {
 		if driver != "" {
 			fullDriver = fmt.Sprintf("%s:%s", driver, path)
 		}
-		ci.args = append(ci.args, "--log-path", fullDriver)
-		return nil
+		return ci.addArgs("--log-path", fullDriver)
 	}
+}
+
+func (ci *ConmonInstance) addArgs(args ...string) error {
+	ci.args = append(ci.args, args...)
+	return nil
 }

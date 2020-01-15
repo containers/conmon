@@ -67,7 +67,7 @@ timeout_in: '120m'
 # Every *_task runs in parallel in separate VMs. The name prefix only for reference
 # in WebUI, and will be followed by matrix details.  This task runs the integration
 # testing for every platform
-integration_task:
+cri-o_integration_task:
 
     depends_on:
         - 'config'
@@ -86,10 +86,10 @@ integration_task:
             TEST_USERNS: 1
 
     setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
-    integration_test_script: '$SCRIPT_BASE/integration_test.sh'
+    integration_test_script: '$SCRIPT_BASE/cri-o_test.sh'
 
-# this task runs the conmon unit tests
-unit_task:
+# this task runs the conmon integration tests
+integration_task:
 
     depends_on:
         - 'config'
@@ -100,7 +100,7 @@ unit_task:
             # Images are generated separately, from build_images_task (below)
             image_name: "${FEDORA_CACHE_IMAGE_NAME}"
 
-    integration_test_script: '$SCRIPT_BASE/setup_unit_tests.sh'
+    integration_test_script: '$SCRIPT_BASE/integration_test.sh'
 
 
 # Verify conmon package can be built and installed on Fedora

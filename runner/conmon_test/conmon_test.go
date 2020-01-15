@@ -13,11 +13,10 @@ import (
 )
 
 var (
-	conmonPath   = "/usr/bin/conmon"
-	ctrID        = "abcdefghijklm"
-	validPath    = "/tmp"
-	validLogPath = "/tmp/log"
-	invalidPath  = "/not/a/path"
+	conmonPath  = "/usr/bin/conmon"
+	ctrID       = "abcdefghijklm"
+	validPath   = "/tmp"
+	invalidPath = "/not/a/path"
 )
 
 func getConmonOutputGivenOptions(options ...conmon.ConmonOption) (string, string) {
