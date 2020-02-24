@@ -125,7 +125,7 @@ static GOptionEntry opt_entries[] = {
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 #define CGROUP_ROOT "/sys/fs/cgroup"
-#define OOM_SCORE "-999"
+#define OOM_SCORE "-1000"
 
 static ssize_t write_all(int fd, const void *buf, size_t count)
 {
