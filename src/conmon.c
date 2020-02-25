@@ -534,10 +534,14 @@ static int write_oom_files()
 	return oom_fd >= 0 ? 0 : -1;
 }
 
-static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
+// user_data is expected to be the container's pid, used to verify the cgroup hasn't been cleaned up
+static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_data)
 {
+	int *pid = (int *)user_data;
 	uint64_t oom_event;
 	ssize_t num_read = 0;
+	_cleanup_free_ char *memory_cgroup_path = NULL;
+	_cleanup_free_ char *cgroup_event_control_path = NULL;
 
 	if ((condition & G_IO_IN) != 0) {
 		num_read = read(fd, &oom_event, sizeof(uint64_t));
@@ -549,6 +553,23 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED g
 		if (num_read > 0) {
 			if (num_read != sizeof(uint64_t))
 				nwarn("Failed to read full oom event from eventfd");
+
+			/* attempt to read the container's cgroup path.
+			 * if we can't, the cgroup has probably been cleaned up.
+			 * In all likelihood, this means we recieved an event on the eventfd
+			 * because the memory.oom_control file was removed, not because of an OOM
+			 */
+			memory_cgroup_path = process_cgroup_subsystem_path(*pid, false, "memory");
+			if (!memory_cgroup_path) {
+				return G_SOURCE_CONTINUE;
+			}
+
+			/* it's unclear how the above condition could pass and this wouldn't, but let's just be safe */
+			cgroup_event_control_path = g_build_filename(memory_cgroup_path, "cgroup.event_control", NULL);
+			if (access(cgroup_event_control_path, F_OK) < 0) {
+				return G_SOURCE_CONTINUE;
+			}
+
 			write_oom_files();
 
 			return G_SOURCE_CONTINUE;
@@ -1162,7 +1183,7 @@ static void setup_oom_handling_cgroup_v1(int pid)
 	if (write_all(cfd, data, strlen(data)) < 0)
 		pexit("Failed to write to cgroup.event_control");
 
-	g_unix_fd_add(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, NULL);
+	g_unix_fd_add(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, &pid);
 }
 
 static void setup_oom_handling(int pid)
