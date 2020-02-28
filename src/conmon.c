@@ -534,52 +534,63 @@ static int write_oom_files()
 	return oom_fd >= 0 ? 0 : -1;
 }
 
-// user_data is expected to be the container's pid, used to verify the cgroup hasn't been cleaned up
+/* user_data is expected to be the container's cgroup.event_control file,
+ * used to verify the cgroup hasn't been cleaned up */
 static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_data)
 {
-	int *pid = (int *)user_data;
-	uint64_t oom_event;
+	char *cgroup_event_control_path = (char *)user_data;
+	uint64_t event_count;
 	ssize_t num_read = 0;
-	_cleanup_free_ char *memory_cgroup_path = NULL;
-	_cleanup_free_ char *cgroup_event_control_path = NULL;
 
-	if ((condition & G_IO_IN) != 0) {
-		num_read = read(fd, &oom_event, sizeof(uint64_t));
-		if (num_read < 0) {
-			nwarn("Failed to read oom event from eventfd");
-			return G_SOURCE_CONTINUE;
-		}
-
-		if (num_read > 0) {
-			if (num_read != sizeof(uint64_t))
-				nwarn("Failed to read full oom event from eventfd");
-
-			/* attempt to read the container's cgroup path.
-			 * if we can't, the cgroup has probably been cleaned up.
-			 * In all likelihood, this means we recieved an event on the eventfd
-			 * because the memory.oom_control file was removed, not because of an OOM
-			 */
-			memory_cgroup_path = process_cgroup_subsystem_path(*pid, false, "memory");
-			if (!memory_cgroup_path) {
-				return G_SOURCE_CONTINUE;
-			}
-
-			/* it's unclear how the above condition could pass and this wouldn't, but let's just be safe */
-			cgroup_event_control_path = g_build_filename(memory_cgroup_path, "cgroup.event_control", NULL);
-			if (access(cgroup_event_control_path, F_OK) < 0) {
-				return G_SOURCE_CONTINUE;
-			}
-
-			write_oom_files();
-
-			return G_SOURCE_CONTINUE;
-		}
+	if ((condition & G_IO_IN) == 0) {
+		/* End of input */
+		close(fd);
+		oom_event_fd = -1;
+		free(cgroup_event_control_path);
+		return G_SOURCE_REMOVE;
 	}
 
-	/* End of input */
-	close(fd);
-	oom_event_fd = -1;
-	return G_SOURCE_REMOVE;
+	num_read = read(fd, &event_count, sizeof(uint64_t));
+	if (num_read < 0) {
+		nwarn("Failed to read oom event from eventfd");
+		return G_SOURCE_CONTINUE;
+	}
+
+	if (num_read == 0) {
+		close(fd);
+		oom_event_fd = -1;
+		free(cgroup_event_control_path);
+		return G_SOURCE_REMOVE;
+	}
+
+	if (num_read != sizeof(uint64_t)) {
+		nwarn("Failed to read full oom event from eventfd");
+		return G_SOURCE_CONTINUE;
+	}
+
+	ndebugf("Memory cgroup event count: %ld", (long)event_count);
+	if (event_count == 0) {
+		nwarn("Unexpected event count (zero)");
+		return G_SOURCE_CONTINUE;
+	}
+	/* attempt to read the container's cgroup path.
+	 * if we can't, the cgroup has probably been cleaned up.
+	 * In all likelihood, this means we received an event on the eventfd
+	 * because the memory.oom_control file was removed, not because of an OOM
+	 */
+	if (access(cgroup_event_control_path, F_OK) < 0) {
+		ndebugf("Memory cgroup removal event received");
+		/* if event_count == 1, we know the only event triggered was a cgroup removal
+		 * if it was greater than 1, we know the cgroup oomed, and then was cleaned up.
+		 */
+		if (event_count == 1)
+			return G_SOURCE_CONTINUE;
+	}
+
+	ninfo("OOM event received");
+	write_oom_files();
+
+	return G_SOURCE_CONTINUE;
 }
 
 
@@ -1165,7 +1176,8 @@ static void setup_oom_handling_cgroup_v1(int pid)
 		return;
 	}
 
-	_cleanup_free_ char *memory_cgroup_file_path = g_build_filename(memory_cgroup_path, "cgroup.event_control", NULL);
+	/* this will be cleaned up in oom_cb_cgroup_v1 */
+	char *memory_cgroup_file_path = g_build_filename(memory_cgroup_path, "cgroup.event_control", NULL);
 
 	if ((cfd = open(memory_cgroup_file_path, O_WRONLY | O_CLOEXEC)) == -1) {
 		nwarnf("Failed to open %s", memory_cgroup_file_path);
@@ -1183,7 +1195,7 @@ static void setup_oom_handling_cgroup_v1(int pid)
 	if (write_all(cfd, data, strlen(data)) < 0)
 		pexit("Failed to write to cgroup.event_control");
 
-	g_unix_fd_add(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, &pid);
+	g_unix_fd_add(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, memory_cgroup_file_path);
 }
 
 static void setup_oom_handling(int pid)
