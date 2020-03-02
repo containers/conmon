@@ -1753,7 +1753,11 @@ int main(int argc, char *argv[])
 	int exit_status = -1;
 	const char *exit_message = NULL;
 
-	if (timed_out) {
+	/*
+	 * If timed_out is TRUE but container_pid is -1, the process must have died before
+	 * the timer elapsed. Ignore the timeout and treat it like a normal container exit.
+	 */
+	if (timed_out && container_pid > 0) {
 		pid_t process_group = getpgid(container_pid);
 
 		if (process_group > 0)
