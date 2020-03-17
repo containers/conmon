@@ -1345,6 +1345,8 @@ int main(int argc, char *argv[])
 		close(oom_score_fd);
 	}
 
+	/* ignoring SIGPIPE prevents conmon from being spuriously killed */
+	signal(SIGPIPE, SIG_IGN);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
