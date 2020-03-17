@@ -489,12 +489,28 @@ static gboolean stdio_cb(int fd, GIOCondition condition, gpointer user_data)
 		return G_SOURCE_REMOVE;
 	}
 
+	/* End of input */
 	if (read_eof || (has_hup && !has_input)) {
-		/* End of input */
-		if (pipe == STDOUT_PIPE)
+		/* There exists a case that the process has already exited
+		 * and we know about it (because we checked our child processes)
+		 * but we needed to run the main_loop to catch all the rest of the output
+		 * (specifically, when we are exec, but not terminal)
+		 * In this case, after both the stderr and stdout pipes have closed
+		 * we should quit the loop. Otherwise, conmon will hang forever
+		 * waiting for container_exit_cb that will never be called.
+		 */
+		if (pipe == STDOUT_PIPE) {
 			masterfd_stdout = -1;
-		if (pipe == STDERR_PIPE)
+			if (container_status >= 0 && masterfd_stderr < 0) {
+				g_main_loop_quit(main_loop);
+			}
+		}
+		if (pipe == STDERR_PIPE) {
 			masterfd_stderr = -1;
+			if (container_status >= 0 && masterfd_stdout < 0) {
+				g_main_loop_quit(main_loop);
+			}
+		}
 
 		close(fd);
 		return G_SOURCE_REMOVE;
@@ -1329,6 +1345,8 @@ int main(int argc, char *argv[])
 		close(oom_score_fd);
 	}
 
+	/* ignoring SIGPIPE prevents conmon from being spuriously killed */
+	signal(SIGPIPE, SIG_IGN);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
@@ -1772,6 +1790,9 @@ int main(int argc, char *argv[])
 	       specifically, the check child processes call above could set the container
 	       status if it is a quickly exiting command. We only want to run the loop if
 	       this hasn't happened yet.
+		Note: there exists a chance that we have the container_status, are exec, and api>=1,
+		but are not terminal. In this case, we still want to run to process all of the output,
+		but will need to exit once all the i/o is read. This will be handled in stdio_cb above.
 	*/
 	if (opt_api_version < 1 || !opt_exec || !opt_terminal || container_status < 0)
 		g_main_loop_run(main_loop);
