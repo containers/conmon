@@ -284,8 +284,12 @@ static int masterfd_stderr = -1;
 /* Used for attach */
 struct conn_sock_s {
 	int fd;
+	gboolean data_ready;
 	gboolean readable;
 	gboolean writable;
+	size_t remaining;
+	size_t off;
+	char buf[CONN_SOCK_BUF_SIZE];
 };
 GPtrArray *conn_socks = NULL;
 
@@ -683,25 +687,8 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 	return ret;
 }
 
-static gboolean conn_sock_cb(int fd, GIOCondition condition, gpointer user_data)
+static gboolean terminate_conn_sock(struct conn_sock_s *sock)
 {
-	struct conn_sock_s *sock = (struct conn_sock_s *)user_data;
-	ssize_t num_read = 0;
-
-	if ((condition & G_IO_IN) != 0) {
-		num_read = read(fd, buf, CONN_SOCK_BUF_SIZE);
-		if (num_read < 0)
-			return G_SOURCE_CONTINUE;
-
-		if (num_read > 0 && masterfd_stdin >= 0) {
-			if (write_all(masterfd_stdin, buf, num_read) < 0) {
-				nwarn("Failed to write to container stdin");
-			}
-			return G_SOURCE_CONTINUE;
-		}
-	}
-
-	/* End of input */
 	conn_sock_shutdown(sock, SHUT_RD);
 	if (masterfd_stdin >= 0 && opt_stdin) {
 		if (!opt_leave_stdin_open) {
@@ -712,6 +699,90 @@ static gboolean conn_sock_cb(int fd, GIOCondition condition, gpointer user_data)
 		}
 	}
 	return G_SOURCE_REMOVE;
+}
+
+static gboolean conn_sock_cb(G_GNUC_UNUSED int fd, GIOCondition condition, gpointer user_data);
+
+static void sock_try_write_to_masterfd_stdin(struct conn_sock_s *sock)
+{
+	if (!sock->remaining)
+		return;
+
+	ssize_t w = write(masterfd_stdin, sock->buf + sock->off, sock->remaining);
+	if (w < 0) {
+		nwarn("Failed to write to container stdin");
+	} else {
+		sock->off += w;
+		sock->remaining -= w;
+	}
+}
+
+static void write_to_masterfd_stdin(gpointer data, gpointer user_data)
+{
+	struct conn_sock_s *sock = (struct conn_sock_s *)data;
+	bool *has_data = user_data;
+
+	sock_try_write_to_masterfd_stdin(sock);
+
+	if (sock->remaining)
+		*has_data = true;
+	else if (sock->data_ready) {
+		sock->data_ready = false;
+		g_unix_fd_add(sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, conn_sock_cb, sock);
+	}
+}
+
+static gboolean masterfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
+{
+	bool has_data = FALSE;
+
+	if (masterfd_stdin < 0)
+		return G_SOURCE_REMOVE;
+
+	g_ptr_array_foreach(conn_socks, write_to_masterfd_stdin, &has_data);
+	if (has_data)
+		return G_SOURCE_CONTINUE;
+	return G_SOURCE_REMOVE;
+}
+
+static gboolean read_conn_sock(struct conn_sock_s *sock)
+{
+	ssize_t num_read;
+
+	/* There is still data in the buffer.  */
+	if (sock->remaining) {
+		sock->data_ready = true;
+		return G_SOURCE_REMOVE;
+	}
+
+	num_read = read(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE);
+	if (num_read < 0)
+		return G_SOURCE_CONTINUE;
+
+	if (num_read == 0)
+		return terminate_conn_sock(sock);
+
+	/* num_read > 0 */
+	sock->remaining = num_read;
+	sock->off = 0;
+
+	sock_try_write_to_masterfd_stdin(sock);
+
+	/* Not everything was written to stdin, let's wait for the fd to be ready.  */
+	if (sock->remaining)
+		g_unix_fd_add(masterfd_stdin, G_IO_OUT, masterfd_write_cb, NULL);
+
+	return G_SOURCE_CONTINUE;
+}
+
+static gboolean conn_sock_cb(G_GNUC_UNUSED int fd, GIOCondition condition, gpointer user_data)
+{
+	struct conn_sock_s *sock = (struct conn_sock_s *)user_data;
+
+	if (condition & G_IO_IN)
+		return read_conn_sock(sock);
+
+	return terminate_conn_sock(sock);
 }
 
 static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
@@ -732,6 +803,9 @@ static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_U
 		conn_sock->fd = conn_fd;
 		conn_sock->readable = true;
 		conn_sock->writable = true;
+		conn_sock->off = 0;
+		conn_sock->remaining = 0;
+		conn_sock->data_ready = false;
 		g_unix_fd_add(conn_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, conn_sock_cb, conn_sock);
 		g_ptr_array_add(conn_socks, conn_sock);
 		ninfof("Accepted connection %d", conn_sock->fd);
@@ -1464,6 +1538,9 @@ int main(int argc, char *argv[])
 
 			masterfd_stdin = fds[1];
 			slavefd_stdin = fds[0];
+
+			if (g_unix_set_fd_nonblocking(masterfd_stdin, TRUE, NULL) == FALSE)
+				nwarn("Failed to set masterfd_stdin to non blocking");
 		}
 
 		if (pipe2(fds, O_CLOEXEC) < 0)
