@@ -41,8 +41,6 @@ void on_sig_exit(int signal)
 
 void check_child_processes(GHashTable *pid_to_handler)
 {
-	void (*cb)(GPid, int, gpointer);
-
 	for (;;) {
 		int status;
 		pid_t pid = waitpid(-1, &status, WNOHANG);
@@ -61,7 +59,7 @@ void check_child_processes(GHashTable *pid_to_handler)
 			return;
 
 		/* If we got here, pid > 0, so we have a valid pid to check.  */
-		cb = g_hash_table_lookup(pid_to_handler, &pid);
+		void (*cb)(GPid, int, gpointer) = g_hash_table_lookup(pid_to_handler, &pid);
 		if (cb) {
 			cb(pid, status, 0);
 		} else if (opt_api_version >= 1) {
@@ -127,10 +125,6 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 
 void do_exit_command()
 {
-	pid_t exit_pid;
-	gchar **args;
-	size_t n_args = 0;
-
 	if (sync_pipe_fd > 0) {
 		close(sync_pipe_fd);
 		sync_pipe_fd = -1;
@@ -140,7 +134,7 @@ void do_exit_command()
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
 
-	exit_pid = fork();
+	pid_t exit_pid = fork();
 	if (exit_pid < 0) {
 		_pexit("Failed to fork");
 	}
@@ -159,11 +153,12 @@ void do_exit_command()
 	}
 
 	/* Count the additional args, if any.  */
+	size_t n_args = 0;
 	if (opt_exit_args)
 		for (; opt_exit_args[n_args]; n_args++)
 			;
 
-	args = malloc(sizeof(gchar *) * (n_args + 2));
+	gchar **args = malloc(sizeof(gchar *) * (n_args + 2));
 	if (args == NULL)
 		_exit(EXIT_FAILURE);
 

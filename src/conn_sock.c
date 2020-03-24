@@ -60,8 +60,6 @@ char *setup_console_socket(void)
 
 char *setup_attach_socket(void)
 {
-	_cleanup_free_ char *attach_sock_path = NULL;
-	char *attach_symlink_dir_path;
 	struct sockaddr_un attach_addr = {0};
 	attach_addr.sun_family = AF_UNIX;
 
@@ -69,13 +67,13 @@ char *setup_attach_socket(void)
 	 * Create a symlink so we don't exceed unix domain socket
 	 * path length limit.
 	 */
-	attach_symlink_dir_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
+	char *attach_symlink_dir_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
 	if (unlink(attach_symlink_dir_path) == -1 && errno != ENOENT)
 		pexit("Failed to remove existing symlink for attach socket directory");
 
 	/*
-	 * This is to address a corner case where the symlink path length can end up to be
-	 * the same as the socket.  When it happens, the symlink prevents the socket to be
+	 * This is to address a corner case where the symlink path length can end up being
+	 * the same as the socket.  When it happens, the symlink prevents the socket from being
 	 * be created.  This could still be a problem with other containers, but it is safe
 	 * to assume the CUUIDs don't change length in the same directory.  As a workaround,
 	 *  in such case, make the symlink one char shorter.
@@ -86,7 +84,7 @@ char *setup_attach_socket(void)
 	if (symlink(opt_bundle_path, attach_symlink_dir_path) == -1)
 		pexit("Failed to create symlink for attach socket");
 
-	attach_sock_path = g_build_filename(opt_socket_path, opt_cuuid, "attach", NULL);
+	_cleanup_free_ char *attach_sock_path = g_build_filename(opt_socket_path, opt_cuuid, "attach", NULL);
 	ninfof("attach sock path: %s", attach_sock_path);
 
 	strncpy(attach_addr.sun_path, attach_sock_path, sizeof(attach_addr.sun_path) - 1);

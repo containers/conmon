@@ -5,6 +5,7 @@
 log_level_t log_level = WARN_LEVEL;
 char *log_cid = NULL;
 gboolean use_syslog = FALSE;
+
 /* Set the log level for this call. log level defaults to warning.
    parse the string value of level_name to the appropriate log_level_t enum value
 */

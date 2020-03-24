@@ -185,6 +185,12 @@ static inline void gstring_free_cleanup(GString **string)
 		g_string_free(*string, TRUE);
 }
 
+static inline void gerror_free_cleanup(GError **err)
+{
+	if (*err)
+		g_error_free(*err);
+}
+
 static inline void strv_cleanup(char ***strv)
 {
 	if (strv)
@@ -195,6 +201,7 @@ static inline void strv_cleanup(char ***strv)
 #define _cleanup_close_ _cleanup_(closep)
 #define _cleanup_fclose_ _cleanup_(fclosep)
 #define _cleanup_gstring_ _cleanup_(gstring_free_cleanup)
+#define _cleanup_gerror_ _cleanup_(gerror_free_cleanup)
 #define _cleanup_strv_ _cleanup_(strv_cleanup)
 
 

@@ -21,30 +21,28 @@ static void setup_fifo(int *fifo_r, int *fifo_w, char *filename, char *error_var
 
 gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
-	const char *csname = user_data;
-	struct file_t console;
-	int connfd = -1;
-	struct termios tset;
 
 	ninfof("about to accept from console_socket_fd: %d", fd);
-	connfd = accept4(fd, NULL, NULL, SOCK_CLOEXEC);
+	int connfd = accept4(fd, NULL, NULL, SOCK_CLOEXEC);
 	if (connfd < 0) {
 		nwarn("Failed to accept console-socket connection");
 		return G_SOURCE_CONTINUE;
 	}
 
 	/* Not accepting anything else. */
-	close(fd);
+	const char *csname = user_data;
 	unlink(csname);
+	close(fd);
 
 	/* We exit if this fails. */
 	ninfof("about to recvfd from connfd: %d", connfd);
-	console = recvfd(connfd);
+	struct file_t console = recvfd(connfd);
 
 	ninfof("console = {.name = '%s'; .fd = %d}", console.name, console.fd);
 	free(console.name);
 
 	/* We change the terminal settings to match kube settings */
+	struct termios tset;
 	if (tcgetattr(console.fd, &tset) == -1) {
 		nwarn("Failed to get console terminal settings");
 		goto exit;
@@ -100,7 +98,6 @@ static gboolean process_winsz_ctrl_line(char *line)
 	return TRUE;
 }
 
-
 /*
  * ctrl_cb is a callback for handling events directly from the caller
  */
@@ -117,11 +114,10 @@ gboolean ctrl_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpo
  */
 static gboolean process_terminal_ctrl_line(char *line)
 {
+	/* while the height and width won't be used in this function,
+	 * we want to remove them from the buffer anyway
+	 */
 	int ctl_msg_type, height, width, ret = -1;
-	_cleanup_free_ char *hw_str = NULL;
-
-	// while the height and width won't be used in this function,
-	// we want to remove them from the buffer anyway
 	ret = sscanf(line, "%d %d %d\n", &ctl_msg_type, &height, &width);
 	if (ret != 3) {
 		nwarn("Failed to sscanf message");
@@ -130,13 +126,14 @@ static gboolean process_terminal_ctrl_line(char *line)
 
 	ninfof("Message type: %d", ctl_msg_type);
 	switch (ctl_msg_type) {
-	case WIN_RESIZE_EVENT:
-		hw_str = g_strdup_printf("%d %d\n", height, width);
+	case WIN_RESIZE_EVENT: {
+		_cleanup_free_ char *hw_str = g_strdup_printf("%d %d\n", height, width);
 		if (write(winsz_fd_w, hw_str, strlen(hw_str)) < 0) {
 			nwarn("Failed to write to window resizing fd. A resize event may have been dropped");
 			return FALSE;
 		}
 		break;
+	}
 	case REOPEN_LOGS_EVENT:
 		reopen_log_files();
 		break;
@@ -159,9 +156,7 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char
 	static char ctlbuf[CTLBUFSZ];
 	static int readsz = CTLBUFSZ - 1;
 	static char *readptr = ctlbuf;
-	ssize_t num_read = 0;
-
-	num_read = read(fd, readptr, readsz);
+	ssize_t num_read = read(fd, readptr, readsz);
 	if (num_read <= 0) {
 		nwarnf("Failed to read from fd %d", fd);
 		return G_SOURCE_CONTINUE;
@@ -174,9 +169,9 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char
 	char *newline = strchrnul(beg, '\n');
 	/* Process each message which ends with a line */
 	while (*newline != '\0') {
-		if (!line_process_func(ctlbuf)) {
+		if (!line_process_func(ctlbuf))
 			return G_SOURCE_CONTINUE;
-		}
+
 		beg = newline + 1;
 		newline = strchrnul(beg, '\n');
 	}
@@ -213,14 +208,12 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char
 static void resize_winsz(int height, int width)
 {
 	struct winsize ws;
-	int ret;
-
 	ws.ws_row = height;
 	ws.ws_col = width;
-	ret = ioctl(masterfd_stdout, TIOCSWINSZ, &ws);
-	if (ret == -1) {
+
+	int ret = ioctl(masterfd_stdout, TIOCSWINSZ, &ws);
+	if (ret == -1)
 		pwarn("Failed to set process pty terminal size");
-	}
 }
 
 
