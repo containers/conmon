@@ -10,15 +10,14 @@ static char *escape_json_string(const char *str);
 
 int get_pipe_fd_from_env(const char *envname)
 {
-	char *pipe_str, *endptr;
-	int pipe_fd;
+	char *endptr = NULL;
 
-	pipe_str = getenv(envname);
+	char *pipe_str = getenv(envname);
 	if (pipe_str == NULL)
 		return -1;
 
 	errno = 0;
-	pipe_fd = strtol(pipe_str, &endptr, 10);
+	int pipe_fd = strtol(pipe_str, &endptr, 10);
 	if (errno != 0 || *endptr != '\0')
 		pexitf("unable to parse %s", envname);
 	if (fcntl(pipe_fd, F_SETFD, FD_CLOEXEC) == -1)
@@ -29,9 +28,6 @@ int get_pipe_fd_from_env(const char *envname)
 
 void write_sync_fd(int fd, int res, const char *message)
 {
-	_cleanup_free_ char *escaped_message = NULL;
-	_cleanup_free_ char *json = NULL;
-
 	const char *res_key;
 	if (opt_api_version >= 1)
 		res_key = "data";
@@ -45,8 +41,9 @@ void write_sync_fd(int fd, int res, const char *message)
 	if (fd == -1)
 		return;
 
+	_cleanup_free_ char *json = NULL;
 	if (message) {
-		escaped_message = escape_json_string(message);
+		_cleanup_free_ char *escaped_message = escape_json_string(message);
 		json = g_strdup_printf("{\"%s\": %d, \"message\": \"%s\"}\n", res_key, res, escaped_message);
 	} else {
 		json = g_strdup_printf("{\"%s\": %d}\n", res_key, res);
@@ -60,11 +57,8 @@ void write_sync_fd(int fd, int res, const char *message)
 
 static char *escape_json_string(const char *str)
 {
-	GString *escaped;
-	const char *p;
-
-	p = str;
-	escaped = g_string_sized_new(strlen(str));
+	const char *p = str;
+	GString *escaped = g_string_sized_new(strlen(str));
 
 	while (*p != 0) {
 		char c = *p++;

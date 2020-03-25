@@ -24,25 +24,12 @@
 
 int main(int argc, char *argv[])
 {
-	int ret;
-	_cleanup_free_ char *csname = NULL;
-	GError *err = NULL;
-	_cleanup_free_ char *contents = NULL;
-	pid_t main_pid;
-	/* Used for !terminal cases. */
-	int slavefd_stdin = -1;
-	int slavefd_stdout = -1;
-	int slavefd_stderr = -1;
+	_cleanup_gerror_ GError *err = NULL;
 	char buf[BUF_SIZE];
 	int num_read;
-	int attach_pipe_fd = -1;
-	int start_pipe_fd = -1;
-	GPtrArray *runtime_argv = NULL;
 	_cleanup_close_ int dev_null_r = -1;
 	_cleanup_close_ int dev_null_w = -1;
 	_cleanup_close_ int dummyfd = -1;
-	int fds[2];
-	DIR *fdsdir = NULL;
 
 	int initialize_ec = initialize_cli(argc, argv);
 	if (initialize_ec >= 0) {
@@ -56,7 +43,7 @@ int main(int argc, char *argv[])
 	/* ignoring SIGPIPE prevents conmon from being spuriously killed */
 	signal(SIGPIPE, SIG_IGN);
 
-	start_pipe_fd = get_pipe_fd_from_env("_OCI_STARTPIPE");
+	int start_pipe_fd = get_pipe_fd_from_env("_OCI_STARTPIPE");
 	if (start_pipe_fd > 0) {
 		/* Block for an initial write to the start pipe before
 		   spawning any childred or exiting, to ensure the
@@ -82,13 +69,14 @@ int main(int argc, char *argv[])
 	/* In the create-container case we double-fork in
 	   order to disconnect from the parent, as we want to
 	   continue in a daemon-like way */
-	main_pid = fork();
+	pid_t main_pid = fork();
 	if (main_pid < 0) {
 		pexit("Failed to fork the create command");
 	} else if (main_pid != 0) {
 		if (opt_conmon_pid_file) {
 			char content[12];
 			sprintf(content, "%i", main_pid);
+
 			if (!g_file_set_contents(opt_conmon_pid_file, content, strlen(content), &err)) {
 				nexitf("Failed to write conmon pidfile: %s", err->message);
 			}
@@ -99,6 +87,7 @@ int main(int argc, char *argv[])
 	/* Environment variables */
 	sync_pipe_fd = get_pipe_fd_from_env("_OCI_SYNCPIPE");
 
+	int attach_pipe_fd = -1;
 	if (opt_attach) {
 		attach_pipe_fd = get_pipe_fd_from_env("_OCI_ATTACHPIPE");
 		if (attach_pipe_fd < 0) {
@@ -124,11 +113,16 @@ int main(int argc, char *argv[])
 	 * Set self as subreaper so we can wait for container process
 	 * and return its exit code.
 	 */
-	ret = prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0);
+	int ret = prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0);
 	if (ret != 0) {
 		pexit("Failed to set as subreaper");
 	}
 
+	_cleanup_free_ char *csname = NULL;
+	int slavefd_stdin = -1;
+	int slavefd_stdout = -1;
+	int slavefd_stderr = -1;
+	int fds[2];
 	if (opt_terminal) {
 		csname = setup_console_socket();
 	} else {
@@ -174,7 +168,7 @@ int main(int argc, char *argv[])
 	masterfd_stderr = fds[0];
 	slavefd_stderr = fds[1];
 
-	runtime_argv = configure_runtime_args(csname);
+	GPtrArray *runtime_argv = configure_runtime_args(csname);
 
 	/* Setup endpoint for attach */
 	_cleanup_free_ char *attach_symlink_dir_path = NULL;
@@ -350,9 +344,9 @@ int main(int argc, char *argv[])
 		nexit("Runtime did not set up terminal");
 
 	/* Read the pid so we can wait for the process to exit */
+	_cleanup_free_ char *contents = NULL;
 	if (!g_file_get_contents(opt_container_pid_file, &contents, NULL, &err)) {
 		nwarnf("Failed to read pidfile: %s", err->message);
-		g_error_free(err);
 		exit(1);
 	}
 
@@ -434,7 +428,7 @@ int main(int argc, char *argv[])
 	 * the container runs.  Close them before we notify the container exited, so that they can be
 	 * reused immediately.
 	 */
-	fdsdir = opendir("/proc/self/fd");
+	DIR *fdsdir = opendir("/proc/self/fd");
 	if (fdsdir != NULL) {
 		int fd;
 		int dfd = dirfd(fdsdir);

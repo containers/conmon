@@ -7,8 +7,7 @@ static void end_argv(GPtrArray *argv_array);
 
 GPtrArray *configure_runtime_args(const char *const csname)
 {
-	GPtrArray *runtime_argv = NULL;
-	runtime_argv = g_ptr_array_new();
+	GPtrArray *runtime_argv = g_ptr_array_new();
 	add_argv(runtime_argv, opt_runtime_path, NULL);
 
 	/* Generate the cmdline. */

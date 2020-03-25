@@ -92,18 +92,17 @@ GOptionEntry opt_entries[] = {
 
 int initialize_cli(int argc, char *argv[])
 {
-	GError *error = NULL;
-
-	GOptionContext *context;
-	context = g_option_context_new("- conmon utility");
+	GOptionContext *context = g_option_context_new("- conmon utility");
 	g_option_context_add_main_entries(context, opt_entries, "conmon");
+
+	GError *error = NULL;
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("conmon: option parsing failed: %s\n", error->message);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	if (opt_version) {
 		g_print("conmon version " VERSION "\ncommit: " GIT_COMMIT "\n");
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 
 	if (opt_cid == NULL) {
@@ -115,8 +114,6 @@ int initialize_cli(int argc, char *argv[])
 
 void process_cli()
 {
-	char cwd[PATH_MAX];
-
 	/* Command line parameters */
 	set_conmon_logs(opt_log_level, opt_cid, opt_syslog, opt_log_tag);
 
@@ -142,6 +139,7 @@ void process_cli()
 		pexitf("Runtime path %s is not valid", opt_runtime_path);
 
 	// a user must opt into attaching on an exec
+	char cwd[PATH_MAX];
 	if (opt_bundle_path == NULL && !opt_exec) {
 		if (getcwd(cwd, sizeof(cwd)) == NULL) {
 			nexit("Failed to get working directory");
@@ -153,10 +151,9 @@ void process_cli()
 		nexit("Exec process spec path not provided. Use --exec-process-spec");
 	}
 
-	if (opt_container_pid_file == NULL) {
-		// TODO FIXME I removed default_pid_file here. shouldn't opt_container_pid_file be cleaned up?
+	// TODO FIXME I removed default_pid_file here. shouldn't opt_container_pid_file be cleaned up?
+	if (opt_container_pid_file == NULL)
 		opt_container_pid_file = g_strdup_printf("%s/pidfile-%s", cwd, opt_cid);
-	}
 
 	configure_log_drivers(opt_log_path, opt_log_size_max, opt_cid, opt_name, opt_log_tag);
 }
