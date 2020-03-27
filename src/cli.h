@@ -1,7 +1,8 @@
 #if !defined(CLI_H)
 #define CLI_H
 
-#include <glib.h> /* gboolean and GOptionEntry */
+#include <glib.h>  /* gboolean and GOptionEntry */
+#include <stdio.h> /* FILE */
 
 extern gboolean opt_version;
 extern gboolean opt_terminal;
@@ -41,6 +42,6 @@ extern char *opt_log_tag;
 extern GOptionEntry opt_entries[];
 
 int initialize_cli(int argc, char *argv[]);
-void process_cli();
+void process_cli(FILE **conmon_output_file);
 
 #endif // CLI_H
