@@ -9,6 +9,7 @@
 #include <glib.h>
 #include <glib-unix.h>
 #include <sys/uio.h>
+#include <string.h>
 
 /* stdpipe_t represents one of the std pipes (or NONE).
  * Sync with const in container_attach.go */
