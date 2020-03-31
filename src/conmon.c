@@ -281,7 +281,11 @@ int main(int argc, char *argv[])
 	 * Glib does not support SIGCHLD so use SIGUSR1 with the same semantic.  We will
 	 * catch SIGCHLD and raise(SIGUSR1) in the signal handler.
 	 */
-	g_unix_signal_add(SIGUSR1, on_sigusr1_cb, pid_to_handler);
+	struct pid_check_data data = {
+		.pid_to_handler = pid_to_handler,
+		.exit_status_cache = NULL,
+	};
+	g_unix_signal_add(SIGUSR1, on_sigusr1_cb, &data);
 
 	if (signal(SIGCHLD, on_sigchld) == SIG_ERR)
 		pexit("Failed to set handler for SIGCHLD");
@@ -302,9 +306,12 @@ int main(int argc, char *argv[])
 	if (csname != NULL) {
 		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
 		/* Process any SIGCHLD we may have missed before the signal handler was in place.  */
-		check_child_processes(pid_to_handler);
-		if (!opt_exec || !opt_terminal || container_status < 0)
+		if (!opt_exec || !opt_terminal || container_status < 0) {
+			GHashTable *exit_status_cache = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, g_free);
+			data.exit_status_cache = exit_status_cache;
+			g_idle_add(check_child_processes_cb, &data);
 			g_main_loop_run(main_loop);
+		}
 	} else {
 		int ret;
 		/* Wait for our create child to exit with the return code. */
@@ -377,7 +384,22 @@ int main(int argc, char *argv[])
 		g_timeout_add_seconds(opt_timeout, timeout_cb, NULL);
 	}
 
-	check_child_processes(pid_to_handler);
+	if (data.exit_status_cache) {
+		GHashTableIter iter;
+		gpointer key, value;
+
+		g_hash_table_iter_init(&iter, data.exit_status_cache);
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			pid_t *k = (pid_t *)key;
+			int *v = (int *)value;
+			void (*cb)(GPid, int, gpointer) = g_hash_table_lookup(pid_to_handler, k);
+			if (cb)
+				cb(*k, *v, 0);
+		}
+		g_hash_table_destroy(data.exit_status_cache);
+		data.exit_status_cache = NULL;
+	}
+
 	/* There are three cases we want to run this main loop:
 	   1. If we are using the legacy API
 	   2. if we are running create or restore
@@ -394,8 +416,10 @@ int main(int argc, char *argv[])
 		but are not terminal. In this case, we still want to run to process all of the output,
 		but will need to exit once all the i/o is read. This will be handled in stdio_cb above.
 	*/
-	if (opt_api_version < 1 || !opt_exec || !opt_terminal || container_status < 0)
+	if (opt_api_version < 1 || !opt_exec || !opt_terminal || container_status < 0) {
+		g_idle_add(check_child_processes_cb, &data);
 		g_main_loop_run(main_loop);
+	}
 
 	check_cgroup2_oom();
 
