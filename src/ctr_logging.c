@@ -54,6 +54,11 @@ static char *container_name = NULL;
 static char *container_tag = NULL;
 static size_t container_tag_len;
 
+typedef struct {
+	int iovcnt;
+	struct iovec iov[WRITEV_BUFFER_N_IOV];
+} writev_buffer_t;
+
 static void parse_log_path(char *log_config);
 static const char *stdpipe_name(stdpipe_t pipe);
 static int write_journald(int pipe, char *buf, ssize_t num_read);

@@ -6,7 +6,7 @@
 
 
 extern volatile pid_t container_pid;
-volatile pid_t create_pid;
+extern volatile pid_t create_pid;
 
 void on_sigchld(G_GNUC_UNUSED int signal);
 void on_sig_exit(int signal);
