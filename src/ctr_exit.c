@@ -39,12 +39,11 @@ void on_sig_exit(int signal)
 	raise(SIGUSR1);
 }
 
-void check_child_processes(GHashTable *pid_to_handler)
+static void check_child_processes(GHashTable *pid_to_handler, GHashTable *cache)
 {
 	for (;;) {
 		int status;
 		pid_t pid = waitpid(-1, &status, WNOHANG);
-
 		if (pid < 0 && errno == EINTR)
 			continue;
 
@@ -62,20 +61,29 @@ void check_child_processes(GHashTable *pid_to_handler)
 		void (*cb)(GPid, int, gpointer) = g_hash_table_lookup(pid_to_handler, &pid);
 		if (cb) {
 			cb(pid, status, 0);
-		} else if (opt_api_version >= 1) {
-			ndebugf("couldn't find cb for pid %d", pid);
-			if (container_status < 0 && container_pid < 0 && opt_exec && opt_terminal) {
-				ndebugf("container status and pid were found prior to callback being registered. calling manually");
-				container_exit_cb(pid, status, 0);
-			}
+		} else if (cache) {
+			pid_t *k = g_malloc(sizeof(pid_t));
+			int *v = g_malloc(sizeof(int));
+			if (k == NULL || v == NULL)
+				pexit("Failed to allocate memory");
+			*k = pid;
+			*v = status;
+			g_hash_table_insert(cache, k, v);
 		}
 	}
 }
 
+gboolean check_child_processes_cb(gpointer user_data)
+{
+	struct pid_check_data *data = (struct pid_check_data *)user_data;
+	check_child_processes(data->pid_to_handler, data->exit_status_cache);
+	return G_SOURCE_REMOVE;
+}
+
 gboolean on_sigusr1_cb(gpointer user_data)
 {
-	GHashTable *pid_to_handler = (GHashTable *)user_data;
-	check_child_processes(pid_to_handler);
+	struct pid_check_data *data = (struct pid_check_data *)user_data;
+	check_child_processes(data->pid_to_handler, data->exit_status_cache);
 	return G_SOURCE_CONTINUE;
 }
 
