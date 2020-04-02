@@ -34,11 +34,10 @@ typedef enum {
 extern log_level_t log_level;
 extern char *log_cid;
 extern gboolean use_syslog;
-extern FILE *output_file;
 
 #define _pexit(s) \
 	do { \
-		fprintf(output_file, "[conmon:e]: %s %s\n", s, strerror(errno)); \
+		fprintf(stderr, "[conmon:e]: %s %s\n", s, strerror(errno)); \
 		if (use_syslog) \
 			syslog(LOG_ERR, "conmon %.20s <error>: %s %s\n", log_cid, s, strerror(errno)); \
 		_exit(EXIT_FAILURE); \
@@ -46,7 +45,7 @@ extern FILE *output_file;
 
 #define pexit(s) \
 	do { \
-		fprintf(output_file, "[conmon:e]: %s %s\n", s, strerror(errno)); \
+		fprintf(stderr, "[conmon:e]: %s %s\n", s, strerror(errno)); \
 		if (use_syslog) \
 			syslog(LOG_ERR, "conmon %.20s <error>: %s %s\n", log_cid, s, strerror(errno)); \
 		exit(EXIT_FAILURE); \
@@ -54,7 +53,7 @@ extern FILE *output_file;
 
 #define pexitf(fmt, ...) \
 	do { \
-		fprintf(output_file, "[conmon:e]: " fmt " %s\n", ##__VA_ARGS__, strerror(errno)); \
+		fprintf(stderr, "[conmon:e]: " fmt " %s\n", ##__VA_ARGS__, strerror(errno)); \
 		if (use_syslog) \
 			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %s\n", log_cid, ##__VA_ARGS__, strerror(errno)); \
 		exit(EXIT_FAILURE); \
@@ -62,14 +61,14 @@ extern FILE *output_file;
 
 #define pwarn(s) \
 	do { \
-		fprintf(output_file, "[conmon:w]: %s %s\n", s, strerror(errno)); \
+		fprintf(stderr, "[conmon:w]: %s %s\n", s, strerror(errno)); \
 		if (use_syslog) \
 			syslog(LOG_INFO, "conmon %.20s <pwarn>: %s %s\n", log_cid, s, strerror(errno)); \
 	} while (0)
 
 #define nexit(s) \
 	do { \
-		fprintf(output_file, "[conmon:e] %s\n", s); \
+		fprintf(stderr, "[conmon:e] %s\n", s); \
 		if (use_syslog) \
 			syslog(LOG_ERR, "conmon %.20s <error>: %s\n", log_cid, s); \
 		exit(EXIT_FAILURE); \
@@ -77,7 +76,7 @@ extern FILE *output_file;
 
 #define nexitf(fmt, ...) \
 	do { \
-		fprintf(output_file, "[conmon:e]: " fmt "\n", ##__VA_ARGS__); \
+		fprintf(stderr, "[conmon:e]: " fmt "\n", ##__VA_ARGS__); \
 		if (use_syslog) \
 			syslog(LOG_ERR, "conmon %.20s <error>: " fmt " \n", log_cid, ##__VA_ARGS__); \
 		exit(EXIT_FAILURE); \
@@ -86,7 +85,7 @@ extern FILE *output_file;
 #define nwarn(s) \
 	if (log_level >= WARN_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:w]: %s\n", s); \
+			fprintf(stderr, "[conmon:w]: %s\n", s); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <nwarn>: %s\n", log_cid, s); \
 		} while (0); \
@@ -95,7 +94,7 @@ extern FILE *output_file;
 #define nwarnf(fmt, ...) \
 	if (log_level >= WARN_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:w]: " fmt "\n", ##__VA_ARGS__); \
+			fprintf(stderr, "[conmon:w]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <nwarn>: " fmt " \n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
@@ -104,7 +103,7 @@ extern FILE *output_file;
 #define ninfo(s) \
 	if (log_level >= INFO_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:i]: %s\n", s); \
+			fprintf(stderr, "[conmon:i]: %s\n", s); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <ninfo>: %s\n", log_cid, s); \
 		} while (0); \
@@ -113,7 +112,7 @@ extern FILE *output_file;
 #define ninfof(fmt, ...) \
 	if (log_level >= INFO_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:i]: " fmt "\n", ##__VA_ARGS__); \
+			fprintf(stderr, "[conmon:i]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <ninfo>: " fmt " \n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
@@ -122,7 +121,7 @@ extern FILE *output_file;
 #define ndebug(s) \
 	if (log_level >= DEBUG_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:d]: %s\n", s); \
+			fprintf(stderr, "[conmon:d]: %s\n", s); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <ndebug>: %s\n", log_cid, s); \
 		} while (0); \
@@ -131,7 +130,7 @@ extern FILE *output_file;
 #define ndebugf(fmt, ...) \
 	if (log_level >= DEBUG_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
+			fprintf(stderr, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <ndebug>: " fmt " \n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
@@ -140,7 +139,7 @@ extern FILE *output_file;
 #define ntrace(s) \
 	if (log_level >= TRACE_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:d]: %s\n", s); \
+			fprintf(stderr, "[conmon:d]: %s\n", s); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <ntrace>: %s\n", log_cid, s); \
 		} while (0); \
@@ -149,7 +148,7 @@ extern FILE *output_file;
 #define ntracef(fmt, ...) \
 	if (log_level >= TRACE_LEVEL) { \
 		do { \
-			fprintf(output_file, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
+			fprintf(stderr, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
 				syslog(LOG_INFO, "conmon %.20s <ntrace>: " fmt " \n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
@@ -158,7 +157,7 @@ extern FILE *output_file;
 /* Set the log level for this call. log level defaults to warning.
    parse the string value of level_name to the appropriate log_level_t enum value
 */
-void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag, char *opt_output_file_, FILE **conmon_output_file_);
+void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag);
 
 #define _cleanup_(x) __attribute__((cleanup(x)))
 
