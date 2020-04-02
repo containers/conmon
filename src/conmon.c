@@ -36,8 +36,7 @@ int main(int argc, char *argv[])
 		exit(initialize_ec);
 	}
 
-	_cleanup_fclose_ FILE *conmon_output_file = NULL;
-	process_cli(&conmon_output_file);
+	process_cli();
 
 	attempt_oom_adjust();
 

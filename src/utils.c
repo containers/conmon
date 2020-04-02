@@ -5,25 +5,16 @@
 log_level_t log_level = WARN_LEVEL;
 char *log_cid = NULL;
 gboolean use_syslog = FALSE;
-FILE *output_file = NULL;
 
 /* Set the log level for this call. log level defaults to warning.
    parse the string value of level_name to the appropriate log_level_t enum value
 */
-void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag, char *opt_output_file_, FILE **conmon_output_file_)
+void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag)
 {
 	if (tag == NULL)
 		log_cid = cid_;
 	else
 		log_cid = g_strdup_printf("%s: %s", cid_, tag);
-
-	output_file = stderr;
-	if (opt_output_file_ != NULL) {
-		*conmon_output_file_ = fopen(opt_output_file_, "a");
-		output_file = *conmon_output_file_;
-	}
-
-
 	use_syslog = syslog_;
 	// log_level is initialized as Warning, no need to set anything
 	if (level_name == NULL)
