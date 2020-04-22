@@ -37,6 +37,20 @@ cd conmon
 make
 ```
 
+## Install with Ansible
+
+An [Ansible Role](https://github.com/alvistack/ansible-role-conmon) is also available to automate the above steps:
+
+``` bash
+sudo su -
+mkdir -p ~/.ansible/roles
+cd ~/.ansible/roles
+git clone https://github.com/alvistack/ansible-role-conmon.git conmon
+cd ~/.ansible/roles/conmon
+pip3 install --upgrade --ignore-installed --requirement requirements.txt
+molecule converge
+molecule verify
+```
 
 ## Install to the directory you want:
 There are three options for installation, depending on your environment. Each can have the PREFIX overridden. The PREFIX defaults to `/usr/local` for most Linux distributions.
