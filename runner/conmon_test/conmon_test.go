@@ -1,37 +1,12 @@
 package conmon_test
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 
 	"github.com/containers/conmon/runner/conmon"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-var (
-	conmonPath  = "/usr/bin/conmon"
-	ctrID       = "abcdefghijklm"
-	validPath   = "/tmp"
-	invalidPath = "/not/a/path"
-)
-
-func getConmonOutputGivenOptions(options ...conmon.ConmonOption) (string, string) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	options = append(options, conmon.WithStdout(&stdout), conmon.WithStderr(&stderr))
-
-	ci, err := conmon.CreateAndExecConmon(options...)
-	Expect(err).To(BeNil())
-
-	ci.Wait()
-
-	return stdout.String(), stderr.String()
-}
 
 var _ = Describe("conmon", func() {
 	Describe("version", func() {

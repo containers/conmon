@@ -1,9 +1,14 @@
 #include "runtime_args.h"
 #include "cli.h"
+#include "config.h"
+#include "utils.h"
 
 static void add_argv(GPtrArray *argv_array, ...) G_GNUC_NULL_TERMINATED;
 static void add_argv(GPtrArray *argv_array, ...);
 static void end_argv(GPtrArray *argv_array);
+
+static void print_argv(GPtrArray *argv);
+static void append_argv(gpointer data, gpointer user_data);
 
 GPtrArray *configure_runtime_args(const char *const csname)
 {
@@ -78,7 +83,31 @@ GPtrArray *configure_runtime_args(const char *const csname)
 	add_argv(runtime_argv, opt_cid, NULL);
 	end_argv(runtime_argv);
 
+	print_argv(runtime_argv);
+
 	return runtime_argv;
+}
+
+static void print_argv(GPtrArray *runtime_argv)
+{
+	if (log_level != TRACE_LEVEL)
+		return;
+	GString *runtime_args_string = g_string_sized_new(BUF_SIZE);
+
+	g_ptr_array_foreach(runtime_argv, append_argv, runtime_args_string);
+
+	ntracef("calling runtime args: %s", runtime_args_string->str);
+}
+
+static void append_argv(gpointer data, gpointer user_data)
+{
+	if (!data)
+		return;
+	char *arg = (char *)data;
+	GString *args = (GString *)user_data;
+
+	g_string_append(args, arg);
+	g_string_append_c(args, ' ');
 }
 
 
