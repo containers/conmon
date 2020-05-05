@@ -138,19 +138,23 @@ void process_cli()
 	if (access(opt_runtime_path, X_OK) < 0)
 		pexitf("Runtime path %s is not valid", opt_runtime_path);
 
-	// a user must opt into attaching on an exec
-	char cwd[PATH_MAX];
-	if (opt_bundle_path == NULL && !opt_exec) {
-		if (getcwd(cwd, sizeof(cwd)) == NULL) {
-			nexit("Failed to get working directory");
-		}
-		opt_bundle_path = cwd;
-	}
-
 	if (opt_exec && opt_exec_process_spec == NULL) {
 		nexit("Exec process spec path not provided. Use --exec-process-spec");
 	}
 
+	char cwd[PATH_MAX];
+	if (getcwd(cwd, sizeof(cwd)) == NULL) {
+		nexit("Failed to get working directory");
+	}
+
+	// opt_bundle_path in exec means we will set up the attach socket
+	// for the exec session. the legacy version of exec does not need this
+	// and thus we only override an empty opt_bundle_path when we're not exec
+	if (opt_bundle_path == NULL && !opt_exec) {
+		opt_bundle_path = cwd;
+	}
+
+	// we should always override the container pid file if it's empty
 	// TODO FIXME I removed default_pid_file here. shouldn't opt_container_pid_file be cleaned up?
 	if (opt_container_pid_file == NULL)
 		opt_container_pid_file = g_strdup_printf("%s/pidfile-%s", cwd, opt_cid);
