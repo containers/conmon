@@ -328,23 +328,23 @@ int main(int argc, char *argv[])
 	}
 
 	if (!WIFEXITED(runtime_status) || WEXITSTATUS(runtime_status) != 0) {
-		if (sync_pipe_fd > 0) {
-			/*
-			 * Read from container stderr for any error and send it to parent
-			 * We send -1 as pid to signal to parent that create container has failed.
-			 */
-			num_read = read(masterfd_stderr, buf, BUF_SIZE - 1);
-			if (num_read > 0) {
-				buf[num_read] = '\0';
+		/*
+		 * Read from container stderr for any error and send it to parent
+		 * We send -1 as pid to signal to parent that create container has failed.
+		 */
+		num_read = read(masterfd_stderr, buf, BUF_SIZE - 1);
+		if (num_read > 0) {
+			buf[num_read] = '\0';
+			nwarnf("runtime stderr: %s", buf);
+			if (sync_pipe_fd > 0) {
 				int to_report = -1;
 				if (opt_exec && container_status > 0) {
 					to_report = -1 * container_status;
 				}
-
 				write_sync_fd(sync_pipe_fd, to_report, buf);
 			}
 		}
-		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
+		nexitf("Failed tooth create container: exit status %d", get_exit_status(runtime_status));
 	}
 
 	if (opt_terminal && masterfd_stdout == -1)
