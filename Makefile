@@ -70,7 +70,7 @@ config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runn
 		( cd src && $(CURDIR)/bin/config )
 
 test: git-vars runner/conmon_test/*.go runner/conmon/*.go
-	$(GO) test $(LDFLAGS) -tags "$(BUILDTAGS)" $(PROJECT)/runner/conmon_test/
+	ginkgo -v -cover -covermode atomic -progress -trace -noColor -tags "$(BUILDTAGS)" runner/conmon_test
 
 bin:
 	mkdir -p bin

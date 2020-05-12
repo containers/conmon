@@ -7,27 +7,43 @@
 export USER="$(whoami)"
 export HOME="$(getent passwd $USER | cut -d : -f 6)"
 
+# Downloaded, but not installed packages.
+PACKAGE_DOWNLOAD_DIR=/var/cache/download
+
 # These are normally set by cirrus, but can't be for VMs setup by hack/get_ci_vm.sh
-# Pick some reasonable defaults
-ENVLIB=${ENVLIB:-.bash_profile}
-CIRRUS_WORKING_DIR="${CIRRUS_WORKING_DIR:-/var/tmp/go/src/github.com/containers/libpod}"
-SCRIPT_BASE=${SCRIPT_BASE:-./contrib/cirrus}
-PACKER_BASE=${PACKER_BASE:-./contrib/cirrus/packer}
+CRIO_REPO="${CRIO_REPO:-https://github.com/cri-o/cri-o.git}"
+CRIO_SLUG="${CRIO_SLUG:-github.com/cri-o/cri-o}"
+CRIO_SRC="${CRIO_SRC:-$GOPATH/src/${CRIO_SLUG}}"
+
+CONMON_SLUG="${CONMON_SLUG:-github.com/containers/conmon}"
+
+# Default to values from .cirrus.yml, otherwise guarantee these are always be set.
+GOPATH="${GOPATH:-/var/tmp/go}"
+CIRRUS_WORKING_DIR="${CIRRUS_WORKING_DIR:-$GOPATH/src/$CONMON_SLUG}"
+GOSRC="$CIRRUS_WORKING_DIR"
+GO111MODULE=on
+SCRIPT_BASE="${SCRIPT_BASE:-./contrib/cirrus}"
+
+# Normally supplied by cirrus, needed here when running things manually
 CIRRUS_REPO_NAME=${CIRRUS_REPO_NAME-$(dirname $0)}
 CIRRUS_BUILD_ID=${CIRRUS_BUILD_ID:-DEADBEEF}  # a human
 CIRRUS_BASE_SHA=${CIRRUS_BASE_SHA:-HEAD}
 CIRRUS_CHANGE_IN_REPO=${CIRRUS_CHANGE_IN_REPO:-FETCH_HEAD}
 
+# From github.com/containers/automation
+INSTALL_AUTOMATION_VERSION=1.1.3
+
+# required for go 1.12+
+export GOCACHE="${GOCACHE:-$HOME/.cache/go-build}"
+
 if ! [[ "$PATH" =~ "/usr/local/bin" ]]
 then
-    export PATH="$PATH:/usr/local/bin"
+    export PATH="$PATH:/usr/local/bin:$GOPATH/bin"
 fi
 
-# In ci/testing environment, ensure variables are always loaded
-if [[ -r "$HOME/$ENVLIB" ]] && [[ -n "$CI" ]]
-then
-    # Make sure this is always loaded
-    source "$HOME/$ENVLIB"
+# Ensure go variables pass through 'make' command
+if [[ -x "$(type -P go)" ]]; then
+    eval "export $(go env)"
 fi
 
 # Pass in a line delimited list of, space delimited name/value pairs
@@ -100,36 +116,12 @@ os_release_ver() {
 }
 
 bad_os_id_ver() {
-    echo "Unknown/Unsupported distro. $OS_RELEASE_ID and/or version $OS_RELEASE_VER for $ARGS"
+    echo "Unknown/Unsupported distro. $OS_RELEASE_ID and/or version $OS_RELEASE_VER $@"
     exit 42
 }
 
 stub() {
     echo "STUB: Pretending to do $1"
-}
-
-# Helper/wrapper script to only show stderr/stdout on non-zero exit
-install_ooe() {
-    req_env_var "
-        SRC $SRC
-        SCRIPT_BASE $SCRIPT_BASE
-    "
-    echo "Installing script to mask stdout/stderr unless non-zero exit."
-    sudo install -D -m 755 "$SRC/$SCRIPT_BASE/ooe.sh" /usr/local/bin/ooe.sh
-}
-
-# Grab a newer version of git from software collections
-# https://www.softwarecollections.org/en/
-# and use it with a wrapper
-install_scl_git() {
-    echo "Installing SoftwareCollections updated 'git' version."
-    ooe.sh sudo yum -y install rh-git29
-    cat << "EOF" | sudo tee /usr/bin/git
-#!/bin/bash
-
-scl enable rh-git29 -- git $@
-EOF
-    sudo chmod 755 /usr/bin/git
 }
 
 _finalize(){
@@ -162,51 +154,33 @@ rh_finalize(){
     _finalize
 }
 
-setup_gopath() {
-    req_env_var "
-        CRIO_REPO $CRIO_REPO
-        CRIO_SLUG $CRIO_SLUG
-        CONMON_SLUG $CONMON_SLUG
-    "
-    echo "Configuring persistent Go environment for all users"
-    sudo mkdir -p /var/tmp/go/src
-    sudo chown -R $USER:$USER /var/tmp/go
-    sudo chmod g=rws /var/tmp/go
-    ENVLIB=/etc/profile.d/go.sh
-	# configure GOPATH if not set
-    if ! grep -q GOPATH $ENVLIB
-    then
-        sudo tee "$ENVLIB" << EOF
-export GOPATH=/var/tmp/go
-export PATH=\$PATH:\$GOPATH/bin
-EOF
-    source $ENVLIB
-    fi
-
-	# configure CRIO_SRC if not set
-    if ! grep -q CRIO_SRC $ENVLIB
-    then
-        sudo tee "$ENVLIB" << EOF
-export CRIO_SRC=\$GOPATH/src/$CRIO_SLUG
-EOF
-    source $ENVLIB
-    fi
-}
-
 install_crio_repo() {
     req_env_var "
         GOPATH $GOPATH
         CRIO_SRC $CRIO_SRC
         CRIO_REPO $CRIO_REPO
     "
-    echo "Cloning current CRI-O Source for faster access later"
-    sudo rm -rf "$CRIO_SRC"  # just in case
+    echo "Cloning current CRI-O Source"
+    cd $GOPATH/src
+    rm -rf "$CRIO_SRC"  # just in case
+    mkdir -p "$CRIO_SRC"
     ooe.sh git clone $CRIO_REPO $CRIO_SRC
 
-    # Install CRI-O
-    cd crio
+    echo "Installing helper script for CNI plugin test"
+    cd "$CRIO_SRC"
+    mkdir -p /opt/cni/bin/
+    # Search path for helper is difficult to control
+    ooe.sh install -D -m 0755 test/cni_plugin_helper.bash /usr/libexec/cni/
+    # Helper hard-codes cni binary path :(
+    ooe.sh ln -fv /usr/libexec/cni/* /opt/cni/bin/
+
+    echo "Installing registry configuration"
+    mkdir -p /etc/containers/registries.d/
+    ooe.sh install -D -m 0644 test/redhat_sigstore.yaml \
+        /etc/containers/registries.d/registry.access.redhat.com.yaml
+
+    echo "Building/installing CRI-O"
     ooe.sh make PREFIX=/usr
-    ooe.sh sudo make install PREFIX=/usr
 }
 
 install_testing_deps() {
@@ -226,27 +200,14 @@ install_testing_deps() {
         urfave/cli \
         containers/image/storage
     do
-        go get -d "github.com/$toolpath"
+        ooe.sh go get -d "github.com/$toolpath"
     done
 
-    echo "Installing latest upstream version of BATS"
-    ooe.sh git clone https://github.com/bats-core/bats-core.git /tmp/bats
-    cd /tmp/bats
-    ooe.sh ./install.sh /usr
-    rm -rf /tmp/bats
-
-    echo "Installing helper script for CNI plugin test"
-    cd "$CRIO_SRC"
-    sudo mkdir -p /opt/cni/bin/
-    # Search path for helper is difficult to control
-    ooe.sh sudo install -D -m 0755 test/cni_plugin_helper.bash /usr/libexec/cni/
-    # Helper hard-codes cni binary path :(
-    ooe.sh sudo ln -fv /usr/libexec/cni/* /opt/cni/bin/
-
-    echo "Installing registry configuration"
-    sudo mkdir -p /etc/containers/registries.d/
-    ooe.sh sudo install -D -m 0644 test/redhat_sigstore.yaml \
-        /etc/containers/registries.d/registry.access.redhat.com.yaml
+    echo "Installing Ginkgo and Gomega"
+    if [[ ! -x "$GOBIN/ginkgo" ]]; then \
+        ooe.sh go build -i -o ${GOPATH}/bin/ginkgo github.com/onsi/ginkgo
+        ooe.sh go build -i -o ${GOPATH}/bin/ginkgo github.com/onsi/gomega
+    fi
 }
 
 # Needed for e2e tests
@@ -261,14 +222,8 @@ build_and_replace_conmon() {
         SRC $SRC
     "
 
-    NEWNAME=.original_packaged_conmon
     echo "Renaming conmon binaries from RPMs"
-    find /usr -type f -name conmon |
-    while read CONMON_FILEPATH
-    do
-        NEWPATH="$(dirname $CONMON_FILEPATH)/$NEWNAME"
-        [[ -r "$NEWPATH" ]] || sudo mv -v "$CONMON_FILEPATH" "$NEWPATH"
-    done
+	rename_all_found_binaries "conmon"
 
     echo "Building conmon"
     cd $SRC
@@ -279,4 +234,35 @@ build_and_replace_conmon() {
     # Use same version for podman in case ever needed
     ooe.sh sudo ln -fv /usr/libexec/crio/conmon /usr/libexec/podman/conmon
     ooe.sh sudo restorecon -R /usr/bin
+}
+
+build_and_replace_bats() {
+	req_env_var "
+		SRC $SRC
+	"
+	rename_all_found_binaries "bats"
+
+    git clone https://github.com/bats-core/bats-core
+    pushd bats-core
+	# must be at least v1.2.0 to have --jobs
+    git checkout v1.2.0
+    sudo ./install.sh /usr/local
+    popd
+    rm -rf bats-core
+    mkdir -p ~/.parallel
+    touch ~/.parallel/will-cite
+}
+
+rename_all_found_binaries() {
+	req_env_var "
+		1 $1
+	"
+	filename=$1
+    NEWNAME=".original_packaged_${filename}"
+    find /usr -type f -name ${filename} | 
+    while read FILEPATH
+    do
+        NEWPATH="$(dirname $FILEPATH)/$NEWNAME"
+        [[ -r "$NEWPATH" ]] || sudo mv -v "$FILEPATH" "$NEWPATH"
+    done
 }

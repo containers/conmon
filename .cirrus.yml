@@ -5,102 +5,140 @@ env:
     ####
     #### Global variables used for all tasks
     ####
-    # File to update in home-dir with task-specific env. var values
-    ENVLIB: ".bash_profile"
-    GOPATH: "/var/tmp/go"
-    PATH: "${PATH}:${GOPATH}"
+    # Name of the ultimate destination branch for this CI run, PR or post-merge.
+    DEST_BRANCH: "master"
+
+    # CRI-O source required for integration-testing
     CRIO_REPO: "https://github.com/cri-o/cri-o.git"
     CRIO_SLUG: "github.com/cri-o/cri-o"
     CONMON_SLUG: "github.com/containers/conmon"
 
-    # Overrides default location (/tmp/cirrus) for repo clone (will become $SRC)
-    CIRRUS_WORKING_DIR: "${GOPATH}/src/${CONMON_SLUG}"
-    # Required so $ENVLIB gets loaded and /bin/sh is not used
+    # Base path for all things go
+    GOPATH: "/var/tmp/go"
+
+    # Overrides default location (/tmp/cirrus) for repo clone
+    CIRRUS_WORKING_DIR: "$GOPATH/src/$CONMON_SLUG"
+    GOSRC: "$CIRRUS_WORKING_DIR"
+    GO111MODULE: on
+
     CIRRUS_SHELL: "/bin/bash"
-    # Save a little typing (path relative to $CIRRUS_WORKING_DIR)
+    # Save a little typing for commands in this file
     SCRIPT_BASE: "./contrib/cirrus"
-    PACKER_BASE: "./contrib/cirrus/packer"
-    # Spoof self as travis, as cirrus has the same test issues as travis does
+    # Spoof travis, some legacy scripts check for this value instead of $CI
     TRAVIS: "true"
 
     ####
-    #### Image names to test with
-    ###
-    FEDORA_CACHE_IMAGE_NAME: 'fedora-29-conmon-75ea13be'
-    FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:29'
-    PRIOR_FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:28'
+    #### Cache-image names to test with
+    ####
+    # GCE project where images live
+    IMAGE_PROJECT: "libpod-218412"
+    # See https://github.com/containers/libpod/blob/master/contrib/cirrus/README.md#test_build_cache_images_task-task
+    _BUILT_IMAGE_SUFFIX: "libpod-6508632441356288"
+    FEDORA_CACHE_IMAGE_NAME: "fedora-32-${_BUILT_IMAGE_SUFFIX}"
+    PRIOR_FEDORA_CACHE_IMAGE_NAME: "fedora-31-${_BUILT_IMAGE_SUFFIX}"
+    UBUNTU_CACHE_IMAGE_NAME: "ubuntu-20-${_BUILT_IMAGE_SUFFIX}"
+    PRIOR_UBUNTU_CACHE_IMAGE_NAME: "ubuntu-19-${_BUILT_IMAGE_SUFFIX}"
+    FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:32'
+    PRIOR_FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:31'
 
-    ####
-    #### Variables for composing new cache-images (used in PR testing) from
-    #### base-images (pre-existing in GCE)
-    ####
-    # CSV of cache-image names to build (see $PACKER_BASE/libpod_images.json)
-    PACKER_BUILDS: "fedora-29"
-    # Version of packer to use
-    PACKER_VER: "1.3.5"
-    # Manually produced base-image names (see $SCRIPT_BASE/README.md)
-    FEDORA_BASE_IMAGE: "fedora-cloud-base-29-1-2-1547237869"
-    # Special image w/ nested-libvirt + tools for creating new cache and base images
-    IMAGE_BUILDER_CACHE_IMAGE_NAME: "image-builder-image-1547237869"
+# Default timeout for each task (hard-max is 2-hours)
+timeout_in: 30m
 
-    ####
-    #### Credentials and other secret-sauces, decrypted at runtime when authorized.
-    ####
-    # Needed to build GCE images, within a GCE VM
-    SERVICE_ACCOUNT: ENCRYPTED[0aad0b5961402c8b8e4abd48fc4d4ac762f608f32e9169381b911d19699990df1a1441897ffa94def46ff73a19ba7577]
-    # User ID for cirrus to ssh into VMs
-    GCE_SSH_USERNAME: ENCRYPTED[be60deec03db4cc5ef121397e465c6cd4f043f3c31787b2a46661e09909f2675e339e051dd89d13775d9473504432ad0]
-    # Name where this repositories cloud resources are located
-    GCP_PROJECT_ID: ENCRYPTED[bcc747708a4e2e2e493e4c479efd9cb7b38caf39c7120d849dd859250303b64cbb4d016779e128b6e2e5c5f732d54726]
-
-# Only github users with write-access can define or use encrypted variables
-# This credential represents a service account with access to manage both VMs
-# and storage.
 gcp_credentials: ENCRYPTED[13e51806369f650e6ccc326338deeb3c24052fc0a7be29beef2b96da551aed3200abbb6c6406a936bb4388fb2758405c]
 
 # Default compute settings unless overridden within tasks (below)
-gce_instance: {"image_project": "conmon-222014", "zone": "us-central1-f", "cpu": 4, "memory": "16Gb", "disk": 200, "image_name": "no-image-specified-in-task"}
+gce_instance:
+    image_project: "${IMAGE_PROJECT}"
+    zone: "us-central1-f"
+    cpu: 4
+    memory: "16Gb"
+    disk: 200  # MANDATORY 200GB for obscure less-documented performance reasons
+    image_name: "${FEDORA_CACHE_IMAGE_NAME}"
 
-# Default timeout for each task
-timeout_in: '120m'
 
-# Every *_task runs in parallel in separate VMs. The name prefix only for reference
-# in WebUI, and will be followed by matrix details.  This task runs the integration
-# testing for every platform
-cri-o_integration_task:
+# Update metadata on VM images referenced by this repository state
+# N/B: This is a _CRITICAL_ task, VM Image timestamps indicate which are
+# candidates for inactivity-pruning.  It is assumed to run execute periodically.
+meta_task:
 
-    depends_on:
-        - 'config'
-        - 'fmt'
+    # see bors.toml
+    skip: $CIRRUS_BRANCH =~ ".*\.tmp"
 
-    gce_instance:
-        # Generate multiple parallel tasks, covering all possible
-        # 'matrix' combinations.
-        matrix:
-            # Images are generated separately, from build_images_task (below)
-            image_name: "${FEDORA_CACHE_IMAGE_NAME}"
+    container:
+        image: "quay.io/libpod/imgts:latest"  # from libpod repo.
+        cpu: 1
+        memory: 1
 
     env:
-        matrix:
-            TEST_USERNS: 0
-            TEST_USERNS: 1
+        # Space-separated list of images used by this repository state
+        IMGNAMES: |-
+            ${FEDORA_CACHE_IMAGE_NAME}
+            ${PRIOR_FEDORA_CACHE_IMAGE_NAME}
+            ${UBUNTU_CACHE_IMAGE_NAME}
+            ${PRIOR_UBUNTU_CACHE_IMAGE_NAME}
+        BUILDID: "${CIRRUS_BUILD_ID}"
+        REPOREF: "${CIRRUS_CHANGE_IN_REPO}"
+        GCPJSON: ENCRYPTED[08de2c74178470b1bc85a107e9962f06dbd11d33c7adf024d3e48ae4399ca5383f9d3ad0e2fd65c3ce12750dd6ef8803]
+        GCPNAME: ENCRYPTED[561ce33a9357e5b8e3fb54739c3af31730c0c3b736792f16a67026a8544379d83ff3c27d6fea1c7797a6ae49b6e58115]
+        GCPPROJECT: ENCRYPTED[1992c55f028f9a0d03f01f84d173425a222ad52bcecdc97d29bc99bd36152fadadd2bad7f79498307b2ce85409fb4bc8]
+        CIRRUS_CLONE_DEPTH: 1  # source not used
 
-    setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
-    integration_test_script: '$SCRIPT_BASE/cri-o_test.sh'
+    # Source not used
+    clone_script: mkdir -p '${CIRRUS_WORKING_DIR}'
 
-# this task runs the conmon integration tests
-integration_task:
+    script: '/usr/local/bin/entrypoint.sh'
 
+
+# Verify calls to bin/config were saved
+config_task:
+
+    # Runs within Cirrus's "community cluster"
+    container:
+        image: "${FEDORA_CONTAINER_FQIN}"
+        cpu: 4
+        memory: 12
+
+    script:
+        - $SCRIPT_BASE/config.sh
+        - ./hack/tree_status.sh
+
+
+# Verify code was fmt'ed properly
+fmt_task:
+
+    # Runs within Cirrus's "community cluster"
+    container:
+        image: "${FEDORA_CONTAINER_FQIN}"
+        cpu: 4
+        memory: 12
+
+    script:
+        - $SCRIPT_BASE/fmt.sh
+        - ./hack/tree_status.sh
+
+
+# Verify vendored code is proper
+vendor_task:
+
+    # Runs within Cirrus's "community cluster"
+    container:
+        image: "${FEDORA_CONTAINER_FQIN}"
+        cpu: 4
+        memory: 12
+
+    script:
+        - $SCRIPT_BASE/vendor.sh
+        - ./hack/tree_status.sh
+
+
+# Build the static binary
+static_binary_task:
     depends_on:
         - 'config'
         - 'fmt'
 
-    gce_instance:
-        matrix:
-            # Images are generated separately, from build_images_task (below)
-            image_name: "${FEDORA_CACHE_IMAGE_NAME}"
-
-    integration_test_script: '$SCRIPT_BASE/integration_test.sh'
+    script:
+        - $SCRIPT_BASE/static_binary.sh
 
 
 # Verify conmon package can be built and installed on Fedora
@@ -115,125 +153,59 @@ fedora_packaging_task:
         memory: 12
 
     script:
-        - dnf install -y make glib2-devel git gcc rpm-build
-        - cd $CIRRUS_WORKING_DIR
-        - make
-        - make -f .rpmbuild/Makefile
-        - rpmbuild --rebuild conmon-*.src.rpm
-        - dnf -y install ~/rpmbuild/RPMS/x86_64/conmon*.x86_64.rpm
-        - ls -l /usr/bin/conmon
+        - $SCRIPT_BASE/fedora_packaging.sh
 
     timeout_in: '20m'
 
-# Verify calls to bin/config were saved
-config_task:
-    # Runs within Cirrus's "community cluster"
-    container:
-        matrix:
-               # fedora:28 doesn't have go mod by default
-               # and we should only need one check to make sure
-               # config changes were synced
-            image: "${FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
 
-    script:
-        - dnf install -y make glib2-devel git gcc golang
-        - cd $CIRRUS_WORKING_DIR
-        - GO111MODULE=on go mod init github.com/containers/conmon
-        - make config
-        - ./hack/tree_status.sh
+# this task runs the conmon integration tests
+integration_task:
 
-# Verify code was fmt'ed properly
-fmt_task:
-    # Runs within Cirrus's "community cluster"
-    container:
-        matrix:
-               # fedora:28 doesn't have go mod by default
-               # and we should only need one check to make sure
-               # config changes were synced
-            image: "${FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
-
-    script:
-        - dnf install -y make glib2-devel git gcc rpm-build clang golang
-        - cd $CIRRUS_WORKING_DIR
-        - make fmt
-        - ./hack/tree_status.sh
-
-# Test building of new cache-images for future PR testing, in this PR.
-# Output images will be stored only for a very short time, then automatically deleted.
-test_cache_images_task:
-
-    only_if: >-
-        $CIRRUS_BRANCH != 'master' &&
-        $CIRRUS_CHANGE_MESSAGE =~ '.*\*\*\*\s*CIRRUS:\s*TEST\s*IMAGES\s*\*\*\*.*'
-
-    # VMs created by packer are not cleaned up by cirrus, must allow task to complete
-    auto_cancellation: $CI != "true"
-
-    gce_instance:
-        image_name: "${IMAGE_BUILDER_CACHE_IMAGE_NAME}"
-        cpu: 4
-        memory: "4Gb"
-        disk: 200
-        # Additional permissions for building GCE images, within a GCE VM
-        scopes:
-            - 'compute'
-            - 'devstorage.full_control'
-
-    env:
-        IMAGE_BUILD: 1
-
-    setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
-    cache_images_script: '$SCRIPT_BASE/build_vm_images.sh'
-
-
-# Build new cache-images for future PR testing, but only after a PR merge.
-# The cache-images save install/setup time needed test every PR.  The 'active'
-# images are selected manually by updating the 'image_name' values above.
-cache_images_task:
-
-    # Only produce new cache-images after a PR merge, and if a magic string
-    # is present in the most recent commit-message.
-    only_if: >-
-        $CIRRUS_BRANCH == 'master' &&
-        $CIRRUS_CHANGE_MESSAGE =~ '.*\*\*\*\s*CIRRUS:\s*REBUILD\s*IMAGES\s*\*\*\*.*'
-
-    # Require tests to pass first.
     depends_on:
-        - "integration"
-
-    # VMs created by packer are not cleaned up by cirrus
-    auto_cancellation: $CI != "true"
+        - 'static_binary'
+        - 'vendor'
+        - 'config'
+        - 'fmt'
 
     gce_instance:
-        image_name: "${IMAGE_BUILDER_CACHE_IMAGE_NAME}"
-        cpu: 4
-        memory: "4Gb"
-        disk: 200
-        # Additional permissions for building GCE images, within a GCE VM
-        scopes:
-            - 'compute'
-            - 'devstorage.full_control'
-
-    env:
-        IMAGE_BUILD: 1
+        matrix:
+            # Images are generated separately, from build_images_task (below)
+            image_name: "${FEDORA_CACHE_IMAGE_NAME}"
 
     setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
-    cache_images_script: '$SCRIPT_BASE/build_vm_images.sh'
+    integration_test_script: '$SCRIPT_BASE/integration_test.sh'
 
-# Build the static binary
-static_binary_task:
+
+cri-o_integration_task:
+
+    depends_on:
+        - 'static_binary'
+        - 'vendor'
+        - 'config'
+        - 'fmt'
+
+    env:
+        matrix:
+            TEST_USERNS: 0
+            TEST_USERNS: 1
+
+    setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
+    integration_test_script: '$SCRIPT_BASE/cri-o_test.sh'
+
+
+# Overall success/failure represented by quantity AND status of dependent task
+# i.e. All required dependent tasks _MUST_ be listed here
+success_task:
+
     depends_on:
         - 'config'
         - 'fmt'
-    gce_instance:
-        image_name: "${FEDORA_CACHE_IMAGE_NAME}"
-        cpu: 8
-        memory: 12
-        disk: 200
+        - 'static_binary'
+        - 'vendor'
+        - 'fedora_packaging'
+        - 'integration'
+        - 'cri-o_integration'
+
     script: |
         set -ex
         setenforce 0
@@ -243,5 +215,6 @@ static_binary_task:
         mkdir -p /nix
         podman run --rm --privileged -ti -v /:/mnt nixos/nix cp -rfT /nix /mnt/nix
         podman run --rm --privileged -ti -v /nix:/nix -v ${PWD}:${PWD} -w ${PWD} nixos/nix nix --print-build-logs --option cores 8 --option max-jobs 8 build --file nix/
+
     binaries_artifacts:
         path: "result/bin/conmon"
