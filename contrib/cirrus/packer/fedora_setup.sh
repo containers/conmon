@@ -22,7 +22,7 @@ install_ooe
 echo "Updating packages"
 ooe.sh sudo dnf update -y
 
-ooe.sh sudo dnf -y module install cri-o:1.13
+ooe.sh sudo dnf -y module install cri-o:1.17
 
 echo "Installing dependencies"
 
@@ -76,6 +76,7 @@ ooe.sh sudo dnf -y install \
     openssl \
     openssl-devel \
     ostree-devel \
+	parallel \
     pkgconfig \
     podman \
     policycoreutils \
