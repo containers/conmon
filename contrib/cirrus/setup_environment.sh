@@ -11,6 +11,7 @@ req_env_var "
     CIRRUS_REPO_NAME $CIRRUS_REPO_NAME
     CIRRUS_CHANGE_IN_REPO $CIRRUS_CHANGE_IN_REPO
     CIRRUS_WORKING_DIR $CIRRUS_WORKING_DIR
+    PACKAGE_DOWNLOAD_DIR $PACKAGE_DOWNLOAD_DIR
 "
 
 [[ "$SHELL" =~ "bash" ]] || chsh -s /bin/bash
@@ -54,17 +55,24 @@ then
 
     show_env_vars
 
-    # Nothing further required on image-builder VM
-    if ((IMAGE_BUILD))
-    then
-        exit 0
-    fi
-
     # Owner/mode may have changed
     setup_gopath
 
-    case "$OS_REL_VER" in
-        fedora-29)
+    install_crio_repo
+
+    case "$OS_RELEASE_ID" in
+        fedora)
+            # Fedora VM images are built with unused storage.  For now just soak it all up.
+            # Ref: https://github.com/containers/libpod/blob/d5358e676486bf894eadffd0b55c7e5d6a35867b/contrib/cirrus/packer/cloud-init/fedora/cloud.cfg.d/50_custom_disk_setup.cfg
+            /bin/growpart /dev/sda 1
+            resize2fs /dev/sda1
+
+            # These were downloaded at VM image build time (see containers/libpod repo)
+            echo "Installing Cri-o, Kubernetes, and dependencies in $DOWNLOAD_PACKAGES"
+            # Using dnf would try to contact repositories for new versions.  Only ever
+            # use the pre-downloaded versions to provide predictabile/reliable behaviors.
+            ooe.sh rpm -ivh $PACKAGE_DOWNLOAD_DIR/*.rpm
+
             install_testing_deps
             build_and_replace_conmon
 
@@ -76,9 +84,9 @@ then
             ooe.sh iptables -F
             ooe.sh iptables -t nat -I POSTROUTING -s 127.0.0.1 ! -d 127.0.0.1 -j MASQUERADE
             echo "Setting read_only flag to false"
-            sudo sed -i 's/read_only = true/read_only = false/g' /etc/crio/crio.conf
+            sed -i 's/read_only = true/read_only = false/g' /etc/crio/crio.conf
             echo "Removing nodev flag"
-            sudo sed -i 's/nodev//g' /etc/containers/storage.conf
+            sed -i 's/nodev//g' /etc/containers/storage.conf
             iptables -L -n -v
             ;;
         *) bad_os_id_ver ;;

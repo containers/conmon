@@ -17,6 +17,8 @@ CIRRUS_REPO_NAME=${CIRRUS_REPO_NAME-$(dirname $0)}
 CIRRUS_BUILD_ID=${CIRRUS_BUILD_ID:-DEADBEEF}  # a human
 CIRRUS_BASE_SHA=${CIRRUS_BASE_SHA:-HEAD}
 CIRRUS_CHANGE_IN_REPO=${CIRRUS_CHANGE_IN_REPO:-FETCH_HEAD}
+# Downloaded, but not installed packages.
+PACKAGE_DOWNLOAD_DIR=/var/cache/download
 
 if ! [[ "$PATH" =~ "/usr/local/bin" ]]
 then
@@ -100,22 +102,12 @@ os_release_ver() {
 }
 
 bad_os_id_ver() {
-    echo "Unknown/Unsupported distro. $OS_RELEASE_ID and/or version $OS_RELEASE_VER for $ARGS"
+    echo "Unknown/Unsupported distro. $OS_RELEASE_ID and/or version $OS_RELEASE_VER $@"
     exit 42
 }
 
 stub() {
     echo "STUB: Pretending to do $1"
-}
-
-# Helper/wrapper script to only show stderr/stdout on non-zero exit
-install_ooe() {
-    req_env_var "
-        SRC $SRC
-        SCRIPT_BASE $SCRIPT_BASE
-    "
-    echo "Installing script to mask stdout/stderr unless non-zero exit."
-    sudo install -D -m 755 "$SRC/$SCRIPT_BASE/ooe.sh" /usr/local/bin/ooe.sh
 }
 
 # Grab a newer version of git from software collections
@@ -204,9 +196,8 @@ install_crio_repo() {
     ooe.sh git clone $CRIO_REPO $CRIO_SRC
 
     # Install CRI-O
-    cd crio
+    cd $CRIO_SRC
     ooe.sh make PREFIX=/usr
-    ooe.sh sudo make install PREFIX=/usr
 }
 
 install_testing_deps() {
@@ -228,12 +219,6 @@ install_testing_deps() {
     do
         go get -d "github.com/$toolpath"
     done
-
-    echo "Installing latest upstream version of BATS"
-    ooe.sh git clone https://github.com/bats-core/bats-core.git /tmp/bats
-    cd /tmp/bats
-    ooe.sh ./install.sh /usr
-    rm -rf /tmp/bats
 
     echo "Installing helper script for CNI plugin test"
     cd "$CRIO_SRC"
