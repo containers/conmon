@@ -204,6 +204,7 @@ install_crio_repo() {
 
     # Install CRI-O
     cd crio
+	ooe.sh git checkout master
     ooe.sh make PREFIX=/usr
     ooe.sh sudo make install PREFIX=/usr
 }

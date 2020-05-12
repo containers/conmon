@@ -22,7 +22,7 @@ install_ooe
 echo "Updating packages"
 ooe.sh sudo dnf update -y
 
-ooe.sh sudo dnf -y module install cri-o:1.17
+ooe.sh sudo dnf -y module install cri-o:1.18
 
 echo "Installing dependencies"
 
@@ -32,7 +32,6 @@ ooe.sh sudo dnf -y install \
     buildah \
     container-selinux \
     containernetworking-plugins \
-    cri-o \
     cri-tools \
     curl \
     device-mapper-devel \
