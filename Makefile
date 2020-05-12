@@ -65,7 +65,7 @@ static:
 	$(MAKE) git-vars bin/conmon PKG_CONFIG='$(PKG_CONFIG) --static' CFLAGS='-static' LDFLAGS='$(LDFLAGS) -s -w -static' LIBS='$(LIBS)'
 
 bin/conmon: $(OBJS) | bin
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $<
