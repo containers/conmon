@@ -30,4 +30,6 @@ export CRIO_CNI_PLUGIN=/usr/libexec/cni
 
 echo "Executing cri-o integration tests (typical 10 - 20 min)"
 cd "$CRIO_SRC"
+# 
+echo "Testing against cri-o commit: $(git rev-parse HEAD)"
 timeout --foreground --kill-after=5m 60m ./test/test_runner.sh

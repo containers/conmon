@@ -164,7 +164,6 @@ rh_finalize(){
 
 setup_gopath() {
     req_env_var "
-        CRIO_REPO $CRIO_REPO
         CRIO_SLUG $CRIO_SLUG
         CONMON_SLUG $CONMON_SLUG
     "
@@ -220,7 +219,6 @@ install_testing_deps() {
         tools/godep \
         onsi/ginkgo \
         onsi/gomega \
-        cloudflare/cfssl/cmd/... \
         jteeuwen/go-bindata/go-bindata \
         cpuguy83/go-md2man \
         urfave/cli \
@@ -232,6 +230,7 @@ install_testing_deps() {
     echo "Installing latest upstream version of BATS"
     ooe.sh git clone https://github.com/bats-core/bats-core.git /tmp/bats
     cd /tmp/bats
+	echo "Testing against bats commit: $(git rev-parse HEAD)"
     ooe.sh ./install.sh /usr
     rm -rf /tmp/bats
 
