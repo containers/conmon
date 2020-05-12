@@ -5,6 +5,7 @@
 #include "globals.h"
 #include "config.h"
 #include "ctr_logging.h"
+#include "conn_sock.h"
 #include "cmsg.h"
 #include "cli.h" // opt_bundle_path
 
@@ -58,6 +59,10 @@ exit:
 	 * stdout. stderr is ignored. */
 	masterfd_stdin = console.fd;
 	masterfd_stdout = console.fd;
+
+	/* Now that we have a fd to the tty, make sure we handle any pending data
+	 * that was already buffered. */
+	schedule_master_stdin_write();
 
 	/* now that we've set masterfd_stdout, we can register the ctrl_winsz_cb
 	 * if we didn't set it here, we'd risk attempting to run ioctl on

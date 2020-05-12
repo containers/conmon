@@ -180,8 +180,7 @@ static gboolean read_conn_sock(struct conn_sock_s *sock)
 
 	/* Not everything was written to stdin, let's wait for the fd to be ready.  */
 	if (sock->remaining)
-		g_unix_fd_add(masterfd_stdin, G_IO_OUT, masterfd_write_cb, NULL);
-
+		schedule_master_stdin_write();
 	return G_SOURCE_CONTINUE;
 }
 
@@ -240,7 +239,7 @@ static void write_to_masterfd_stdin(gpointer data, gpointer user_data)
 
 static void sock_try_write_to_masterfd_stdin(struct conn_sock_s *sock)
 {
-	if (!sock->remaining)
+	if (!sock->remaining || masterfd_stdin < 0)
 		return;
 
 	ssize_t w = write(masterfd_stdin, sock->buf + sock->off, sock->remaining);
@@ -263,4 +262,9 @@ static gboolean masterfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOConditi
 	if (has_data)
 		return G_SOURCE_CONTINUE;
 	return G_SOURCE_REMOVE;
+}
+
+void schedule_master_stdin_write()
+{
+	g_unix_fd_add(masterfd_stdin, G_IO_OUT, masterfd_write_cb, NULL);
 }
