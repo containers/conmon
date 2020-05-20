@@ -71,7 +71,11 @@ then
             echo "Installing Cri-o, Kubernetes, and dependencies in $DOWNLOAD_PACKAGES"
             # Using dnf would try to contact repositories for new versions.  Only ever
             # use the pre-downloaded versions to provide predictabile/reliable behaviors.
-            ooe.sh rpm -ivh $PACKAGE_DOWNLOAD_DIR/*.rpm
+
+			# we force here because the cri-o rpm is overwriting a conmon that came with the vm.
+			# we will eventually overwrite the one that comes with the CRI-O pacakge in the call
+			# to build_and_replace_conmon below
+            ooe.sh rpm --force -ivh $PACKAGE_DOWNLOAD_DIR/*.rpm
 
             install_testing_deps
             build_and_replace_conmon
