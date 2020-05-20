@@ -26,6 +26,7 @@ do
     fi
 done
 
+go version
 show_env_vars
 
 install_crio_repo
