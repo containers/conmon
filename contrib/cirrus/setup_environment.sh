@@ -80,8 +80,12 @@ then
             install_testing_deps
             build_and_replace_conmon
 
+			echo "printing go version"
+			go version
+
             cd "$CRIO_SRC"  # cri-o source
             echo "Building binaries required for testing"
+			ooe.sh make vendor
             ooe.sh make test-binaries
 
             echo "Configuring firewall/networking for integration tests"
