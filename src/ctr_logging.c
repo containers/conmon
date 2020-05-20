@@ -226,7 +226,7 @@ int write_journald(int pipe, char *buf, ssize_t buflen)
 			return -1;
 
 		/* only print the name if we have a name to print */
-		if (name && writev_buffer_append_segment(dev_null, &bufv, container_name, name_len + CID_FULL_EQ_LEN) < 0)
+		if (name && writev_buffer_append_segment(dev_null, &bufv, container_name, name_len + NAME_EQ_LEN) < 0)
 			return -1;
 
 		/* per docker journald logging format, CONTAINER_PARTIAL_MESSAGE is set to true if it's partial, but otherwise not set. */
