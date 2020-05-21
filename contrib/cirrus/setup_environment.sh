@@ -79,9 +79,7 @@ then
 
             install_testing_deps
             build_and_replace_conmon
-
-			echo "printing go version"
-			go version
+            build_and_replace_bats
 
             cd "$CRIO_SRC"  # cri-o source
             echo "Building binaries required for testing"

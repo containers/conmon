@@ -246,14 +246,8 @@ build_and_replace_conmon() {
         SRC $SRC
     "
 
-    NEWNAME=.original_packaged_conmon
     echo "Renaming conmon binaries from RPMs"
-    find /usr -type f -name conmon |
-    while read CONMON_FILEPATH
-    do
-        NEWPATH="$(dirname $CONMON_FILEPATH)/$NEWNAME"
-        [[ -r "$NEWPATH" ]] || sudo mv -v "$CONMON_FILEPATH" "$NEWPATH"
-    done
+	rename_all_found_binaries "conmon"
 
     echo "Building conmon"
     cd $SRC
@@ -264,4 +258,35 @@ build_and_replace_conmon() {
     # Use same version for podman in case ever needed
     ooe.sh sudo ln -fv /usr/libexec/crio/conmon /usr/libexec/podman/conmon
     ooe.sh sudo restorecon -R /usr/bin
+}
+
+build_and_replace_bats() {
+	req_env_var "
+		SRC $SRC
+	"
+	rename_all_found_binaries "bats"
+
+    git clone https://github.com/bats-core/bats-core
+    pushd bats-core
+	# must be at least v1.2.0 to have --jobs
+    git checkout v1.2.0
+    sudo ./install.sh /usr/local
+    popd
+    rm -rf bats-core
+    mkdir -p ~/.parallel
+    touch ~/.parallel/will-cite
+}
+
+rename_all_found_binaries() {
+	req_env_var "
+		1 $1
+	"
+	filename=$1
+    NEWNAME=".original_packaged_${filename}"
+    find /usr -type f -name ${filename} | 
+    while read FILEPATH
+    do
+        NEWPATH="$(dirname $FILEPATH)/$NEWNAME"
+        [[ -r "$NEWPATH" ]] || sudo mv -v "$FILEPATH" "$NEWPATH"
+    done
 }
