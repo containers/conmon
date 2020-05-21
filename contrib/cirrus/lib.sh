@@ -222,7 +222,7 @@ build_and_replace_conmon() {
     "
 
     echo "Renaming conmon binaries from RPMs"
-	rename_all_found_binaries "conmon"
+    rename_all_found_binaries "conmon"
 
     echo "Building conmon"
     cd $SRC
@@ -236,14 +236,14 @@ build_and_replace_conmon() {
 }
 
 build_and_replace_bats() {
-	req_env_var "
-		SRC $SRC
-	"
-	rename_all_found_binaries "bats"
+    req_env_var "
+        SRC $SRC
+    "
+    rename_all_found_binaries "bats"
 
     git clone https://github.com/bats-core/bats-core
     pushd bats-core
-	# must be at least v1.2.0 to have --jobs
+    # must be at least v1.2.0 to have --jobs
     git checkout v1.2.0
     sudo ./install.sh /usr/local
     popd
@@ -253,10 +253,10 @@ build_and_replace_bats() {
 }
 
 rename_all_found_binaries() {
-	req_env_var "
-		1 $1
-	"
-	filename=$1
+    req_env_var "
+        1 $1
+    "
+    filename=$1
     NEWNAME=".original_packaged_${filename}"
     find /usr -type f -name ${filename} | 
     while read FILEPATH
