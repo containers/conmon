@@ -12,4 +12,6 @@ export CONMON_BINARY=/usr/libexec/crio/conmon
 
 echo "Executing cri-o integration tests (typical 10 - 20 min)"
 cd "$CRIO_SRC"
-timeout --foreground --kill-after=5m 60m sudo ./test/test_runner.sh
+sed -i 's/set -e/set +e/g' test/test_runner.sh
+cat test/test_runner.sh
+sudo ./test/test_runner.sh
