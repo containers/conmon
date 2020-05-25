@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 
 #include "ctr_exit.h"
-#include "cli.h" // opt_exit_command
+#include "cli.h" // opt_exit_command, opt_exit_delay
 #include "utils.h"
 #include "parent_pipe_fd.h"
 #include "globals.h"
@@ -175,6 +175,11 @@ void do_exit_command()
 		for (n_args = 0; opt_exit_args[n_args]; n_args++)
 			args[n_args + 1] = opt_exit_args[n_args];
 	args[n_args + 1] = NULL;
+
+	if (opt_exit_delay) {
+		ndebugf("Sleeping for %d seconds before executing exit command", opt_exit_delay);
+		sleep(opt_exit_delay);
+	}
 
 	execv(opt_exit_command, args);
 

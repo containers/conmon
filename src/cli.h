@@ -35,6 +35,7 @@ extern char *opt_socket_path;
 extern gboolean opt_no_new_keyring;
 extern char *opt_exit_command;
 extern gchar **opt_exit_args;
+extern int opt_exit_delay;
 extern gboolean opt_replace_listen_pid;
 extern char *opt_log_level;
 extern char *opt_log_tag;
