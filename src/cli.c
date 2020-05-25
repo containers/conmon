@@ -42,6 +42,7 @@ char *opt_socket_path = DEFAULT_SOCKET_PATH;
 gboolean opt_no_new_keyring = FALSE;
 char *opt_exit_command = NULL;
 gchar **opt_exit_args = NULL;
+int opt_exit_delay = 0;
 gboolean opt_replace_listen_pid = FALSE;
 char *opt_log_level = NULL;
 char *opt_log_tag = NULL;
@@ -77,6 +78,7 @@ GOptionEntry opt_entries[] = {
 	{"exit-dir", 0, 0, G_OPTION_ARG_STRING, &opt_exit_dir, "Path to the directory where exit files are written", NULL},
 	{"exit-command", 0, 0, G_OPTION_ARG_STRING, &opt_exit_command,
 	 "Path to the program to execute when the container terminates its execution", NULL},
+	{"exit-delay", 0, 0, G_OPTION_ARG_INT, &opt_exit_delay, "Delay before invoking the exit command (in seconds)", NULL},
 	{"exit-command-arg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_exit_args,
 	 "Additional arg to pass to the exit command.  Can be specified multiple times", NULL},
 	{"log-path", 'l', 0, G_OPTION_ARG_STRING_ARRAY, &opt_log_path, "Log file path", NULL},
@@ -149,6 +151,10 @@ void process_cli()
 
 	if (opt_exec && opt_exec_process_spec == NULL) {
 		nexit("Exec process spec path not provided. Use --exec-process-spec");
+	}
+
+	if (opt_exit_delay < 0) {
+		nexit("Delay before invoking exit command must be greater than or equal to 0");
 	}
 
 	// TODO FIXME I removed default_pid_file here. shouldn't opt_container_pid_file be cleaned up?
