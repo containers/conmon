@@ -32,7 +32,8 @@ gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC
 
 	/* Not accepting anything else. */
 	const char *csname = user_data;
-	unlink(csname);
+	if (unlink(csname) < 0)
+		nwarnf("failed to unlink %s", csname);
 	close(fd);
 
 	/* We exit if this fails. */
