@@ -48,6 +48,7 @@ struct local_sock_s {
 };
 
 char *setup_console_socket(void);
+char *setup_seccomp_socket(const char *socket);
 char *setup_attach_socket(void);
 void setup_notify_socket(char *);
 void schedule_main_stdin_write();

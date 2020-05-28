@@ -6,6 +6,7 @@
 #include "config.h"
 #include "cli.h" // opt_stdin
 
+#include <libgen.h>
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -25,6 +26,7 @@ static gboolean local_sock_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondi
 static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
 			      gboolean use_full_attach_path);
 static char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len);
+static char *setup_socket(int *fd, const char *path);
 /*
   Since our socket handling is abstract now, handling is based on sock_type, so we can pass around a structure
   that contains everything we need to handle I/O.  Callbacks used to handle IO, for example, and whether this
@@ -72,38 +74,79 @@ struct remote_sock_s remote_notify_sock = {
 };
 
 /* External */
+
 char *setup_console_socket(void)
 {
-	struct sockaddr_un addr = {0};
-	_cleanup_free_ const char *tmpdir = g_get_tmp_dir();
-	char *csname = g_build_filename(tmpdir, "conmon-term.XXXXXX", NULL);
-	/*
-	 * Generate a temporary name. Is this unsafe? Probably, but we can
-	 * replace it with a rename(2) setup if necessary.
-	 */
+	return setup_socket(&console_socket_fd, NULL);
+}
 
-	int unusedfd = g_mkstemp(csname);
-	if (unusedfd < 0)
-		pexit("Failed to generate random path for console-socket");
-	close(unusedfd);
+char *setup_seccomp_socket(const char *socket)
+{
+	return setup_socket(&seccomp_socket_fd, socket);
+}
+
+static char *setup_socket(int *fd, const char *path)
+{
+	struct sockaddr_un addr = {0};
+	char *csname = NULL;
+	_cleanup_close_ int sfd = -1;
+
+	if (path != NULL) {
+		_cleanup_free_ char *dname_buf = NULL;
+		_cleanup_free_ char *bname_buf = NULL;
+		char *dname = NULL, *bname = NULL;
+
+		csname = strdup(path);
+		dname_buf = strdup(path);
+		bname_buf = strdup(path);
+		if (csname == NULL || dname_buf == NULL || bname_buf == NULL) {
+			pexit("Failed to allocate memory");
+			return NULL;
+		}
+		dname = dirname(dname_buf);
+		if (dname == NULL)
+			pexitf("Cannot get dirname for %s", csname);
+
+		sfd = open(dname, O_CREAT | O_PATH, 0600);
+		if (sfd < 0)
+			pexit("Failed to create file for console-socket");
+
+		bname = basename(bname_buf);
+		if (bname == NULL)
+			pexitf("Cannot get basename for %s", csname);
+
+		snprintf(addr.sun_path, sizeof(addr.sun_path) - 1, "/proc/self/fd/%d/%s", sfd, bname);
+	} else {
+		_cleanup_free_ const char *tmpdir = g_get_tmp_dir();
+
+		csname = g_build_filename(tmpdir, "conmon-term.XXXXXX", NULL);
+		/*
+		 * Generate a temporary name. Is this unsafe? Probably, but we can
+		 * replace it with a rename(2) setup if necessary.
+		 */
+		int unusedfd = g_mkstemp(csname);
+		if (unusedfd < 0)
+			pexit("Failed to generate random path for console-socket");
+		close(unusedfd);
+		/* XXX: This should be handled with a rename(2). */
+		if (unlink(csname) < 0)
+			pexit("Failed to unlink temporary random path");
+
+		strncpy(addr.sun_path, csname, sizeof(addr.sun_path) - 1);
+	}
 
 	addr.sun_family = AF_UNIX;
-	strncpy(addr.sun_path, csname, sizeof(addr.sun_path) - 1);
-
 	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
 
 	/* Bind to the console socket path. */
-	console_socket_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (console_socket_fd < 0)
-		pexit("Failed to create console-socket");
-	if (fchmod(console_socket_fd, 0700))
+	*fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (*fd < 0)
+		pexit("Failed to create socket");
+	if (fchmod(*fd, 0700))
 		pexit("Failed to change console-socket permissions");
-	/* XXX: This should be handled with a rename(2). */
-	if (unlink(csname) < 0)
-		pexit("Failed to unlink temporary random path");
-	if (bind(console_socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+	if (bind(*fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 		pexit("Failed to bind to console-socket");
-	if (listen(console_socket_fd, 128) < 0)
+	if (listen(*fd, 128) < 0)
 		pexit("Failed to listen on console-socket");
 
 	return csname;

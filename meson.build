@@ -34,6 +34,7 @@ add_project_arguments('-Os', '-Wall', '-Werror',
                       language : 'c')
 
 glib = dependency('glib-2.0')
+libdl = cc.find_library('dl')
 
 executable('conmon',
            ['src/conmon.c',
@@ -67,8 +68,10 @@ executable('conmon',
             'src/runtime_args.c',
             'src/runtime_args.h',
             'src/utils.c',
-            'src/utils.h'],
-           dependencies : [glib],
+            'src/utils.h',
+            'src/seccomp_notify.c',
+            'src/seccomp_notify.h'],
+           dependencies : [glib, libdl],
            install : true,
            install_dir : join_paths(get_option('libexecdir'), 'podman'),
 )

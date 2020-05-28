@@ -73,7 +73,7 @@ fedora_packaging_task:
             image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
 
     script:
-        - dnf install -y rpm-build golang
+        - dnf install -y rpm-build golang libseccomp-devel
         - cd $CIRRUS_WORKING_DIR
         - make
         - make -f .rpmbuild/Makefile
