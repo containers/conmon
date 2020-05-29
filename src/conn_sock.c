@@ -192,7 +192,14 @@ static gboolean terminate_conn_sock(struct conn_sock_s *sock)
 			close(masterfd_stdin);
 			masterfd_stdin = -1;
 		} else {
-			ninfo("Not closing input");
+			/*
+			 * In the terminal case, stdin and stdout point to the same fd: the sock.
+			 * If we're told by the caller to leave stdin open, then we'll never close either masterfd_stdin or masterfd_stdout
+			 * the former is desired, but the latter means the caller will sit waiting on a read() on the sock.
+			 * to avoid this, we need to close the stdout side of the sock here
+			 */
+			ninfo("Not closing input, but closing output");
+			conn_sock_shutdown(sock, SHUT_WR);
 		}
 	}
 	return G_SOURCE_REMOVE;
