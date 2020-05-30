@@ -28,21 +28,18 @@ let
     };
   });
 
-  self = with pkgs; {
-    conmon-static = (conmon.overrideAttrs(x: {
-      name = "conmon-static";
-      src = ./..;
-      doCheck = false;
-      buildInputs = [
-        glib
-        glibc
-        glibc.static
-        pcre
-        systemd
-      ];
-      prePatch = ''
-        export LDFLAGS='-static-libgcc -static'
-      '';
-    }));
+  self = with pkgs; stdenv.mkDerivation rec {
+    name = "conmon";
+    src = ./..;
+    doCheck = false;
+    enableParallelBuilding = true;
+    nativeBuildInputs = [ git pkg-config ];
+    buildInputs = [ glib glibc glibc.static pcre systemd ];
+    prePatch = ''
+      export LDFLAGS='-static-libgcc -static -s -w'
+    '';
+    installPhase = ''
+      install -Dm755 bin/conmon $out/bin/conmon
+    '';
   };
 in self
