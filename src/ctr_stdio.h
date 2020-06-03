@@ -2,6 +2,7 @@
 #define CTR_STDIO_H
 
 #include <glib.h> /* GIOCondition and gpointer */
+#include <stdint.h>
 
 gboolean stdio_cb(int fd, GIOCondition condition, gpointer user_data);
 void drain_stdio();
