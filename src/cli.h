@@ -2,6 +2,7 @@
 #define CLI_H
 
 #include <glib.h> /* gboolean and GOptionEntry */
+#include <stdint.h>
 
 extern gboolean opt_version;
 extern gboolean opt_terminal;
