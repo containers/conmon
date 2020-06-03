@@ -1,8 +1,8 @@
 #if !defined(CLI_H)
 #define CLI_H
 
-#include <glib.h> /* gboolean and GOptionEntry */
-#include <stdint.h>
+#include <glib.h>   /* gboolean and GOptionEntry */
+#include <stdint.h> /* int64_t */
 
 extern gboolean opt_version;
 extern gboolean opt_terminal;
