@@ -8,7 +8,7 @@ Conmon is a monitoring program and communication tool between a
 container manager (like [Podman](https://podman.io/) or
 [CRI-O](https://cri-o.io/)) and an OCI runtime (like
 [runc](https://github.com/opencontainers/runc) or
-[crun](https://github.com/giuseppe/crun)) for a single container.
+[crun](https://github.com/containers/crun)) for a single container.
 
 Upon being launched, it double-forks to daemonize and detach from the
 parent that launched it. It then launches the runtime as its child. This
@@ -85,7 +85,7 @@ for most Linux distributions.
 
 Note, to run conmon, you'll also need to have an OCI compliant runtime
 installed, like [runc](https://github.com/opencontainers/runc) or
-[crun](https://github.com/giuseppe/crun).
+[crun](https://github.com/containers/crun).
 
 ## Static build
 
