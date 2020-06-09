@@ -1,0 +1,29 @@
+# This container image is intended for use by Cirrus-CI, see .cirrus.yml for details
+ARG FEDORA_BASE_IMAGE=registry.fedoraproject.org/fedora:latest
+FROM $FEDORA_BASE_IMAGE
+RUN dnf update -y && \
+    dnf install -y \
+        clang \
+        gcc \
+        git \
+        glib2-devel \
+        golang \
+        make \
+        podman \
+        rpm-build \
+    && \
+    dnf clean all
+ENV INSTALL_AUTOMATION_VERSION="1.1.3" \
+    CONMON_SLUG="github.com/containers/conmon" \
+    GOPATH="/var/tmp/go"
+ENV GOSRC="$GOPATH/src/$CONMON_SLUG" \
+    GOBIN="$GOPATH/bin" \
+    GOCACHE="/root/.cache/go-build"
+ADD /contrib/cirrus/lib.sh $GOSRC/contrib/cirrus/
+WORKDIR $GOSRC
+RUN source ./contrib/cirrus/lib.sh && \
+    curl --silent --show-error --location \
+         --url "https://raw.githubusercontent.com/containers/automation/master/bin/install_automation.sh" | \
+         env INSTALL_PREFIX=/usr/share /bin/bash -s - "$INSTALL_AUTOMATION_VERSION" && \
+    source /usr/share/automation/environment && \
+    install_testing_deps

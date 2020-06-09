@@ -38,11 +38,11 @@ env:
     PRIOR_FEDORA_CACHE_IMAGE_NAME: "fedora-31-${_BUILT_IMAGE_SUFFIX}"
     UBUNTU_CACHE_IMAGE_NAME: "ubuntu-20-${_BUILT_IMAGE_SUFFIX}"
     PRIOR_UBUNTU_CACHE_IMAGE_NAME: "ubuntu-19-${_BUILT_IMAGE_SUFFIX}"
-    FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:32'
+    FEDORA_CONTAINER_FQIN: &FEDORA_CONTAINER_FQIN 'registry.fedoraproject.org/fedora:32'
     PRIOR_FEDORA_CONTAINER_FQIN: 'registry.fedoraproject.org/fedora:31'
 
 # Default timeout for each task (hard-max is 2-hours)
-timeout_in: 30m
+timeout_in: 20m
 
 gcp_credentials: ENCRYPTED[13e51806369f650e6ccc326338deeb3c24052fc0a7be29beef2b96da551aed3200abbb6c6406a936bb4388fb2758405c]
 
@@ -92,11 +92,16 @@ meta_task:
 # Verify calls to bin/config were saved
 config_task:
 
-    # Runs within Cirrus's "community cluster"
-    container:
-        image: "${FEDORA_CONTAINER_FQIN}"
+    # Rebuilt as needed, cache setup/package install to speed runtime for subsequent tasks
+    # ref: https://cirrus-ci.org/guide/docker-builder-vm/#dockerfile-as-a-ci-environment
+    container: &fedora_container
         cpu: 4
         memory: 12
+        dockerfile: contrib/cirrus/Containerfile
+        # As of Jun 9, 2020 env. vars. cannot be used in arguments.
+        # Using YAML scalar alias as a workaround
+        docker_arguments:
+            FEDORA_BASE_IMAGE: *FEDORA_CONTAINER_FQIN
 
     script:
         - $SCRIPT_BASE/config.sh
@@ -106,11 +111,8 @@ config_task:
 # Verify code was fmt'ed properly
 fmt_task:
 
-    # Runs within Cirrus's "community cluster"
     container:
-        image: "${FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
+      <<: *fedora_container
 
     script:
         - $SCRIPT_BASE/fmt.sh
@@ -120,11 +122,8 @@ fmt_task:
 # Verify vendored code is proper
 vendor_task:
 
-    # Runs within Cirrus's "community cluster"
     container:
-        image: "${FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
+      <<: *fedora_container
 
     script:
         - $SCRIPT_BASE/vendor.sh
@@ -144,18 +143,11 @@ static_binary_task:
 # Verify conmon package can be built and installed on Fedora
 fedora_packaging_task:
 
-    # Runs within Cirrus's "community cluster"
     container:
-        matrix:
-            image: "${FEDORA_CONTAINER_FQIN}"
-            image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
+      <<: *fedora_container
 
     script:
         - $SCRIPT_BASE/fedora_packaging.sh
-
-    timeout_in: '20m'
 
 
 # this task runs the conmon integration tests
@@ -188,6 +180,8 @@ cri-o_integration_task:
         matrix:
             TEST_USERNS: 0
             TEST_USERNS: 1
+
+    timeout_in: '60m'
 
     setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
     integration_test_script: '$SCRIPT_BASE/cri-o_test.sh'
