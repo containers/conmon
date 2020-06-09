@@ -8,7 +8,8 @@ PKG_CONFIG ?= pkg-config
 HEADERS := $(wildcard src/*.h)
 OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o
 
-
+# Flag needed for 'install' command to ensure correct contexts are set on files/dirs.
+SELINUXOPT ?= $(shell test -x /usr/sbin/selinuxenabled && selinuxenabled && echo -Z)
 
 .PHONY: all git-vars
 all: git-vars bin bin/conmon
