@@ -12,19 +12,26 @@ ${YEL}WARNING: This will not work without local sudo access to run podman,${NOR}
 "
 # TODO: Many/most of these values should come from .cirrus.yml
 ZONE="us-central1-f"
-CPUS="4"
-MEMORY="16Gb"
+CPUS="2"
+MEMORY="4Gb"
 DISK="200"
 PROJECT="conmon-222014"
-SRC="/tmp/conmon"
-SSHUSER="${SSHUSER:-root}"
-# Command shortcuts save some typing
-PGCLOUD="sudo podman run -it --rm -e AS_ID=$UID -e AS_USER=$USER --security-opt label=disable -v /home/$USER:$HOME -v /tmp:/tmp:ro quay.io/cevich/gcloud_centos:latest --configuration=conmon --project=$PROJECT"
-SCP_CMD="$PGCLOUD compute scp"
+GOSRC="/var/tmp/go/src/github.com/containers/conmon"
+GCLOUD_IMAGE=${GCLOUD_IMAGE:-quay.io/cevich/gcloud_centos:latest}
+GCLOUD_SUDO=${GCLOUD_SUDO-sudo}
+SSHUSER="root"
+
+# Shared tmp directory between container and us
+TMPDIR=$(mktemp -d --tmpdir $(basename $0)_tmpdir_XXXXXX)
 
 CONMONROOT=$(realpath "$(dirname $0)/../")
 # else: Assume $PWD is the root of the conmon repository
 [[ "$CONMONROOT" != "/" ]] || CONMONROOT=$PWD
+
+# Command shortcuts save some typing (asumes $CONMONROOT is subdir of $HOME)
+PGCLOUD="$GCLOUD_SUDO podman run -it --rm -e AS_ID=$UID -e AS_USER=$USER --security-opt label=disable -v $TMPDIR:$HOME -v $HOME/.config/gcloud:$HOME/.config/gcloud -v $HOME/.config/gcloud/ssh:$HOME/.ssh -v $CONMONROOT:$CONMONROOT $GCLOUD_IMAGE --configuration=conmon --project=$PROJECT"
+SCP_CMD="$PGCLOUD compute scp"
+
 
 showrun() {
     if [[ "$1" == "--background" ]]
@@ -40,30 +47,31 @@ showrun() {
     fi
 }
 
-TEMPFILE=$(mktemp -p '' $(basename $0)_XXXXX.tar.bz2)
 cleanup() {
+    RET=$?
     set +e
     wait
-    rm -f "$TEMPFILE"
+
+    # set GCLOUD_DEBUG to leave tmpdir behind for postmortem
+    test -z "$GCLOUD_DEBUG" && rm -rf $TMPDIR
+
+    # Not always called from an exit handler, but should always exit when called
+    exit $RET
 }
 trap cleanup EXIT
 
 delvm() {
-    cleanup
     echo -e "\n"
     echo -e "\n${YEL}Offering to Delete $VMNAME ${RED}(Might take a minute or two)${NOR}"
+    echo -e "\n${YEL}Note: It's safe to answer N, then re-run script again later.${NOR}"
     showrun $CLEANUP_CMD  # prompts for Yes/No
+    cleanup
 }
 
-image_hints() {
-    egrep '[[:space:]]+[[:alnum:]].+_CACHE_IMAGE_NAME:[[:space:]+"[[:print:]]+"' \
-        "$CONMONROOT/.cirrus.yml" | cut -d: -f 2 | tr -d '"[:blank:]' | \
-        grep -v 'notready' | grep -v 'image-builder' | sort -u
-}
-
-show_usage(){
+show_usage() {
     echo -e "\n${RED}ERROR: $1${NOR}"
-    echo -e "${YEL}Usage: $(basename $0) [-s | -p] <image_name>${NOR}\n"
+    echo -e "${YEL}Usage: $(basename $0) <image_name>${NOR}"
+    echo ""
     if [[ -r ".cirrus.yml" ]]
     then
         echo -e "${YEL}Some possible image_name values (from .cirrus.yml):${NOR}"
@@ -74,59 +82,87 @@ show_usage(){
 }
 
 get_env_vars() {
-    python -c '
-import yaml
-env=yaml.load(open(".cirrus.yml"))["env"]
-keys=[k for k in env if "ENCRYPTED" not in str(env[k])]
+    # Deal with both YAML and embedded shell-like substitutions in values
+    # if substitution fails, fall back to printing naked env. var as-is.
+    python3 -c '
+import yaml,re
+env=yaml.load(open(".cirrus.yml"), Loader=yaml.SafeLoader)["env"]
+dollar_env_var=re.compile(r"\$(\w+)")
+dollarcurly_env_var=re.compile(r"\$\{(\w+)\}")
+class ReIterKey(dict):
+    def __missing__(self, key):
+        # Cirrus-CI provides some runtime-only env. vars.  Avoid
+        # breaking this hack-script if/when any are present in YAML
+        return "${0}".format(key)
+rep=r"{\1}"  # Convert env vars markup to -> str.format_map(re_iter_key) markup
+out=ReIterKey()
 for k,v in env.items():
     v=str(v)
     if "ENCRYPTED" not in v:
-        print "{0}=\"{1}\"".format(k, v),
+        out[k]=dollar_env_var.sub(rep, dollarcurly_env_var.sub(rep, v))
+for k,v in out.items():
+    print("{0}=\"{1}\"".format(k, v.format_map(out)))
     '
 }
 
+image_hints() {
+    get_env_vars | fgrep '_CACHE_IMAGE_NAME' | awk -F "=" '{print $2}'
+}
+
 parse_args(){
-    if [[ -z "$1" ]]
-    then
-        show_usage "Must specify image name for VM."
-    else  # no -s or -p
-        DEPS="$(get_env_vars)"
-        IMAGE_NAME="$1"
-    fi
+    echo -e "$USAGE_WARNING"
 
     if [[ "$USER" =~ "root" ]]
     then
         show_usage "This script must be run as a regular user."
     fi
 
-    echo -e "$USAGE_WARNING"
+    ENVS="$(get_env_vars | tr [:space:] ' ')"
+    IMAGE_NAME="$1"
+    if [[ -z "$IMAGE_NAME" ]]
+    then
+        show_usage "No image-name specified."
+    fi
 
-    SETUP_CMD="env $DEPS $SRC/contrib/cirrus/setup_environment.sh"
+    SETUP_CMD="env $ENVS $GOSRC/contrib/cirrus/setup_environment.sh"
     VMNAME="${VMNAME:-${USER}-${IMAGE_NAME}}"
-    CREATE_CMD="$PGCLOUD compute instances create --zone=$ZONE --image=${IMAGE_NAME} --custom-cpu=$CPUS --custom-memory=$MEMORY --boot-disk-size=$DISK --labels=in-use-by=$USER $VMNAME"
+    CREATE_CMD="$PGCLOUD compute instances create --zone=$ZONE --image-project=libpod-218412 --image=${IMAGE_NAME} --custom-cpu=$CPUS --custom-memory=$MEMORY --boot-disk-size=$DISK --labels=in-use-by=$USER $VMNAME"
     SSH_CMD="$PGCLOUD compute ssh $SSHUSER@$VMNAME"
     CLEANUP_CMD="$PGCLOUD compute instances delete --zone $ZONE --delete-disks=all $VMNAME"
 }
 
 ##### main
 
-parse_args $@
+[[ "${CONMONROOT%%${CONMONROOT##$HOME}}" == "$HOME" ]] || \
+    show_usage "Repo clone must be sub-dir of $HOME"
 
-cd $CONMONROOT
+cd "$CONMONROOT"
+
+parse_args "$@"
+
+# Ensure mount-points and data directories exist on host as $USER.  Also prevents
+# permission-denied errors during cleanup() b/c `sudo podman` created mount-points
+# owned by root.
+mkdir -p $TMPDIR/${STORAGEROOT##$HOME}
+mkdir -p $TMPDIR/.ssh
+mkdir -p {$HOME,$TMPDIR}/.config/gcloud/ssh
+chmod 700 {$HOME,$TMPDIR}/.config/gcloud/ssh $TMPDIR/.ssh
 
 # Attempt to determine if named 'conmon' gcloud configuration exists
-showrun $PGCLOUD info > $TEMPFILE
-if egrep -q "Account:.*None" "$TEMPFILE"
+showrun $PGCLOUD info > $TMPDIR/gcloud-info
+if egrep -q "Account:.*None" $TMPDIR/gcloud-info
 then
-    echo -e "\n${YEL}WARNING: Can't find gcloud configuration for conmon, running init.${NOR}"
-    echo -e "         ${RED}Please choose "#1: Re-initialize" and "login" if asked.${NOR}"
+    echo -e "\n${YEL}WARNING: Can't find gcloud configuration for 'conmon', running init.${NOR}"
+    echo -e "         ${RED}Please choose '#1: Re-initialize' and 'login' if asked.${NOR}"
+    echo -e "         ${RED}Please set Compute Region and Zone (if asked) to '$ZONE'.${NOR}"
+    echo -e "         ${RED}DO NOT set any password for the generated ssh key.${NOR}"
     showrun $PGCLOUD init --project=$PROJECT --console-only --skip-diagnostics
 
     # Verify it worked (account name == someone@example.com)
-    $PGCLOUD info > $TEMPFILE
-    if egrep -q "Account:.*None" "$TEMPFILE"
+    $PGCLOUD info > $TMPDIR/gcloud-info-after-init
+    if egrep -q "Account:.*None" $TMPDIR/gcloud-info-after-init
     then
-        echo -e "${RED}ERROR: Could not initialize conmon configuration in gcloud.${NOR}"
+        echo -e "${RED}ERROR: Could not initialize 'conmon' configuration in gcloud.${NOR}"
         exit 5
     fi
 
@@ -136,19 +172,21 @@ then
            "$HOME/.config/gcloud/configurations/config_default"
 fi
 
-# Couldn't make rsync work with gcloud's ssh wrapper :(
-echo -e "\n${YEL}Packing up repository into a tarball $VMNAME.${NOR}"
-showrun --background tar cjf $TEMPFILE --warning=no-file-changed -C $CONMONROOT .
+# Couldn't make rsync work with gcloud's ssh wrapper: ssh-keys generated on the fly
+TARBALL=$VMNAME.tar.bz2
+echo -e "\n${YEL}Packing up local repository into a tarball.${NOR}"
+showrun --background tar cjf $TMPDIR/$TARBALL --warning=no-file-changed --exclude-vcs-ignores -C $CONMONROOT .
 
 trap delvm INT  # Allow deleting VM if CTRL-C during create
 # This fails if VM already exists: permit this usage to re-init
-echo -e "\n${YEL}Trying to creating a VM named $VMNAME ${RED}(might take a minute/two.  Errors ignored).${NOR}"
+echo -e "\n${YEL}Trying to create a VM named $VMNAME\n${RED}(might take a minute/two.  Errors ignored).${NOR}"
 showrun $CREATE_CMD || true # allow re-running commands below when "delete: N"
 
 # Any subsequent failure should prompt for VM deletion
 trap delvm EXIT
 
-echo -e "\n${YEL}Waiting up to 30s for ssh port to open${NOR}"
+echo -e "\n${YEL}Retrying for 30s for ssh port to open (may give some errors)${NOR}"
+trap 'COUNT=9999' INT
 ATTEMPTS=10
 for (( COUNT=1 ; COUNT <= $ATTEMPTS ; COUNT++ ))
 do
@@ -161,28 +199,25 @@ then
 fi
 echo -e "${YEL}Got it${NOR}"
 
-if $SSH_CMD --command "test -r .bash_profile_original"
-then
-    echo -e "\n${YEL}Resetting environment configuration${NOR}"
-    showrun $SSH_CMD --command "cp .bash_profile_original .bash_profile"
-fi
+echo -e "\n${YEL}Removing and re-creating $GOSRC on $VMNAME.${NOR}"
+showrun $SSH_CMD --command "rm -rf $GOSRC"
+showrun $SSH_CMD --command "mkdir -p $GOSRC"
 
-echo -e "\n${YEL}Removing and re-creating $SRC on $VMNAME.${NOR}"
-showrun $SSH_CMD --command "rm -rf $SRC"
-showrun $SSH_CMD --command "mkdir -p $SRC"
-
-echo -e "\n${YEL}Transfering tarball to $VMNAME.${NOR}"
+echo -e "\n${YEL}Transferring tarball to $VMNAME.${NOR}"
 wait
-showrun $SCP_CMD $TEMPFILE $SSHUSER@$VMNAME:$TEMPFILE
+# inside container, $TMPDIR is mounted as $HOME
+showrun $SCP_CMD $HOME/$TARBALL $SSHUSER@$VMNAME:/tmp/$TARBALL
 
-echo -e "\n${YEL}Unpacking tarball into $SRC on $VMNAME.${NOR}"
-showrun $SSH_CMD --command "tar xjf $TEMPFILE -C $SRC"
+echo -e "\n${YEL}Unpacking tarball into $GOSRC on $VMNAME.${NOR}"
+showrun $SSH_CMD --command "tar xjf /tmp/$TARBALL -C $GOSRC"
 
 echo -e "\n${YEL}Removing tarball on $VMNAME.${NOR}"
-showrun $SSH_CMD --command "rm -f $TEMPFILE"
+showrun $SSH_CMD --command "rm -f /tmp/$TARBALL"
 
 echo -e "\n${YEL}Executing environment setup${NOR}"
-showrun $SSH_CMD --command "exec env $DEPS $SETUP_CMD"
+showrun $SSH_CMD --command "$SETUP_CMD"
 
-echo -e "\n${YEL}Connecting to $VMNAME ${RED}(option to delete VM upon logout).${NOR}\n"
-showrun $SSH_CMD -- -t "cd $SRC && exec env $DEPS bash -il"
+VMIP=$($PGCLOUD compute instances describe $VMNAME --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+
+echo -e "\n${YEL}Connecting to $VMNAME${NOR}\nPublic IP Address: $VMIP\n${RED}(option to delete VM upon logout).${NOR}\n"
+showrun $SSH_CMD -- -t "cd $GOSRC && exec env $ENVS bash -il"

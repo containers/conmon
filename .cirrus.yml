@@ -17,7 +17,7 @@ env:
     GOPATH: "/var/tmp/go"
 
     # Overrides default location (/tmp/cirrus) for repo clone
-    CIRRUS_WORKING_DIR: "$GOPATH/src/$CONMON_SLUG"
+    CIRRUS_WORKING_DIR: "${GOPATH}/src/${CONMON_SLUG}"
     GOSRC: "$CIRRUS_WORKING_DIR"
     GO111MODULE: on
 
