@@ -141,6 +141,10 @@ static void parse_log_path(char *log_config)
 {
 	char *driver = strtok(log_config, ":");
 	char *path = strtok(NULL, ":");
+	if (!strcmp(driver, "off") || !strcmp(driver, "null") || !strcmp(driver, "none")) {
+		// both left false, no-op
+		return;
+	}
 	if (!strcmp(driver, JOURNALD_FILE_STRING)) {
 		use_journald_logging = TRUE;
 		return;

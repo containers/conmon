@@ -114,6 +114,36 @@ var _ = Describe("conmon", func() {
 			_, err := os.Stat(tmpLogPath)
 			Expect(err).To(BeNil())
 		})
+		It("log driver as none should pass", func() {
+			_, stderr := getConmonOutputGivenOptions(
+				conmon.WithPath(conmonPath),
+				conmon.WithContainerID(ctrID),
+				conmon.WithContainerUUID(ctrID),
+				conmon.WithRuntimePath(validPath),
+				conmon.WithLogDriver("none", ""),
+			)
+			Expect(stderr).To(BeEmpty())
+		})
+		It("log driver as off should pass", func() {
+			_, stderr := getConmonOutputGivenOptions(
+				conmon.WithPath(conmonPath),
+				conmon.WithContainerID(ctrID),
+				conmon.WithContainerUUID(ctrID),
+				conmon.WithRuntimePath(validPath),
+				conmon.WithLogDriver("off", ""),
+			)
+			Expect(stderr).To(BeEmpty())
+		})
+		It("log driver as null should pass", func() {
+			_, stderr := getConmonOutputGivenOptions(
+				conmon.WithPath(conmonPath),
+				conmon.WithContainerID(ctrID),
+				conmon.WithContainerUUID(ctrID),
+				conmon.WithRuntimePath(validPath),
+				conmon.WithLogDriver("null", ""),
+			)
+			Expect(stderr).To(BeEmpty())
+		})
 		It("log driver as journald should pass", func() {
 			_, stderr := getConmonOutputGivenOptions(
 				conmon.WithPath(conmonPath),
