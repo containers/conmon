@@ -1,0 +1,15 @@
+#!/bin/bash
+
+read -r -d '' SPEC
+BUNDLE=$(echo "$SPEC" |jq -r .bundle)
+CFG="${BUNDLE}/config.json"
+ID=$(echo "$SPEC" |jq -r .id)
+PID=$(echo "$SPEC" |jq -r .pid)
+ROOTPATH=$(jq -r .root.path "$CFG")
+MNTLABEL=$(jq .r .linux.mountLabel "$CFG")
+
+HASDEVLOG=$(jq -r '.mounts[] | select(.destination=="/dev/log") ' "$CFG")
+if [ -e "$BUNDLE/slproxy" ] && [ -z "$HASDEVLOG" ]; then
+  nsenter --target $PID --mount touch "$ROOTPATH/dev/log"
+  nsenter --target $PID --mount mount --bind "$BUNDLE/slproxy" "$ROOTPATH/dev/log" -o rw,rprivate,nosuid,nodev,rbind,mode=666${MNTLABEL:+,context="$MNTLABEL"}
+fi
