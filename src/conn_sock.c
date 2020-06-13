@@ -13,13 +13,23 @@
 #include <sys/un.h>
 #include <sys/stat.h>
 
+static int slproxy_socket_in_fd = -1;
+static int slproxy_socket_out_fd = -1;
+static struct sockaddr_un slproxy_out_addr = {0};
+static struct conn_sock_s slproxy_sock_in = {0};
+
 static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
 static gboolean conn_sock_cb(int fd, GIOCondition condition, gpointer user_data);
+static gboolean slproxy_sock_cb(int fd, GIOCondition condition, gpointer user_data);
 static gboolean read_conn_sock(struct conn_sock_s *sock);
 static gboolean terminate_conn_sock(struct conn_sock_s *sock);
+static gboolean read_slproxy_sock(struct conn_sock_s *sock);
+static gboolean terminate_slproxy_sock(struct conn_sock_s *sock);
 void conn_sock_shutdown(struct conn_sock_s *sock, int how);
 static void sock_try_write_to_masterfd_stdin(struct conn_sock_s *sock);
+static void sock_try_write_to_slproxyfd(struct conn_sock_s *sock);
 static gboolean masterfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
+static gboolean slproxyfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
 
 char *setup_console_socket(void)
 {
@@ -267,4 +277,167 @@ static gboolean masterfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOConditi
 void schedule_master_stdin_write()
 {
 	g_unix_fd_add(masterfd_stdin, G_IO_OUT, masterfd_write_cb, NULL);
+}
+
+static void write_to_slproxyfd(gpointer data, gpointer user_data)
+{
+	struct conn_sock_s *sock = (struct conn_sock_s *)data;
+	bool *has_data = user_data;
+
+	sock_try_write_to_slproxyfd(sock);
+
+	if (sock->remaining)
+		*has_data = true;
+	else if (sock->data_ready) {
+		sock->data_ready = false;
+		g_unix_fd_add(sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, slproxy_sock_cb, sock);
+	}
+}
+
+static void sock_try_write_to_slproxyfd(struct conn_sock_s *sock)
+{
+	if (!sock->remaining || slproxy_socket_out_fd < 0)
+		return;
+
+	ssize_t w = sendto(slproxy_socket_out_fd, sock->buf + sock->off, sock->remaining, 
+		MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *)&slproxy_out_addr, sizeof(slproxy_out_addr));
+	if (w < 0) {
+		nwarn("Failed to write to syslog socket");
+	} else {
+		sock->off += w;
+		sock->remaining -= w;
+	}
+}
+
+static gboolean slproxyfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
+{
+	bool has_data = FALSE;
+
+	if (slproxy_socket_out_fd < 0)
+		return G_SOURCE_REMOVE;
+
+	write_to_slproxyfd(&slproxy_sock_in, &has_data);
+	if (has_data)
+		return G_SOURCE_CONTINUE;
+	return G_SOURCE_REMOVE;
+}
+
+void schedule_syslogfd_write()
+{
+	g_unix_fd_add(slproxy_socket_out_fd, G_IO_OUT, slproxyfd_write_cb, NULL);
+}
+
+static gboolean slproxy_sock_cb(G_GNUC_UNUSED int fd, GIOCondition condition, gpointer user_data)
+{
+	struct conn_sock_s *sock = (struct conn_sock_s *)user_data;
+
+	if (condition & G_IO_IN)
+		return read_slproxy_sock(sock);
+
+	return terminate_slproxy_sock(sock);
+}
+
+
+char *setup_syslog_proxy_socket(void)
+{
+	struct sockaddr_un slproxy_addr = {0};
+	slproxy_addr.sun_family = AF_UNIX;
+
+	if (slproxy_socket_out_fd == -1) {
+		slproxy_socket_out_fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+		if (slproxy_socket_out_fd == -1)
+			pexit("Failed to create slproxy socket");
+		slproxy_out_addr.sun_family = AF_UNIX;
+		strncpy(slproxy_out_addr.sun_path, "/dev/log", sizeof(slproxy_out_addr.sun_path) - 1);
+	}
+
+	/*
+	 * Create a symlink so we don't exceed unix domain socket
+	 * path length limit.
+	 */
+	char *slproxy_symlink_dir_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
+	if (unlink(slproxy_symlink_dir_path) == -1 && errno != ENOENT)
+		pexit("Failed to remove existing symlink for slproxy socket directory");
+
+	/*
+	 * This is to address a corner case where the symlink path length can end up being
+	 * the same as the socket.  When it happens, the symlink prevents the socket from being
+	 * be created.  This could still be a problem with other containers, but it is safe
+	 * to assume the CUUIDs don't change length in the same directory.  As a workaround,
+	 *  in such case, make the symlink one char shorter.
+	 */
+	if (strlen(slproxy_symlink_dir_path) == (sizeof(slproxy_addr.sun_path) - 1))
+		slproxy_symlink_dir_path[sizeof(slproxy_addr.sun_path) - 2] = '\0';
+
+	if (symlink(opt_bundle_path, slproxy_symlink_dir_path) == -1)
+		pexit("Failed to create symlink for slproxy socket");
+
+	_cleanup_free_ char *slproxy_sock_path = g_build_filename(opt_socket_path, opt_cuuid, "slproxy", NULL);
+	ninfof("slproxy sock path: %s", slproxy_sock_path);
+
+	strncpy(slproxy_addr.sun_path, slproxy_sock_path, sizeof(slproxy_addr.sun_path) - 1);
+	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", slproxy_addr.sun_path);
+
+	/*
+	 * We make the socket non-blocking to avoid a race where client aborts connection
+	 * before the server gets a chance to call accept. In that scenario, the server
+	 * accept blocks till a new client connection comes in.
+	 */
+	slproxy_socket_in_fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	if (slproxy_socket_in_fd == -1)
+		pexit("Failed to create slproxy socket");
+
+	if (fchmod(slproxy_socket_in_fd, 0666))
+		pexit("Failed to change slproxy socket permissions");
+
+	if (unlink(slproxy_addr.sun_path) == -1 && errno != ENOENT)
+		pexitf("Failed to remove existing slproxy socket: %s", slproxy_addr.sun_path);
+
+	if (bind(slproxy_socket_in_fd, (struct sockaddr *)&slproxy_addr, sizeof(struct sockaddr_un)) == -1)
+		pexitf("Failed to bind slproxy socket: %s", slproxy_sock_path);
+
+	slproxy_sock_in.fd = slproxy_socket_in_fd;
+	slproxy_sock_in.readable = true;
+	slproxy_sock_in.writable = false;
+	slproxy_sock_in.off = 0;
+	slproxy_sock_in.remaining = 0;
+	slproxy_sock_in.data_ready = false;
+	g_unix_fd_add(slproxy_socket_in_fd, G_IO_IN | G_IO_HUP | G_IO_ERR, slproxy_sock_cb, &slproxy_sock_in);
+
+	return slproxy_symlink_dir_path;
+}
+
+static gboolean read_slproxy_sock(struct conn_sock_s *sock)
+{
+	ssize_t num_read;
+
+	/* There is still data in the buffer.  */
+	if (sock->remaining) {
+		sock->data_ready = true;
+		return G_SOURCE_REMOVE;
+	}
+
+	num_read = recvfrom(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE, 0, NULL, 0);
+	if (num_read < 0)
+		return G_SOURCE_CONTINUE;
+
+	if (num_read == 0)
+		return terminate_slproxy_sock(sock);
+
+	/* num_read > 0 */
+	sock->remaining = num_read;
+	sock->off = 0;
+
+	sock_try_write_to_slproxyfd(sock);
+
+	/* Not everything was written to syslog, let's wait for the fd to be ready.  */
+	if (sock->remaining)
+		schedule_syslogfd_write();
+	return G_SOURCE_CONTINUE;
+}
+
+static gboolean terminate_slproxy_sock(struct conn_sock_s *sock)
+{
+	conn_sock_shutdown(sock, SHUT_RD);
+	return G_SOURCE_REMOVE;
 }

@@ -17,6 +17,7 @@ struct conn_sock_s {
 
 char *setup_console_socket(void);
 char *setup_attach_socket(void);
+char *setup_syslog_proxy_socket(void);
 void conn_sock_shutdown(struct conn_sock_s *sock, int how);
 void schedule_master_stdin_write();
 

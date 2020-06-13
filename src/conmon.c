@@ -174,6 +174,7 @@ int main(int argc, char *argv[])
 	_cleanup_free_ char *attach_symlink_dir_path = NULL;
 	if (opt_bundle_path != NULL) {
 		attach_symlink_dir_path = setup_attach_socket();
+		setup_syslog_proxy_socket();
 		dummyfd = setup_terminal_control_fifo();
 		setup_console_fifo();
 
