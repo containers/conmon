@@ -142,6 +142,11 @@ void do_exit_command()
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
 
+	/* We need to reap any zombies (from an OCI runtime that errored) before
+	   running it. */
+	while (waitpid(-1, NULL, WNOHANG) > 0)
+		;
+
 	pid_t exit_pid = fork();
 	if (exit_pid < 0) {
 		_pexit("Failed to fork");
