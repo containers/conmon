@@ -46,6 +46,7 @@ int opt_exit_delay = 0;
 gboolean opt_replace_listen_pid = FALSE;
 char *opt_log_level = NULL;
 char *opt_log_tag = NULL;
+gboolean opt_sync = FALSE;
 GOptionEntry opt_entries[] = {
 	{"terminal", 't', 0, G_OPTION_ARG_NONE, &opt_terminal, "Terminal", NULL},
 	{"stdin", 'i', 0, G_OPTION_ARG_NONE, &opt_stdin, "Stdin", NULL},
@@ -89,6 +90,8 @@ GOptionEntry opt_entries[] = {
 	{"syslog", 0, 0, G_OPTION_ARG_NONE, &opt_syslog, "Log to syslog (use with cgroupfs cgroup manager)", NULL},
 	{"log-level", 0, 0, G_OPTION_ARG_STRING, &opt_log_level, "Print debug logs based on log level", NULL},
 	{"log-tag", 0, 0, G_OPTION_ARG_STRING, &opt_log_tag, "Additional tag to use for logging", NULL},
+	{"sync", 0, 0, G_OPTION_ARG_NONE, &opt_sync, "Allowing caller to keep the main conmon process as its child by only forking once",
+	 NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 

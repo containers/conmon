@@ -43,6 +43,14 @@ extern gboolean use_syslog;
 		_exit(EXIT_FAILURE); \
 	} while (0)
 
+#define _pexitf(fmt, ...) \
+	do { \
+		fprintf(stderr, "[conmon:e]: " fmt " %s\n", ##__VA_ARGS__, strerror(errno)); \
+		if (use_syslog) \
+			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %s\n", log_cid, ##__VA_ARGS__, strerror(errno)); \
+		_exit(EXIT_FAILURE); \
+	} while (0)
+
 #define pexit(s) \
 	do { \
 		fprintf(stderr, "[conmon:e]: %s %s\n", s, strerror(errno)); \

@@ -10,7 +10,7 @@ container manager (like [Podman](https://podman.io/) or
 [runc](https://github.com/opencontainers/runc) or
 [crun](https://github.com/containers/crun)) for a single container.
 
-Upon being launched, it double-forks to daemonize and detach from the
+Upon being launched, conmon (usually) double-forks to daemonize and detach from the
 parent that launched it. It then launches the runtime as its child. This
 allows managing processes to die in the foreground, but still be able to
 watch over and connect to the child process (the container).
