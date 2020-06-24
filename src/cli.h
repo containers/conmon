@@ -40,6 +40,7 @@ extern int opt_exit_delay;
 extern gboolean opt_replace_listen_pid;
 extern char *opt_log_level;
 extern char *opt_log_tag;
+extern gboolean opt_sync;
 extern GOptionEntry opt_entries[];
 
 int initialize_cli(int argc, char *argv[]);

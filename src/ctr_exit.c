@@ -133,6 +133,12 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 
 void do_exit_command()
 {
+	/* even though we've already registered reap_children,
+	 * atexit() runs functions in reverse, so we need to
+	 * manually call here. Repeated calls will not cause trouble
+	 */
+	reap_children();
+
 	if (sync_pipe_fd > 0) {
 		close(sync_pipe_fd);
 		sync_pipe_fd = -1;
@@ -141,11 +147,6 @@ void do_exit_command()
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
-
-	/* We need to reap any zombies (from an OCI runtime that errored) before
-	   running it. */
-	while (waitpid(-1, NULL, WNOHANG) > 0)
-		;
 
 	pid_t exit_pid = fork();
 	if (exit_pid < 0) {
@@ -190,4 +191,12 @@ void do_exit_command()
 
 	/* Should not happen, but better be safe. */
 	_exit(EXIT_FAILURE);
+}
+
+void reap_children()
+{
+	/* We need to reap any zombies (from an OCI runtime that errored) before
+	   exiting */
+	while (waitpid(-1, NULL, WNOHANG) > 0)
+		;
 }

@@ -66,23 +66,28 @@ int main(int argc, char *argv[])
 	if (dev_null_w < 0)
 		pexit("Failed to open /dev/null");
 
-	/* In the create-container case we double-fork in
-	   order to disconnect from the parent, as we want to
-	   continue in a daemon-like way */
-	pid_t main_pid = fork();
-	if (main_pid < 0) {
-		pexit("Failed to fork the create command");
-	} else if (main_pid != 0) {
-		if (opt_conmon_pid_file) {
-			char content[12];
-			sprintf(content, "%i", main_pid);
+	/* In the non-sync case, we double-fork in
+	 * order to disconnect from the parent, as we want to
+	 * continue in a daemon-like way */
+	if (!opt_sync) {
+		pid_t main_pid = fork();
+		if (main_pid < 0) {
+			pexit("Failed to fork the create command");
+		} else if (main_pid != 0) {
+			if (opt_conmon_pid_file) {
+				char content[12];
+				sprintf(content, "%i", main_pid);
 
-			if (!g_file_set_contents(opt_conmon_pid_file, content, strlen(content), &err)) {
-				nexitf("Failed to write conmon pidfile: %s", err->message);
+				if (!g_file_set_contents(opt_conmon_pid_file, content, strlen(content), &err)) {
+					_pexitf("Failed to write conmon pidfile: %s", err->message);
+				}
 			}
+			_exit(0);
 		}
-		exit(0);
 	}
+
+	/* before we fork, ensure our children will be reaped */
+	atexit(reap_children);
 
 	/* Environment variables */
 	sync_pipe_fd = get_pipe_fd_from_env("_OCI_SYNCPIPE");
@@ -202,28 +207,28 @@ int main(int argc, char *argv[])
 		pexit("Failed to fork the create command");
 	} else if (!create_pid) {
 		if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0)
-			pexit("Failed to set PDEATHSIG");
+			_pexit("Failed to set PDEATHSIG");
 		if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
-			pexit("Failed to unblock signals");
+			_pexit("Failed to unblock signals");
 
 		if (workerfd_stdin < 0)
 			workerfd_stdin = dev_null_r;
 		if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
-			pexit("Failed to dup over stdin");
+			_pexit("Failed to dup over stdin");
 		if (fchmod(STDIN_FILENO, 0777) < 0)
 			nwarn("Failed to chown stdin");
 
 		if (workerfd_stdout < 0)
 			workerfd_stdout = dev_null_w;
 		if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
-			pexit("Failed to dup over stdout");
+			_pexit("Failed to dup over stdout");
 		if (fchmod(STDOUT_FILENO, 0777) < 0)
 			nwarn("Failed to chown stdout");
 
 		if (workerfd_stderr < 0)
 			workerfd_stderr = workerfd_stdout;
 		if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
-			pexit("Failed to dup over stderr");
+			_pexit("Failed to dup over stderr");
 		if (fchmod(STDERR_FILENO, 0777) < 0)
 			nwarn("Failed to chown stderr");
 
@@ -234,13 +239,13 @@ int main(int argc, char *argv[])
 			errno = 0;
 			int lpid = strtol(listenpid, NULL, 10);
 			if (errno != 0 || lpid <= 0)
-				pexitf("Invalid LISTEN_PID %.10s", listenpid);
+				_pexitf("Invalid LISTEN_PID %.10s", listenpid);
 			if (opt_replace_listen_pid || lpid == getppid()) {
 				gchar *pidstr = g_strdup_printf("%d", getpid());
 				if (!pidstr)
-					pexit("Failed to g_strdup_sprintf pid");
+					_pexit("Failed to g_strdup_sprintf pid");
 				if (setenv("LISTEN_PID", pidstr, true) < 0)
-					pexit("Failed to setenv LISTEN_PID");
+					_pexit("Failed to setenv LISTEN_PID");
 				free(pidstr);
 			}
 		}
@@ -254,7 +259,7 @@ int main(int argc, char *argv[])
 				num_read = read(start_pipe_fd, buf, BUF_SIZE);
 				ndebug("exec with attach got start message from parent");
 				if (num_read < 0) {
-					pexit("start-pipe read failed");
+					_pexit("start-pipe read failed");
 				}
 				close(start_pipe_fd);
 			}
