@@ -230,12 +230,18 @@ static_binary_task:
         - 'config'
         - 'fmt'
     gce_instance:
-        image_name: "${FEDORA_BASE_IMAGE}"
-        cpu: 4
-        memory: 4
+        image_name: "${FEDORA_CACHE_IMAGE_NAME}"
+        cpu: 8
+        memory: 12
         disk: 200
-    script:
-        - dnf install -y podman make git gcc
-        - make containerized
+    script: |
+        set -ex
+        setenforce 0
+        growpart /dev/sda 1 || true
+        resize2fs /dev/sda1 || true
+        yum -y install podman
+        mkdir -p /nix
+        podman run --rm --privileged -ti -v /:/mnt nixos/nix cp -rfT /nix /mnt/nix
+        podman run --rm --privileged -ti -v /nix:/nix -v ${PWD}:${PWD} -w ${PWD} nixos/nix nix --print-build-logs --option cores 8 --option max-jobs 8 build --file nix/
     binaries_artifacts:
-        path: "bin/conmon"
+        path: "result/bin/conmon"

@@ -45,28 +45,18 @@ else ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0" || echo "1"), 0
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=0
 endif
 
-define DOCKERFILE
-	FROM alpine:latest
-	RUN apk add --update --no-cache bash make git gcc pkgconf libc-dev glib-dev glib-static
-	COPY . /go/src/$(PROJECT)
-	WORKDIR /go/src/$(PROJECT)
-	RUN make static
-endef
-export DOCKERFILE
-
-containerized: bin
-	$(eval PODMAN ?= $(if $(shell podman -v),podman,docker))
-	echo "$$DOCKERFILE" | $(PODMAN) build --force-rm -t conmon-build -f - .
-	CTR=`$(PODMAN) create conmon-build` \
-		&& $(PODMAN) cp $$CTR:/go/src/$(PROJECT)/bin/conmon bin/conmon \
-		&& $(PODMAN) rm $$CTR
-
-static:
-	$(MAKE) git-vars bin/conmon PKG_CONFIG='$(PKG_CONFIG) --static' CFLAGS='-static' LDFLAGS='$(LDFLAGS) -s -w -static' LIBS='$(LIBS)'
-
+# Update nix/nixpkgs.json its latest stable commit
+.PHONY: nixpkgs
 nixpkgs:
-	@nix run -f channel:nixpkgs-unstable nix-prefetch-git -c nix-prefetch-git \
+	@nix run -f channel:nixos-20.03 nix-prefetch-git -c nix-prefetch-git \
 		--no-deepClone https://github.com/nixos/nixpkgs > nix/nixpkgs.json
+
+# Build statically linked binary
+.PHONY: static
+static:
+	@nix build -f nix/
+	mkdir -p ./bin
+	cp -rfp ./result/bin/* ./bin/
 
 bin/conmon: $(OBJS) | bin
 	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $^ $(LIBS)
@@ -84,13 +74,11 @@ test: git-vars runner/conmon_test/*.go runner/conmon/*.go
 bin:
 	mkdir -p bin
 
-vendor:
-	export GO111MODULE=on \
-		$(GO) mod tidy && \
-		$(GO) mod vendor && \
-		$(GO) mod verify
-
 .PHONY: vendor
+vendor:
+	GO111MODULE=on $(GO) mod tidy
+	GO111MODULE=on $(GO) mod vendor
+	GO111MODULE=on $(GO) mod verify
 
 .PHONY: clean
 clean:
