@@ -1,14 +1,17 @@
 { system ? builtins.currentSystem }:
 let
   pkgs = (import ./nixpkgs.nix {
-    overlays = [ (final: prev: {
-      pcre = prev.pcre.overrideAttrs (x: {
-        configureFlags = x.configureFlags ++ [ "--enable-static" ];
+    overlays = [(final: pkg: {
+      pcre = (static pkg.pcre).overrideAttrs(x: {
+        configureFlags = x.configureFlags ++ [
+          "--enable-static"
+        ];
       });
     })];
     config = {
       packageOverrides = pkg: {
-        glib = pkg.glib.overrideAttrs(x: {
+        autogen = (static pkg.autogen);
+        glib = (static pkg.glib).overrideAttrs(x: {
           outputs = [ "bin" "out" "dev" ];
           mesonFlags = [
             "-Ddefault_library=static"
@@ -17,8 +20,19 @@ let
             "-Dnls=disabled"
           ];
         });
-        systemd = pkg.systemd.overrideAttrs(x: {
-          mesonFlags = x.mesonFlags ++ [ "-Dstatic-libsystemd=true" ];
+        gnutls = (static pkg.gnutls).overrideAttrs(x: {
+          configureFlags = (x.configureFlags or []) ++ [
+            "--disable-non-suiteb-curves"
+            "--disable-openssl-compatibility"
+            "--disable-rpath"
+            "--enable-local-libopts"
+            "--without-p11-kit"
+          ];
+        });
+        systemd = (static pkg.systemd).overrideAttrs(x: {
+          mesonFlags = x.mesonFlags ++ [
+            "-Dstatic-libsystemd=true"
+          ];
           postFixup = ''
             ${x.postFixup}
             sed -ri "s;$out/(.*);$nukedRef/\1;g" $lib/lib/libsystemd.a
@@ -28,15 +42,34 @@ let
     };
   });
 
+  static = pkg: pkg.overrideAttrs(x: {
+    doCheck = false;
+    configureFlags = (x.configureFlags or []) ++ [
+      "--without-shared"
+      "--disable-shared"
+    ];
+    dontDisableStatic = true;
+    enableSharedExecutables = false;
+    enableStatic = true;
+  });
+
   self = with pkgs; stdenv.mkDerivation rec {
     name = "conmon";
     src = ./..;
+    vendorSha256 = null;
     doCheck = false;
     enableParallelBuilding = true;
-    nativeBuildInputs = [ git pkg-config ];
-    buildInputs = [ glib glibc glibc.static pcre systemd ];
+    outputs = [ "out" ];
+    nativeBuildInputs = [ bash git pcre pkg-config which ];
+    buildInputs = [ glibc glibc.static glib ];
     prePatch = ''
-      export LDFLAGS='-static-libgcc -static -s -w'
+      export CFLAGS='-static'
+      export LDFLAGS='-s -w -static-libgcc -static'
+      export EXTRA_LDFLAGS='-s -w -linkmode external -extldflags "-static -lm"'
+    '';
+    buildPhase = ''
+      patchShebangs .
+      make
     '';
     installPhase = ''
       install -Dm755 bin/conmon $out/bin/conmon
