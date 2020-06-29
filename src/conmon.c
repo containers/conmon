@@ -426,8 +426,6 @@ int main(int argc, char *argv[])
 	if (!timed_out)
 		drain_stdio();
 
-	sync_logs();
-
 	int exit_status = -1;
 	const char *exit_message = NULL;
 
