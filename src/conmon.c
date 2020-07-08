@@ -119,17 +119,17 @@ int main(int argc, char *argv[])
 	}
 
 	_cleanup_free_ char *csname = NULL;
-	int slavefd_stdin = -1;
-	int slavefd_stdout = -1;
-	int slavefd_stderr = -1;
+	int workerfd_stdin = -1;
+	int workerfd_stdout = -1;
+	int workerfd_stderr = -1;
 	int fds[2];
 	if (opt_terminal) {
 		csname = setup_console_socket();
 	} else {
 
 		/*
-		 * Create a "fake" master fd so that we can use the same epoll code in
-		 * both cases. The slavefd_*s will be closed after we dup over
+		 * Create a "fake" main fd so that we can use the same epoll code in
+		 * both cases. The workerfd_*s will be closed after we dup over
 		 * everything.
 		 *
 		 * We use pipes here because open(/dev/std{out,err}) will fail if we
@@ -141,20 +141,20 @@ int main(int argc, char *argv[])
 			if (pipe2(fds, O_CLOEXEC) < 0)
 				pexit("Failed to create !terminal stdin pipe");
 
-			masterfd_stdin = fds[1];
-			slavefd_stdin = fds[0];
+			mainfd_stdin = fds[1];
+			workerfd_stdin = fds[0];
 
-			if (g_unix_set_fd_nonblocking(masterfd_stdin, TRUE, NULL) == FALSE)
-				nwarn("Failed to set masterfd_stdin to non blocking");
+			if (g_unix_set_fd_nonblocking(mainfd_stdin, TRUE, NULL) == FALSE)
+				nwarn("Failed to set mainfd_stdin to non blocking");
 		}
 
 		if (pipe2(fds, O_CLOEXEC) < 0)
 			pexit("Failed to create !terminal stdout pipe");
 
-		masterfd_stdout = fds[0];
-		slavefd_stdout = fds[1];
+		mainfd_stdout = fds[0];
+		workerfd_stdout = fds[1];
 
-		/* now that we've set masterfd_stdout, we can register the ctrl_winsz_cb
+		/* now that we've set mainfd_stdout, we can register the ctrl_winsz_cb
 		 * if we didn't set it here, we'd risk attempting to run ioctl on
 		 * a negative fd, and fail to resize the window */
 		g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
@@ -165,8 +165,8 @@ int main(int argc, char *argv[])
 	if (pipe2(fds, O_CLOEXEC) < 0)
 		pexit("Failed to create stderr pipe");
 
-	masterfd_stderr = fds[0];
-	slavefd_stderr = fds[1];
+	mainfd_stderr = fds[0];
+	workerfd_stderr = fds[1];
 
 	GPtrArray *runtime_argv = configure_runtime_args(csname);
 
@@ -206,23 +206,23 @@ int main(int argc, char *argv[])
 		if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
 			pexit("Failed to unblock signals");
 
-		if (slavefd_stdin < 0)
-			slavefd_stdin = dev_null_r;
-		if (dup2(slavefd_stdin, STDIN_FILENO) < 0)
+		if (workerfd_stdin < 0)
+			workerfd_stdin = dev_null_r;
+		if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
 			pexit("Failed to dup over stdin");
 		if (fchmod(STDIN_FILENO, 0777) < 0)
 			nwarn("Failed to chown stdin");
 
-		if (slavefd_stdout < 0)
-			slavefd_stdout = dev_null_w;
-		if (dup2(slavefd_stdout, STDOUT_FILENO) < 0)
+		if (workerfd_stdout < 0)
+			workerfd_stdout = dev_null_w;
+		if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
 			pexit("Failed to dup over stdout");
 		if (fchmod(STDOUT_FILENO, 0777) < 0)
 			nwarn("Failed to chown stdout");
 
-		if (slavefd_stderr < 0)
-			slavefd_stderr = slavefd_stdout;
-		if (dup2(slavefd_stderr, STDERR_FILENO) < 0)
+		if (workerfd_stderr < 0)
+			workerfd_stderr = workerfd_stdout;
+		if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
 			pexit("Failed to dup over stderr");
 		if (fchmod(STDERR_FILENO, 0777) < 0)
 			nwarn("Failed to chown stderr");
@@ -295,12 +295,12 @@ int main(int argc, char *argv[])
 	g_ptr_array_free(runtime_argv, TRUE);
 
 	/* The runtime has that fd now. We don't need to touch it anymore. */
-	if (slavefd_stdin > -1)
-		close(slavefd_stdin);
-	if (slavefd_stdout > -1)
-		close(slavefd_stdout);
-	if (slavefd_stderr > -1)
-		close(slavefd_stderr);
+	if (workerfd_stdin > -1)
+		close(workerfd_stdin);
+	if (workerfd_stdout > -1)
+		close(workerfd_stdout);
+	if (workerfd_stderr > -1)
+		close(workerfd_stderr);
 
 	if (csname != NULL) {
 		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
@@ -333,7 +333,7 @@ int main(int argc, char *argv[])
 			 * Read from container stderr for any error and send it to parent
 			 * We send -1 as pid to signal to parent that create container has failed.
 			 */
-			num_read = read(masterfd_stderr, buf, BUF_SIZE - 1);
+			num_read = read(mainfd_stderr, buf, BUF_SIZE - 1);
 			if (num_read > 0) {
 				buf[num_read] = '\0';
 				int to_report = -1;
@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
 		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
 	}
 
-	if (opt_terminal && masterfd_stdout == -1)
+	if (opt_terminal && mainfd_stdout == -1)
 		nexit("Runtime did not set up terminal");
 
 	/* Read the pid so we can wait for the process to exit */
@@ -372,11 +372,11 @@ int main(int argc, char *argv[])
 
 	setup_oom_handling(container_pid);
 
-	if (masterfd_stdout >= 0) {
-		g_unix_fd_add(masterfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
+	if (mainfd_stdout >= 0) {
+		g_unix_fd_add(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
 	}
-	if (masterfd_stderr >= 0) {
-		g_unix_fd_add(masterfd_stderr, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDERR_PIPE));
+	if (mainfd_stderr >= 0) {
+		g_unix_fd_add(mainfd_stderr, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDERR_PIPE));
 	}
 
 	if (opt_timeout > 0) {

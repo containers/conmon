@@ -35,8 +35,8 @@ gboolean stdio_cb(int fd, GIOCondition condition, gpointer user_data)
 	}
 
 	if (has_hup && opt_terminal && pipe == STDOUT_PIPE) {
-		/* We got a HUP from the terminal master this means there
-		   are no open slaves ptys atm, and we will get a lot
+		/* We got a HUP from the terminal main this means there
+		   are no open workers ptys atm, and we will get a lot
 		   of wakeups until we have one, switch to polling
 		   mode. */
 
@@ -64,14 +64,14 @@ gboolean stdio_cb(int fd, GIOCondition condition, gpointer user_data)
 		 * waiting for container_exit_cb that will never be called.
 		 */
 		if (pipe == STDOUT_PIPE) {
-			masterfd_stdout = -1;
-			if (container_status >= 0 && masterfd_stderr < 0) {
+			mainfd_stdout = -1;
+			if (container_status >= 0 && mainfd_stderr < 0) {
 				g_main_loop_quit(main_loop);
 			}
 		}
 		if (pipe == STDERR_PIPE) {
-			masterfd_stderr = -1;
-			if (container_status >= 0 && masterfd_stdout < 0) {
+			mainfd_stderr = -1;
+			if (container_status >= 0 && mainfd_stdout < 0) {
 				g_main_loop_quit(main_loop);
 			}
 		}
@@ -85,14 +85,14 @@ gboolean stdio_cb(int fd, GIOCondition condition, gpointer user_data)
 
 void drain_stdio()
 {
-	if (masterfd_stdout != -1) {
-		g_unix_set_fd_nonblocking(masterfd_stdout, TRUE, NULL);
-		while (read_stdio(masterfd_stdout, STDOUT_PIPE, NULL))
+	if (mainfd_stdout != -1) {
+		g_unix_set_fd_nonblocking(mainfd_stdout, TRUE, NULL);
+		while (read_stdio(mainfd_stdout, STDOUT_PIPE, NULL))
 			;
 	}
-	if (masterfd_stderr != -1) {
-		g_unix_set_fd_nonblocking(masterfd_stderr, TRUE, NULL);
-		while (read_stdio(masterfd_stderr, STDERR_PIPE, NULL))
+	if (mainfd_stderr != -1) {
+		g_unix_set_fd_nonblocking(mainfd_stderr, TRUE, NULL);
+		while (read_stdio(mainfd_stderr, STDERR_PIPE, NULL))
 			;
 	}
 	return;
@@ -149,6 +149,6 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 static gboolean tty_hup_timeout_cb(G_GNUC_UNUSED gpointer user_data)
 {
 	tty_hup_timeout_scheduled = false;
-	g_unix_fd_add(masterfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
+	g_unix_fd_add(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
 	return G_SOURCE_REMOVE;
 }

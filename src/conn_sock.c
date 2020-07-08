@@ -18,8 +18,8 @@ static gboolean conn_sock_cb(int fd, GIOCondition condition, gpointer user_data)
 static gboolean read_conn_sock(struct conn_sock_s *sock);
 static gboolean terminate_conn_sock(struct conn_sock_s *sock);
 void conn_sock_shutdown(struct conn_sock_s *sock, int how);
-static void sock_try_write_to_masterfd_stdin(struct conn_sock_s *sock);
-static gboolean masterfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
+static void sock_try_write_to_mainfd_stdin(struct conn_sock_s *sock);
+static gboolean mainfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
 
 char *setup_console_socket(void)
 {
@@ -176,21 +176,21 @@ static gboolean read_conn_sock(struct conn_sock_s *sock)
 	sock->remaining = num_read;
 	sock->off = 0;
 
-	sock_try_write_to_masterfd_stdin(sock);
+	sock_try_write_to_mainfd_stdin(sock);
 
 	/* Not everything was written to stdin, let's wait for the fd to be ready.  */
 	if (sock->remaining)
-		schedule_master_stdin_write();
+		schedule_main_stdin_write();
 	return G_SOURCE_CONTINUE;
 }
 
 static gboolean terminate_conn_sock(struct conn_sock_s *sock)
 {
 	conn_sock_shutdown(sock, SHUT_RD);
-	if (masterfd_stdin >= 0 && opt_stdin) {
+	if (mainfd_stdin >= 0 && opt_stdin) {
 		if (!opt_leave_stdin_open) {
-			close(masterfd_stdin);
-			masterfd_stdin = -1;
+			close(mainfd_stdin);
+			mainfd_stdin = -1;
 		} else {
 			ninfo("Not closing input");
 		}
@@ -222,12 +222,12 @@ void conn_sock_shutdown(struct conn_sock_s *sock, int how)
 	}
 }
 
-static void write_to_masterfd_stdin(gpointer data, gpointer user_data)
+static void write_to_mainfd_stdin(gpointer data, gpointer user_data)
 {
 	struct conn_sock_s *sock = (struct conn_sock_s *)data;
 	bool *has_data = user_data;
 
-	sock_try_write_to_masterfd_stdin(sock);
+	sock_try_write_to_mainfd_stdin(sock);
 
 	if (sock->remaining)
 		*has_data = true;
@@ -237,12 +237,12 @@ static void write_to_masterfd_stdin(gpointer data, gpointer user_data)
 	}
 }
 
-static void sock_try_write_to_masterfd_stdin(struct conn_sock_s *sock)
+static void sock_try_write_to_mainfd_stdin(struct conn_sock_s *sock)
 {
-	if (!sock->remaining || masterfd_stdin < 0)
+	if (!sock->remaining || mainfd_stdin < 0)
 		return;
 
-	ssize_t w = write(masterfd_stdin, sock->buf + sock->off, sock->remaining);
+	ssize_t w = write(mainfd_stdin, sock->buf + sock->off, sock->remaining);
 	if (w < 0) {
 		nwarn("Failed to write to container stdin");
 	} else {
@@ -251,20 +251,20 @@ static void sock_try_write_to_masterfd_stdin(struct conn_sock_s *sock)
 	}
 }
 
-static gboolean masterfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
+static gboolean mainfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
 	bool has_data = FALSE;
 
-	if (masterfd_stdin < 0)
+	if (mainfd_stdin < 0)
 		return G_SOURCE_REMOVE;
 
-	g_ptr_array_foreach(conn_socks, write_to_masterfd_stdin, &has_data);
+	g_ptr_array_foreach(conn_socks, write_to_mainfd_stdin, &has_data);
 	if (has_data)
 		return G_SOURCE_CONTINUE;
 	return G_SOURCE_REMOVE;
 }
 
-void schedule_master_stdin_write()
+void schedule_main_stdin_write()
 {
-	g_unix_fd_add(masterfd_stdin, G_IO_OUT, masterfd_write_cb, NULL);
+	g_unix_fd_add(mainfd_stdin, G_IO_OUT, mainfd_write_cb, NULL);
 }

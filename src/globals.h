@@ -8,9 +8,9 @@
 extern int runtime_status;
 extern int container_status;
 
-extern int masterfd_stdin;
-extern int masterfd_stdout;
-extern int masterfd_stderr;
+extern int mainfd_stdin;
+extern int mainfd_stdout;
+extern int mainfd_stderr;
 
 extern GPtrArray *conn_socks;
 
