@@ -58,14 +58,14 @@ gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC
 exit:
 	/* We only have a single fd for both pipes, so we just treat it as
 	 * stdout. stderr is ignored. */
-	masterfd_stdin = console.fd;
-	masterfd_stdout = console.fd;
+	mainfd_stdin = console.fd;
+	mainfd_stdout = console.fd;
 
 	/* Now that we have a fd to the tty, make sure we handle any pending data
 	 * that was already buffered. */
-	schedule_master_stdin_write();
+	schedule_main_stdin_write();
 
-	/* now that we've set masterfd_stdout, we can register the ctrl_winsz_cb
+	/* now that we've set mainfd_stdout, we can register the ctrl_winsz_cb
 	 * if we didn't set it here, we'd risk attempting to run ioctl on
 	 * a negative fd, and fail to resize the window */
 	g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
@@ -217,7 +217,7 @@ static void resize_winsz(int height, int width)
 	ws.ws_row = height;
 	ws.ws_col = width;
 
-	int ret = ioctl(masterfd_stdout, TIOCSWINSZ, &ws);
+	int ret = ioctl(mainfd_stdout, TIOCSWINSZ, &ws);
 	if (ret == -1)
 		pwarn("Failed to set process pty terminal size");
 }
