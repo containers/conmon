@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "ctr_logging.h"
+#include "cli.h"
 #include <string.h>
 
 // if the systemd development files were found, we can log to systemd
@@ -512,6 +513,11 @@ static void reopen_k8s_file(void)
 
 	_cleanup_free_ char *k8s_log_path_tmp = g_strdup_printf("%s.tmp", k8s_log_path);
 
+	/* Sync the logs to disk */
+	if (!opt_no_sync_log && fsync(k8s_log_fd) < 0) {
+		pwarn("Failed to sync log file on reopen");
+	}
+
 	/* Close the current k8s_log_fd */
 	close(k8s_log_fd);
 
@@ -524,4 +530,13 @@ static void reopen_k8s_file(void)
 	if (rename(k8s_log_path_tmp, k8s_log_path) < 0) {
 		pexit("Failed to rename log file");
 	}
+}
+
+
+void sync_logs(void)
+{
+	/* Sync the logs to disk */
+	if (k8s_log_fd > 0)
+		if (fsync(k8s_log_fd) < 0)
+			pwarn("Failed to sync log file before exit");
 }
