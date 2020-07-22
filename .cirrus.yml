@@ -129,6 +129,8 @@ vendor_task:
         - $SCRIPT_BASE/vendor.sh
         - ./hack/tree_status.sh
 
+    go_artifacts:
+        path: "./go.sum"
 
 # Build the static binary
 static_binary_task:
