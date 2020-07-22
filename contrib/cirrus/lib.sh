@@ -7,6 +7,16 @@
 export USER="$(whoami)"
 export HOME="$(getent passwd $USER | cut -d : -f 6)"
 
+
+# GCE image-name compatible string representation of distribution name
+OS_RELEASE_ID="$(source /etc/os-release; echo $ID)"
+# GCE image-name compatible string representation of distribution _major_ version
+OS_RELEASE_VER="$(source /etc/os-release; echo $VERSION_ID | cut -d '.' -f 1)"
+# Combined to ease soe usage
+OS_REL_VER="${OS_RELEASE_ID}-${OS_RELEASE_VER}"
+# Type of filesystem used for cgroups
+CG_FS_TYPE="$(stat -f -c %T /sys/fs/cgroup)"
+
 # Downloaded, but not installed packages.
 PACKAGE_DOWNLOAD_DIR=/var/cache/download
 
@@ -102,20 +112,8 @@ $(go env)
     done
 }
 
-# Return a GCE image-name compatible string representation of distribution name
-os_release_id() {
-    eval "$(egrep -m 1 '^ID=' /etc/os-release | tr -d \' | tr -d \")"
-    echo "$ID"
-}
-
-# Return a GCE image-name compatible string representation of distribution major version
-os_release_ver() {
-    eval "$(egrep -m 1 '^VERSION_ID=' /etc/os-release | tr -d \' | tr -d \")"
-    echo "$VERSION_ID" | cut -d '.' -f 1
-}
-
 bad_os_id_ver() {
-    echo "Unknown/Unsupported distro. $OS_RELEASE_ID and/or version $OS_RELEASE_VER $@"
+    echo "Unknown/Unsupported distro. '$OS_RELEASE_ID' and/or version '$OS_RELEASE_VER' $@"
     exit 42
 }
 
@@ -188,6 +186,9 @@ install_testing_deps() {
         CRIO_SRC $CRIO_SRC
     "
 
+    cd $CRIO_SRC
+    go mod vendor
+
     echo "Installing required go packages into \$GOPATH"
     for toolpath in \
         tools/godep \
@@ -199,7 +200,7 @@ install_testing_deps() {
         urfave/cli \
         containers/image/storage
     do
-        ooe.sh go get -d "github.com/$toolpath"
+        go get -d "github.com/$toolpath"
     done
 
     echo "Installing Ginkgo and Gomega"
@@ -258,8 +259,8 @@ rename_all_found_binaries() {
     "
     filename=$1
     NEWNAME=".original_packaged_${filename}"
-    find /usr -type f -name ${filename} | 
-    while read FILEPATH
+    find /usr -type f -name ${filename} | \
+    while IFS='' read FILEPATH
     do
         NEWPATH="$(dirname $FILEPATH)/$NEWNAME"
         [[ -r "$NEWPATH" ]] || sudo mv -v "$FILEPATH" "$NEWPATH"
