@@ -132,12 +132,16 @@ vendor_task:
 
 # Build the static binary
 static_binary_task:
+
     depends_on:
         - 'config'
         - 'fmt'
 
-    script:
-        - $SCRIPT_BASE/static_binary.sh
+    setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
+    build_script: $SCRIPT_BASE/static_binary.sh
+
+    binaries_artifacts:
+        path: "result/bin/conmon"
 
 
 # Verify conmon package can be built and installed on Fedora
@@ -200,15 +204,7 @@ success_task:
         - 'integration'
         - 'cri-o_integration'
 
-    script: |
-        set -ex
-        setenforce 0
-        growpart /dev/sda 1 || true
-        resize2fs /dev/sda1 || true
-        yum -y install podman
-        mkdir -p /nix
-        podman run --rm --privileged -ti -v /:/mnt nixos/nix cp -rfT /nix /mnt/nix
-        podman run --rm --privileged -ti -v /nix:/nix -v ${PWD}:${PWD} -w ${PWD} nixos/nix nix --print-build-logs --option cores 8 --option max-jobs 8 build --file nix/
+    container:
+      <<: *fedora_container
 
-    binaries_artifacts:
-        path: "result/bin/conmon"
+    script: /bin/true
