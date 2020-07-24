@@ -11,6 +11,7 @@ let
     config = {
       packageOverrides = pkg: {
         autogen = (static pkg.autogen);
+        e2fsprogs = (static pkg.e2fsprogs);
         glib = (static pkg.glib).overrideAttrs(x: {
           outputs = [ "bin" "out" "dev" ];
           mesonFlags = [
