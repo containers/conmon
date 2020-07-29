@@ -38,6 +38,11 @@ let
             sed -ri "s;$out/(.*);$nukedRef/\1;g" $lib/lib/libsystemd.a
           '';
         });
+        e2fsprogs = pkg.e2fsprogs.overrideAttrs(x: {
+          postPatch = x.postPatch + ''
+            rm -rf tests/d_fallocate*
+          '';
+        });
       };
     };
   });
