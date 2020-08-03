@@ -105,3 +105,13 @@ fmt:
 	find . '(' -name '*.h' -o -name '*.c' ! -path './vendor/*' ')'  -exec clang-format -i {} \+
 	find . -name '*.go' ! -path './vendor/*' -exec gofmt -s -w {} \+
 	git diff --exit-code
+
+
+.PHONY: dbuild
+dbuild:
+	-mkdir -p bin
+	-podman rm conmon-devenv
+	podman build -t conmon-devenv:latest .
+	podman create --name conmon-devenv conmon-devenv:latest
+	podman cp conmon-devenv:/devenv/bin/conmon bin/conmon
+	@echo "for installation move conmon file to /usr/local/libexec/podman/"
