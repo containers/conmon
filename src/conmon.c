@@ -89,6 +89,11 @@ int main(int argc, char *argv[])
 	/* before we fork, ensure our children will be reaped */
 	atexit(reap_children);
 
+	/* If we were passed a sd-notify socket to use, set it up now */
+	if (opt_sdnotify_socket) {
+		setup_notify_socket(opt_sdnotify_socket);
+	}
+
 	/* Environment variables */
 	sync_pipe_fd = get_pipe_fd_from_env("_OCI_SYNCPIPE");
 

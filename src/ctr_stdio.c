@@ -107,7 +107,6 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 	char real_buf[STDIO_BUF_SIZE + 2];
 	char *buf = real_buf + 1;
 	ssize_t num_read = 0;
-	size_t i;
 
 	if (eof)
 		*eof = false;
@@ -128,19 +127,8 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 		if (!written)
 			return written;
 
-		if (conn_socks == NULL) {
-			return true;
-		}
-
 		real_buf[0] = pipe;
-		for (i = conn_socks->len; i > 0; i--) {
-			struct conn_sock_s *conn_sock = g_ptr_array_index(conn_socks, i - 1);
-
-			if (conn_sock->writable && write_all(conn_sock->fd, real_buf, num_read + 1) < 0) {
-				nwarn("Failed to write to socket");
-				conn_sock_shutdown(conn_sock, SHUT_WR);
-			}
-		}
+		write_back_to_remote_consoles(real_buf, num_read + 1);
 		return true;
 	}
 }
