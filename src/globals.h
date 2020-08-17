@@ -12,8 +12,6 @@ extern int mainfd_stdin;
 extern int mainfd_stdout;
 extern int mainfd_stderr;
 
-extern GPtrArray *conn_socks;
-
 extern int attach_socket_fd;
 extern int console_socket_fd;
 extern int terminal_ctrl_fd;

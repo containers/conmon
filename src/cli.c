@@ -48,6 +48,7 @@ char *opt_log_level = NULL;
 char *opt_log_tag = NULL;
 gboolean opt_sync = FALSE;
 gboolean opt_no_sync_log = FALSE;
+char *opt_sdnotify_socket = NULL;
 GOptionEntry opt_entries[] = {
 	{"terminal", 't', 0, G_OPTION_ARG_NONE, &opt_terminal, "Terminal", NULL},
 	{"stdin", 'i', 0, G_OPTION_ARG_NONE, &opt_stdin, "Stdin", NULL},
@@ -93,6 +94,8 @@ GOptionEntry opt_entries[] = {
 	{"log-tag", 0, 0, G_OPTION_ARG_STRING, &opt_log_tag, "Additional tag to use for logging", NULL},
 	{"no-sync-log", 0, 0, G_OPTION_ARG_NONE, &opt_no_sync_log, "Do not manually call sync on logs after container shutdown", NULL},
 	{"sync", 0, 0, G_OPTION_ARG_NONE, &opt_sync, "Allowing caller to keep the main conmon process as its child by only forking once",
+	 NULL},
+	{"sdnotify-socket", 0, 0, G_OPTION_ARG_STRING, &opt_sdnotify_socket, "Path to the host's sd-notify socket to relay messages to",
 	 NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 

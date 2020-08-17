@@ -13,14 +13,64 @@
 #include <sys/un.h>
 #include <sys/stat.h>
 
-static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
-static gboolean conn_sock_cb(int fd, GIOCondition condition, gpointer user_data);
-static gboolean read_conn_sock(struct conn_sock_s *sock);
-static gboolean terminate_conn_sock(struct conn_sock_s *sock);
-void conn_sock_shutdown(struct conn_sock_s *sock, int how);
-static void sock_try_write_to_mainfd_stdin(struct conn_sock_s *sock);
-static gboolean mainfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
+static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, gpointer user_data);
+static gboolean remote_sock_cb(int fd, GIOCondition condition, gpointer user_data);
+static void init_remote_sock(struct remote_sock_s *sock, struct remote_sock_s *src);
+static gboolean read_remote_sock(struct remote_sock_s *sock);
+static gboolean terminate_remote_sock(struct remote_sock_s *sock);
+static void remote_sock_shutdown(struct remote_sock_s *sock, int how);
+static void schedule_local_sock_write(struct local_sock_s *local_sock);
+static void sock_try_write_to_local_sock(struct remote_sock_s *sock);
+static gboolean local_sock_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
+static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
+			      gboolean do_chdir);
+/*
+  Since our socket handling is abstract now, handling is based on sock_type, so we can pass around a structure
+  that contains everything we need to handle I/O.  Callbacks used to handle IO, for example, and whether this
+  can be read from or written to or both, and the buffers used for the communication.
+*/
 
+/*
+  This defines the Container STDIN, attaches it to the correct FD and sets the flags for handling I/O.
+  setup_attach_socket() is responsible for setting the correct remote FD and pushing it onto the queue.
+*/
+static struct local_sock_s local_mainfd_stdin = {&mainfd_stdin, true, NULL, "container stdin", NULL};
+struct remote_sock_s remote_attach_sock = {
+	SOCK_TYPE_CONSOLE,   /* sock_type */
+	-1,		     /* fd */
+	&local_mainfd_stdin, /* dest */
+	true,		     /* listening */
+	false,		     /* data_ready */
+	true,		     /* readable */
+	true,		     /* writable */
+	0,		     /* remaining */
+	0,		     /* off */
+	{0}		     /* buf */
+};
+/*
+  This defines the Container SDNotify socket, attaches it to the correct FD and sets the flags for handling I/O.
+  setup_notify_socket() is responsible for initializing the unix sockets and pushing it onto the queue.
+
+  If the local_notify_host_fd stays -1 (i.e. we have not requested SD-NOTIFY) then setup was never run and
+  this has no effect.
+*/
+static int local_notify_host_fd = -1;
+static struct sockaddr_un local_notify_host_addr = {0};
+static struct local_sock_s local_notify_host = {&local_notify_host_fd, false, NULL, "host notify socket", &local_notify_host_addr};
+struct remote_sock_s remote_notify_sock = {
+	SOCK_TYPE_NOTIFY,   /* sock_type */
+	-1,		    /* fd */
+	&local_notify_host, /* dest */
+	false,		    /* listening */
+	false,		    /* data_ready */
+	true,		    /* readable */
+	false,		    /* writable */
+	0,		    /* remaining */
+	0,		    /* off */
+	{0}		    /* buf */
+};
+
+/* External */
 char *setup_console_socket(void)
 {
 	struct sockaddr_un addr = {0};
@@ -60,16 +110,48 @@ char *setup_console_socket(void)
 
 char *setup_attach_socket(void)
 {
-	struct sockaddr_un attach_addr = {0};
-	attach_addr.sun_family = AF_UNIX;
+	char *symlink_dir_path = bind_unix_socket("attach", SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0700, &remote_attach_sock, 0);
+
+	if (listen(remote_attach_sock.fd, 10) == -1)
+		pexitf("Failed to listen on attach socket: %s/%s", symlink_dir_path, "attach");
+
+	g_unix_fd_add(remote_attach_sock.fd, G_IO_IN, attach_cb, &remote_attach_sock);
+
+	return symlink_dir_path;
+}
+
+void setup_notify_socket(char *socket_path)
+{
+	/* Connect to Host socket */
+	if (local_notify_host_fd < 0) {
+		local_notify_host_fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+		if (local_notify_host_fd == -1) {
+			pexit("Failed to create notify socket");
+		}
+		local_notify_host_addr.sun_family = AF_UNIX;
+		strncpy(local_notify_host_addr.sun_path, socket_path, sizeof(local_notify_host_addr.sun_path) - 1);
+	}
+
+	_cleanup_free_ char *symlink_dir_path =
+		bind_unix_socket("notify/notify.sock", SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0777, &remote_notify_sock, 1);
+	g_unix_fd_add(remote_notify_sock.fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, &remote_notify_sock);
+}
+
+/* REMEMBER to g_free() the return value! */
+static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock, gboolean do_chdir)
+{
+	int socket_fd = -1;
+	struct sockaddr_un socket_addr = {0};
+	socket_addr.sun_family = AF_UNIX;
+	_cleanup_free_ char *cwd = NULL;
 
 	/*
 	 * Create a symlink so we don't exceed unix domain socket
 	 * path length limit.
+	 *
+	 * We do NOT free this because it's returned to the parent, who is responsible for freeing it!
 	 */
-	char *attach_symlink_dir_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
-	if (unlink(attach_symlink_dir_path) == -1 && errno != ENOENT)
-		pexit("Failed to remove existing symlink for attach socket directory");
+	char *base_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
 
 	/*
 	 * This is to address a corner case where the symlink path length can end up being
@@ -77,85 +159,123 @@ char *setup_attach_socket(void)
 	 * be created.  This could still be a problem with other containers, but it is safe
 	 * to assume the CUUIDs don't change length in the same directory.  As a workaround,
 	 *  in such case, make the symlink one char shorter.
+	 *
+	 * If we're using do_chdir, this is unnecessary.
 	 */
-	if (strlen(attach_symlink_dir_path) == (sizeof(attach_addr.sun_path) - 1))
-		attach_symlink_dir_path[sizeof(attach_addr.sun_path) - 2] = '\0';
+	if (!do_chdir && strlen(base_path) == (sizeof(socket_addr.sun_path) - 1))
+		base_path[sizeof(socket_addr.sun_path) - 2] = '\0';
 
-	if (symlink(opt_bundle_path, attach_symlink_dir_path) == -1)
-		pexit("Failed to create symlink for attach socket");
+	/*
+	 * Create a symlink so we don't exceed unix domain socket
+	 * path length limit.  We use the base path passed in from our parent.
+	 */
+	if (unlink(base_path) == -1 && errno != ENOENT)
+		pexitf("Failed to remove existing symlink for socket directory %s", base_path);
 
-	_cleanup_free_ char *attach_sock_path = g_build_filename(opt_socket_path, opt_cuuid, "attach", NULL);
-	ninfof("attach sock path: %s", attach_sock_path);
+	if (symlink(opt_bundle_path, base_path) == -1)
+		pexit("Failed to create symlink for notify socket");
 
-	strncpy(attach_addr.sun_path, attach_sock_path, sizeof(attach_addr.sun_path) - 1);
-	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", attach_addr.sun_path);
+	_cleanup_free_ char *sock_fullpath = g_build_filename(base_path, socket_relative_name, NULL);
+	_cleanup_free_ char *sock_relpath = g_build_filename(opt_cuuid, socket_relative_name, NULL);
+	ninfof("socket path: %s", sock_fullpath);
+
+	strncpy(socket_addr.sun_path, do_chdir ? sock_relpath : sock_fullpath, sizeof(socket_addr.sun_path) - 1);
+	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", socket_addr.sun_path);
 
 	/*
 	 * We make the socket non-blocking to avoid a race where client aborts connection
 	 * before the server gets a chance to call accept. In that scenario, the server
 	 * accept blocks till a new client connection comes in.
 	 */
-	attach_socket_fd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (attach_socket_fd == -1)
-		pexit("Failed to create attach socket");
+	if (do_chdir && (cwd = getcwd(NULL, 0)) == NULL)
+		pexitf("Failed to get CWD for socket %s", sock_fullpath);
 
-	if (fchmod(attach_socket_fd, 0700))
-		pexit("Failed to change attach socket permissions");
+	socket_fd = socket(AF_UNIX, sock_type, 0);
+	if (socket_fd == -1)
+		pexitf("Failed to create socket %s", sock_fullpath);
 
-	if (unlink(attach_addr.sun_path) == -1 && errno != ENOENT)
-		pexitf("Failed to remove existing attach socket: %s", attach_addr.sun_path);
+	if (fchmod(socket_fd, perms))
+		pexitf("Failed to change socket permissions %s", sock_fullpath);
 
-	if (bind(attach_socket_fd, (struct sockaddr *)&attach_addr, sizeof(struct sockaddr_un)) == -1)
-		pexitf("Failed to bind attach socket: %s", attach_sock_path);
+	if (do_chdir && chdir(opt_socket_path) == -1)
+		pexitf("Could not chdir to %s", opt_socket_path);
 
-	if (listen(attach_socket_fd, 10) == -1)
-		pexitf("Failed to listen on attach socket: %s", attach_sock_path);
+	if (unlink(sock_fullpath) == -1 && errno != ENOENT)
+		pexitf("Failed to remove existing socket: %s", sock_fullpath);
 
-	g_unix_fd_add(attach_socket_fd, G_IO_IN, attach_cb, NULL);
+	if (bind(socket_fd, (struct sockaddr *)&socket_addr, sizeof(struct sockaddr_un)) == -1)
+		pexitf("Failed to bind socket: %s", sock_fullpath);
 
-	return attach_symlink_dir_path;
+	if (chmod(sock_fullpath, perms))
+		pexitf("Failed to change socket permissions %s", sock_fullpath);
+
+	if (do_chdir && chdir(cwd) == -1)
+		pexitf("Could not chdir to %s", cwd);
+
+	remote_sock->fd = socket_fd;
+
+	return base_path;
 }
 
-static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
+
+void schedule_main_stdin_write()
 {
-	int conn_fd = accept(fd, NULL, NULL);
-	if (conn_fd == -1) {
+	schedule_local_sock_write(&local_mainfd_stdin);
+}
+
+void write_back_to_remote_consoles(char *buf, int len)
+{
+	if (local_mainfd_stdin.readers == NULL)
+		return;
+
+	for (int i = local_mainfd_stdin.readers->len; i > 0; i--) {
+		struct remote_sock_s *remote_sock = g_ptr_array_index(local_mainfd_stdin.readers, i - 1);
+
+		if (remote_sock->writable && write_all(remote_sock->fd, buf, len) < 0) {
+			nwarn("Failed to write to remote console socket");
+			remote_sock_shutdown(remote_sock, SHUT_WR);
+		}
+	}
+}
+
+/* Internal */
+static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, gpointer user_data)
+{
+	struct remote_sock_s *srcsock = (struct remote_sock_s *)user_data;
+	int new_fd = accept(fd, NULL, NULL);
+	if (new_fd == -1) {
 		if (errno != EWOULDBLOCK)
 			nwarn("Failed to accept client connection on attach socket");
 	} else {
-		struct conn_sock_s *conn_sock;
-		if (conn_socks == NULL) {
-			conn_socks = g_ptr_array_new_with_free_func(free);
+		struct remote_sock_s *remote_sock;
+		if (srcsock->dest->readers == NULL) {
+			srcsock->dest->readers = g_ptr_array_new_with_free_func(free);
 		}
-		conn_sock = malloc(sizeof(*conn_sock));
-		if (conn_sock == NULL) {
+		remote_sock = malloc(sizeof(*remote_sock));
+		if (remote_sock == NULL) {
 			pexit("Failed to allocate memory");
 		}
-		conn_sock->fd = conn_fd;
-		conn_sock->readable = true;
-		conn_sock->writable = true;
-		conn_sock->off = 0;
-		conn_sock->remaining = 0;
-		conn_sock->data_ready = false;
-		g_unix_fd_add(conn_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, conn_sock_cb, conn_sock);
-		g_ptr_array_add(conn_socks, conn_sock);
-		ninfof("Accepted connection %d", conn_sock->fd);
+		init_remote_sock(remote_sock, srcsock);
+		remote_sock->fd = new_fd;
+		g_unix_fd_add(remote_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, remote_sock);
+		g_ptr_array_add(remote_sock->dest->readers, remote_sock);
+		ninfof("Accepted%s connection %d", SOCK_IS_CONSOLE(srcsock->sock_type) ? " console" : "", remote_sock->fd);
 	}
 
 	return G_SOURCE_CONTINUE;
 }
 
-static gboolean conn_sock_cb(G_GNUC_UNUSED int fd, GIOCondition condition, gpointer user_data)
+static gboolean remote_sock_cb(G_GNUC_UNUSED int fd, GIOCondition condition, gpointer user_data)
 {
-	struct conn_sock_s *sock = (struct conn_sock_s *)user_data;
+	struct remote_sock_s *sock = (struct remote_sock_s *)user_data;
 
 	if (condition & G_IO_IN)
-		return read_conn_sock(sock);
+		return read_remote_sock(sock);
 
-	return terminate_conn_sock(sock);
+	return terminate_remote_sock(sock);
 }
 
-static gboolean read_conn_sock(struct conn_sock_s *sock)
+static gboolean read_remote_sock(struct remote_sock_s *sock)
 {
 	ssize_t num_read;
 
@@ -165,40 +285,60 @@ static gboolean read_conn_sock(struct conn_sock_s *sock)
 		return G_SOURCE_REMOVE;
 	}
 
-	num_read = read(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE);
+	if (SOCK_IS_STREAM(sock->sock_type)) {
+		num_read = read(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE);
+	} else {
+		num_read = recvfrom(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE - 1, 0, NULL, NULL);
+	}
+
 	if (num_read < 0)
 		return G_SOURCE_CONTINUE;
 
 	if (num_read == 0)
-		return terminate_conn_sock(sock);
+		return terminate_remote_sock(sock);
 
 	/* num_read > 0 */
 	sock->remaining = num_read;
 	sock->off = 0;
 
-	sock_try_write_to_mainfd_stdin(sock);
+	if (SOCK_IS_NOTIFY(sock->sock_type)) {
+		/* Do what OCI runtime does - only pass READY=1 */
+		sock->buf[num_read] = '\0';
+		if (strstr(sock->buf, "READY=1")) {
+			strncpy(sock->buf, "READY=1", 8);
+			sock->remaining = 7;
+		} else {
+			sock->remaining = 0;
+		}
+	}
 
-	/* Not everything was written to stdin, let's wait for the fd to be ready.  */
 	if (sock->remaining)
-		schedule_main_stdin_write();
+		sock_try_write_to_local_sock(sock);
+
+	/* Not everything was written, let's wait for the fd to be ready.  */
+	if (sock->remaining)
+		schedule_local_sock_write(sock->dest);
 	return G_SOURCE_CONTINUE;
 }
 
-static gboolean terminate_conn_sock(struct conn_sock_s *sock)
+static gboolean terminate_remote_sock(struct remote_sock_s *sock)
 {
-	conn_sock_shutdown(sock, SHUT_RD);
-	if (mainfd_stdin >= 0 && opt_stdin) {
-		if (!opt_leave_stdin_open) {
-			close(mainfd_stdin);
-			mainfd_stdin = -1;
-		} else {
-			ninfo("Not closing input");
+	remote_sock_shutdown(sock, SHUT_RD);
+	if (SOCK_IS_CONSOLE(sock->sock_type)) {
+		// If we're terminating our STDIN holder, we need to close the FD too, based on the cmdline option
+		if (*(sock->dest->fd) >= 0 && opt_stdin) {
+			if (!opt_leave_stdin_open) {
+				close(*(sock->dest->fd));
+				*(sock->dest->fd) = -1;
+			} else {
+				ninfo("Not closing input");
+			}
 		}
 	}
 	return G_SOURCE_REMOVE;
 }
 
-void conn_sock_shutdown(struct conn_sock_s *sock, int how)
+static void remote_sock_shutdown(struct remote_sock_s *sock, int how)
 {
 	if (sock->fd == -1)
 		return;
@@ -216,55 +356,84 @@ void conn_sock_shutdown(struct conn_sock_s *sock, int how)
 		break;
 	}
 	if (!sock->writable && !sock->readable) {
+		ndebugf("Closing %d", sock->fd);
 		close(sock->fd);
 		sock->fd = -1;
-		g_ptr_array_remove(conn_socks, sock);
+		if (sock->dest->readers != NULL) {
+			g_ptr_array_remove(sock->dest->readers, sock);
+		}
 	}
 }
 
-static void write_to_mainfd_stdin(gpointer data, gpointer user_data)
+static void write_to_local_sock(gpointer data, gpointer user_data)
 {
-	struct conn_sock_s *sock = (struct conn_sock_s *)data;
+	struct remote_sock_s *sock = (struct remote_sock_s *)data;
 	bool *has_data = user_data;
 
-	sock_try_write_to_mainfd_stdin(sock);
+	sock_try_write_to_local_sock(sock);
 
 	if (sock->remaining)
 		*has_data = true;
 	else if (sock->data_ready) {
 		sock->data_ready = false;
-		g_unix_fd_add(sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, conn_sock_cb, sock);
+		g_unix_fd_add(sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, sock);
 	}
 }
 
-static void sock_try_write_to_mainfd_stdin(struct conn_sock_s *sock)
+static void sock_try_write_to_local_sock(struct remote_sock_s *sock)
 {
-	if (!sock->remaining || mainfd_stdin < 0)
+	struct local_sock_s *local_sock = sock->dest;
+	ssize_t w = 0;
+
+	if (!sock->remaining || *(local_sock->fd) < 0)
 		return;
 
-	ssize_t w = write(mainfd_stdin, sock->buf + sock->off, sock->remaining);
+	if (local_sock->is_stream) {
+		w = write(*(local_sock->fd), sock->buf + sock->off, sock->remaining);
+	} else {
+		w = sendto(*(local_sock->fd), sock->buf + sock->off, sock->remaining, MSG_DONTWAIT | MSG_NOSIGNAL,
+			   (struct sockaddr *)local_sock->addr, sizeof(*(local_sock->addr)));
+	}
 	if (w < 0) {
-		nwarn("Failed to write to container stdin");
+		nwarnf("Failed to write %s", local_sock->label);
 	} else {
 		sock->off += w;
 		sock->remaining -= w;
 	}
 }
 
-static gboolean mainfd_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
+static gboolean local_sock_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, gpointer user_data)
 {
+	struct local_sock_s *local_sock = (struct local_sock_s *)user_data;
 	bool has_data = FALSE;
 
-	if (mainfd_stdin < 0)
+	if (*(local_sock->fd) < 0)
 		return G_SOURCE_REMOVE;
 
-	g_ptr_array_foreach(conn_socks, write_to_mainfd_stdin, &has_data);
+	g_ptr_array_foreach(local_sock->readers, write_to_local_sock, &has_data);
 	if (has_data)
 		return G_SOURCE_CONTINUE;
 	return G_SOURCE_REMOVE;
 }
 
-void schedule_main_stdin_write()
+static void schedule_local_sock_write(struct local_sock_s *local_sock)
 {
-	g_unix_fd_add(mainfd_stdin, G_IO_OUT, mainfd_write_cb, NULL);
+	if (*(local_sock->fd) < 0)
+		return;
+
+	g_unix_fd_add(*(local_sock->fd), G_IO_OUT, local_sock_write_cb, local_sock);
+}
+
+static void init_remote_sock(struct remote_sock_s *sock, struct remote_sock_s *src)
+{
+	sock->off = 0;
+	sock->remaining = 0;
+	sock->data_ready = false;
+	sock->listening = false;
+	if (src) {
+		sock->readable = src->readable;
+		sock->writable = src->writable;
+		sock->dest = src->dest;
+		sock->sock_type = src->sock_type;
+	}
 }
