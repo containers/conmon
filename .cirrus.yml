@@ -72,11 +72,6 @@ cri-o_integration_task:
             # Images are generated separately, from build_images_task (below)
             image_name: "${FEDORA_CACHE_IMAGE_NAME}"
 
-    env:
-        matrix:
-            TEST_USERNS: 0
-            TEST_USERNS: 1
-
     setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
     integration_test_script: '$SCRIPT_BASE/cri-o_test.sh'
 
