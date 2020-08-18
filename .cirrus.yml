@@ -26,7 +26,7 @@ env:
     PRIOR_FEDORA_CONTAINER_FQIN: "registry.fedoraproject.org/fedora:31"
 
     # VM Images are maintained in the libpod repo.
-    _BUILT_IMAGE_SUFFIX: "libpod-6224667180531712"  # From the packer output of 'build_vm_images_script'
+    _BUILT_IMAGE_SUFFIX: "podman-6530021898584064"  # From the packer output of 'build_vm_images_script'
     FEDORA_CACHE_IMAGE_NAME: "fedora-32-${_BUILT_IMAGE_SUFFIX}"
 
     ####
