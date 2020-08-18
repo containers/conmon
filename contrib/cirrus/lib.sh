@@ -231,8 +231,11 @@ install_testing_deps() {
 
     echo "Installing latest upstream version of BATS"
     ooe.sh git clone https://github.com/bats-core/bats-core.git /tmp/bats
-    cd /tmp/bats
+    pushd /tmp/bats
+	ooe.sh git checkout v1.2.1
     ooe.sh ./install.sh /usr
+    ooe.sh ./install.sh /usr/local
+	popd
     rm -rf /tmp/bats
 
     echo "Installing helper script for CNI plugin test"
