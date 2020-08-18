@@ -61,10 +61,6 @@ timeout_in: '120m'
 # testing for every platform
 cri-o_integration_task:
 
-    depends_on:
-        - 'config'
-        - 'fmt'
-
     gce_instance:
         # Generate multiple parallel tasks, covering all possible
         # 'matrix' combinations.
@@ -77,10 +73,6 @@ cri-o_integration_task:
 
 # this task runs the conmon integration tests
 integration_task:
-
-    depends_on:
-        - 'config'
-        - 'fmt'
 
     gce_instance:
         matrix:
@@ -151,9 +143,6 @@ fmt_task:
 
 # Build the static binary
 static_binary_task:
-    depends_on:
-        - 'config'
-        - 'fmt'
     gce_instance:
         image_name: "${FEDORA_CACHE_IMAGE_NAME}"
         cpu: 8
