@@ -202,15 +202,17 @@ install_crio_repo() {
     ooe.sh git clone $CRIO_REPO $CRIO_SRC
 
     # Install CRI-O
-    cd crio
+    pushd "$CRIO_SRC"
     ooe.sh make PREFIX=/usr
     ooe.sh sudo make install PREFIX=/usr
+	popd
 }
 
 install_testing_deps() {
     req_env_var "
         GOPATH $GOPATH
         CRIO_SRC $CRIO_SRC
+        CRIO_REPO $CRIO_REPO
     "
 
     echo "Installing required go packages into \$GOPATH"

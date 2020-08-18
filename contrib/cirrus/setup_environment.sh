@@ -65,6 +65,7 @@ then
 
     case "$OS_REL_VER" in
         fedora-32)
+			install_crio_repo
             install_testing_deps
             build_and_replace_conmon
 
