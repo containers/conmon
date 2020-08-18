@@ -12,7 +12,6 @@ export HOME="$(getent passwd $USER | cut -d : -f 6)"
 ENVLIB=${ENVLIB:-.bash_profile}
 CIRRUS_WORKING_DIR="${CIRRUS_WORKING_DIR:-/var/tmp/go/src/github.com/containers/libpod}"
 SCRIPT_BASE=${SCRIPT_BASE:-./contrib/cirrus}
-PACKER_BASE=${PACKER_BASE:-./contrib/cirrus/packer}
 CIRRUS_REPO_NAME=${CIRRUS_REPO_NAME-$(dirname $0)}
 CIRRUS_BUILD_ID=${CIRRUS_BUILD_ID:-DEADBEEF}  # a human
 CIRRUS_BASE_SHA=${CIRRUS_BASE_SHA:-HEAD}
@@ -80,7 +79,6 @@ CIRRUS_USER_PERMISSION $CIRRUS_USER_PERMISSION
 CIRRUS_WORKING_DIR $CIRRUS_WORKING_DIR
 CIRRUS_HTTP_CACHE_HOST $CIRRUS_HTTP_CACHE_HOST
 $(go env)
-PACKER_BUILDS $PACKER_BUILDS
     " | while read NAME VALUE
     do
         [[ -z "$NAME" ]] || echo "export $NAME=\"$VALUE\""

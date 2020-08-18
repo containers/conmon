@@ -20,7 +20,6 @@ env:
     CIRRUS_SHELL: "/bin/bash"
     # Save a little typing (path relative to $CIRRUS_WORKING_DIR)
     SCRIPT_BASE: "./contrib/cirrus"
-    PACKER_BASE: "./contrib/cirrus/packer"
     # Spoof self as travis, as cirrus has the same test issues as travis does
     TRAVIS: "true"
     FEDORA_CONTAINER_FQIN: "registry.fedoraproject.org/fedora:32"
@@ -154,68 +153,6 @@ fmt_task:
         - cd $CIRRUS_WORKING_DIR
         - make fmt
         - ./hack/tree_status.sh
-
-# Test building of new cache-images for future PR testing, in this PR.
-# Output images will be stored only for a very short time, then automatically deleted.
-test_cache_images_task:
-
-    only_if: >-
-        $CIRRUS_BRANCH != 'master' &&
-        $CIRRUS_CHANGE_MESSAGE =~ '.*\*\*\*\s*CIRRUS:\s*TEST\s*IMAGES\s*\*\*\*.*'
-
-    # VMs created by packer are not cleaned up by cirrus, must allow task to complete
-    auto_cancellation: $CI != "true"
-
-    gce_instance:
-        image_name: "${IMAGE_BUILDER_CACHE_IMAGE_NAME}"
-        cpu: 4
-        memory: "4Gb"
-        disk: 200
-        # Additional permissions for building GCE images, within a GCE VM
-        scopes:
-            - 'compute'
-            - 'devstorage.full_control'
-
-    env:
-        IMAGE_BUILD: 1
-
-    setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
-    cache_images_script: '$SCRIPT_BASE/build_vm_images.sh'
-
-
-# Build new cache-images for future PR testing, but only after a PR merge.
-# The cache-images save install/setup time needed test every PR.  The 'active'
-# images are selected manually by updating the 'image_name' values above.
-cache_images_task:
-
-    # Only produce new cache-images after a PR merge, and if a magic string
-    # is present in the most recent commit-message.
-    only_if: >-
-        $CIRRUS_BRANCH == 'master' &&
-        $CIRRUS_CHANGE_MESSAGE =~ '.*\*\*\*\s*CIRRUS:\s*REBUILD\s*IMAGES\s*\*\*\*.*'
-
-    # Require tests to pass first.
-    depends_on:
-        - "integration"
-
-    # VMs created by packer are not cleaned up by cirrus
-    auto_cancellation: $CI != "true"
-
-    gce_instance:
-        image_name: "${IMAGE_BUILDER_CACHE_IMAGE_NAME}"
-        cpu: 4
-        memory: "4Gb"
-        disk: 200
-        # Additional permissions for building GCE images, within a GCE VM
-        scopes:
-            - 'compute'
-            - 'devstorage.full_control'
-
-    env:
-        IMAGE_BUILD: 1
-
-    setup_environment_script: '$SCRIPT_BASE/setup_environment.sh'
-    cache_images_script: '$SCRIPT_BASE/build_vm_images.sh'
 
 # Build the static binary
 static_binary_task:
