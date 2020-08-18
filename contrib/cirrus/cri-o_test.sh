@@ -29,6 +29,12 @@ export PAUSE_BINARY=/usr/libexec/crio/pause
 export CRIO_CNI_PLUGIN=/usr/libexec/cni
 
 echo "Executing cri-o integration tests (typical 10 - 20 min)"
-cd "$CRIO_SRC"
+cd "$CRIO_SRC"/test
 #timeout --foreground --kill-after=5m 60m ./test/test_runner.sh
-sudo ./test/test_runner.sh
+export JOBS=$(($(nproc --all)*4))
+
+# load the helpers
+set +x
+ls
+. helpers.bash
+sudo bats --jobs "$JOBS" --tap .
