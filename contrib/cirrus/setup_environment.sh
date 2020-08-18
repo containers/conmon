@@ -64,7 +64,7 @@ then
     setup_gopath
 
     case "$OS_REL_VER" in
-        fedora-29)
+        fedora-32)
             install_testing_deps
             build_and_replace_conmon
 
