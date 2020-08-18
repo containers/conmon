@@ -54,6 +54,4 @@ dkms.conf
 
 bin/
 
-vendor/
-
 result

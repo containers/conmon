@@ -16,5 +16,4 @@ setup_gopath
 cd $CIRRUS_WORKING_DIR
 make
 make install PREFIX=/usr # currently, the conmon location is hardcoded to /usr/bin/conmon
-GOCACHE=/tmp/go-build make vendor
 make test
