@@ -239,6 +239,8 @@ install_testing_deps() {
 	popd
     rm -rf /tmp/bats
 
+	ooe.sh yum -y install parallel
+
     echo "Installing helper script for CNI plugin test"
     cd "$CRIO_SRC"
     sudo mkdir -p /opt/cni/bin/
