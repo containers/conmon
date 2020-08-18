@@ -12,7 +12,7 @@ OS_RELEASE_VER $OS_RELEASE_VER
 
 cd "$CRIO_SRC"
 case "$OS_REL_VER" in
-    fedora-29)
+    fedora-32)
         PATCH="$SRC/$SCRIPT_BASE/network_bats.patch"
         cd "$CRIO_SRC"
         echo "WARNING: Applying $PATCH"
