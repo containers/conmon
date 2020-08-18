@@ -235,6 +235,7 @@ install_testing_deps() {
 	ooe.sh git checkout v1.2.1
     ooe.sh ./install.sh /usr
     ooe.sh ./install.sh /usr/local
+	echo "got bats location: $(which bats)"
 	popd
     rm -rf /tmp/bats
 
