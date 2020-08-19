@@ -229,17 +229,17 @@ install_testing_deps() {
         go get -d "github.com/$toolpath"
     done
 
+	echo "Adding parallel and removing packaged version of BATS"
+	ooe.sh yum -y install parallel
+	ooe.sh yum -y remove bats
+
     echo "Installing latest upstream version of BATS"
     ooe.sh git clone https://github.com/bats-core/bats-core.git /tmp/bats
     pushd /tmp/bats
-	ooe.sh git checkout v1.2.1
-    ooe.sh ./install.sh /usr
     ooe.sh ./install.sh /usr/local
 	echo "got bats location: $(which bats)"
 	popd
     rm -rf /tmp/bats
-
-	ooe.sh yum -y install parallel
 
     echo "Installing helper script for CNI plugin test"
     cd "$CRIO_SRC"
