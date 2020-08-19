@@ -34,7 +34,7 @@ cd "$CRIO_SRC"/test
 export JOBS=$(($(nproc --all)*4))
 
 # load the helpers
-set +x
-ls
-. helpers.bash
-sudo bats --jobs "$JOBS" --tap .
+set -x
+#bats --jobs "$JOBS" --tap ctr.bats
+bats --tap *.bats
+echo "hello!"

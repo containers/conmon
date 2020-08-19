@@ -236,6 +236,8 @@ install_testing_deps() {
     echo "Installing latest upstream version of BATS"
     ooe.sh git clone https://github.com/bats-core/bats-core.git /tmp/bats
     pushd /tmp/bats
+	git checkout v1.2.0
+	ooe.sh rm -rf /usr/local/*/bats-*
     ooe.sh ./install.sh /usr/local
 	echo "got bats location: $(which bats)"
 	popd
