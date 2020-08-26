@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 
 	"github.com/containers/conmon/runner/config"
 )
@@ -32,6 +33,6 @@ func main() {
 		config.ReopenLogsEvent,
 		config.TimedOutMessage)),
 		0644); err != nil {
-		fmt.Errorf(err.Error())
+		log.Fatal(err)
 	}
 }
