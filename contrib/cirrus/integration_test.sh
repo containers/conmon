@@ -14,8 +14,6 @@ req_env_var "
 dnf install -y make glib2-devel git gcc golang
 setup_gopath
 cd $CIRRUS_WORKING_DIR
-# the || true is to make this call idempotent, in case we already have initialized the module
-go mod init || true
 GOCACHE=/tmp/go-build make vendor
 make
 make install PREFIX=/usr # currently, the conmon location is hardcoded to /usr/bin/conmon

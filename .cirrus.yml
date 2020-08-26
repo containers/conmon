@@ -108,7 +108,6 @@ config_task:
     script:
         - dnf install -y make glib2-devel git gcc golang
         - cd $CIRRUS_WORKING_DIR
-        - GO111MODULE=on go mod init github.com/containers/conmon
         - make config
         - ./hack/tree_status.sh
 
