@@ -443,8 +443,9 @@ int main(int argc, char *argv[])
 	 */
 	if (timed_out && container_pid > 0) {
 		pid_t process_group = getpgid(container_pid);
-
-		if (process_group > 0)
+		/* if process_group is 1, we will end up calling
+		 *  kill(-1), which kills everything conmon is allowed to. */
+		if (process_group > 1)
 			kill(-process_group, SIGKILL);
 		else
 			kill(container_pid, SIGKILL);
