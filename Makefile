@@ -7,8 +7,12 @@ PROJECT := github.com/containers/conmon
 PKG_CONFIG ?= pkg-config
 HEADERS := $(wildcard src/*.h)
 OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o
-
-
+DEBUGTAG ?=
+ifneq (,$(findstring enable_debug,$(DEBUGTAG)))
+	DEBUGFLAG=-g
+else
+	DEBUGFLAG=
+endif
 
 .PHONY: all git-vars
 all: git-vars bin bin/conmon
@@ -59,10 +63,10 @@ static:
 	cp -rfp ./result/bin/* ./bin/
 
 bin/conmon: $(OBJS) | bin
-	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) $(CFLAGS) $(DEBUGFLAG) -o $@ $^ $(LIBS)
 
 %.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEBUGFLAG) -o $@ -c $<
 
 config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runner/config/config_unix.go runner/config/config_windows.go
 	$(GO) build $(LDFLAGS) -tags "$(BUILDTAGS)" -o bin/config $(PROJECT)/cmd/conmon-config
