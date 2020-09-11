@@ -11,6 +11,8 @@ let
     config = {
       packageOverrides = pkg: {
         autogen = (static pkg.autogen);
+        e2fsprogs = (static pkg.e2fsprogs);
+        libuv = (static pkg.libuv);
         glib = (static pkg.glib).overrideAttrs(x: {
           outputs = [ "bin" "out" "dev" ];
           mesonFlags = [
@@ -30,18 +32,10 @@ let
           ];
         });
         systemd = (static pkg.systemd).overrideAttrs(x: {
+          outputs = [ "out" "dev" ];
           mesonFlags = x.mesonFlags ++ [
             "-Dstatic-libsystemd=true"
           ];
-          postFixup = ''
-            ${x.postFixup}
-            sed -ri "s;$out/(.*);$nukedRef/\1;g" $lib/lib/libsystemd.a
-          '';
-        });
-        e2fsprogs = (static pkg.e2fsprogs).overrideAttrs(x: {
-          postPatch = x.postPatch + ''
-            rm -rf tests/d_fallocate*
-          '';
         });
       };
     };
