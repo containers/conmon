@@ -85,7 +85,7 @@ as the standard 'cloud-init' services.
    (above).
 
 *  Base images do not need to be produced often, but doing so completely
-   manually would be time-consuming and error-prone.  Therefor a special
+   manually would be time-consuming and error-prone.  Therefore a special
    semi-automatic *Makefile* target is provided to assist with producing
    all the base-images: ``conmon_base_images``
 

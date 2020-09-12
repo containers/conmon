@@ -34,7 +34,7 @@ In most cases, conmon should be packaged with your favorite container
 manager. However, if you'd like to try building it from source, follow
 the steps below.
 
-## Depedencies
+## Dependencies
 
 These dependencies are required for the build:
 
