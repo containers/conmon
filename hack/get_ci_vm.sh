@@ -171,7 +171,7 @@ echo -e "\n${YEL}Removing and re-creating $SRC on $VMNAME.${NOR}"
 showrun $SSH_CMD --command "rm -rf $SRC"
 showrun $SSH_CMD --command "mkdir -p $SRC"
 
-echo -e "\n${YEL}Transfering tarball to $VMNAME.${NOR}"
+echo -e "\n${YEL}Transferring tarball to $VMNAME.${NOR}"
 wait
 showrun $SCP_CMD $TEMPFILE $SSHUSER@$VMNAME:$TEMPFILE
 

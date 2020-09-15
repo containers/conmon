@@ -102,7 +102,7 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 {
 	/* We use two extra bytes. One at the start, which we don't read into, instead
 	   we use that for marking the pipe when we write to the attached socket.
-	   One at the end to guarentee a null-terminated buffer for journald logging*/
+	   One at the end to guarantee a null-terminated buffer for journald logging*/
 
 	char real_buf[STDIO_BUF_SIZE + 2];
 	char *buf = real_buf + 1;
