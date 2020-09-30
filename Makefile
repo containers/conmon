@@ -14,7 +14,7 @@ else
 	DEBUGFLAG=
 endif
 
-.PHONY: all git-vars
+.PHONY: all git-vars docs
 all: git-vars bin bin/conmon
 
 git-vars:
@@ -84,12 +84,18 @@ vendor:
 	GO111MODULE=on $(GO) mod vendor
 	GO111MODULE=on $(GO) mod verify
 
+.PHONY: docs
+docs: install.tools
+	$(MAKE) -C docs
+
 .PHONY: clean
 clean:
 	rm -rf bin/ src/*.o
+	$(MAKE) -C docs clean
 
 .PHONY: install install.bin install.crio install.podman podman crio
-install: install.bin
+install: install.bin docs
+	$(MAKE) -C docs install
 
 podman: install.podman
 
@@ -103,6 +109,9 @@ install.crio: bin/conmon
 
 install.podman: bin/conmon
 	install ${SELINUXOPT} -D -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/podman/conmon
+
+install.tools:
+	make -C tools
 
 .PHONY: fmt
 fmt:

@@ -1,0 +1,6 @@
+# github.com/cpuguy83/go-md2man v1.0.10
+## explicit
+github.com/cpuguy83/go-md2man
+github.com/cpuguy83/go-md2man/md2man
+# github.com/russross/blackfriday v1.5.2
+github.com/russross/blackfriday
