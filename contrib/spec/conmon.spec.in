@@ -23,6 +23,8 @@ BuildRequires: gcc
 BuildRequires: glib2-devel
 BuildRequires: glibc-devel
 BuildRequires: git
+# If go_compiler is not set to 1, there is no virtual provide. Use golang instead.
+BuildRequires: golang
 BuildRequires: pkgconfig
 
 %description
@@ -46,6 +48,7 @@ BuildRequires: pkgconfig
 %license LICENSE
 %doc README.md
 %{_usr}/bin/%{name}
+%{_mandir}/man8/*.8*
 
 %changelog
 * Mon Oct 01 2018 Lokesh Mandvekar <lsm5@fedoraproject.org> - 0-0.1.gite7805e2

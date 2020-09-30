@@ -26,7 +26,7 @@ env:
     PRIOR_FEDORA_CONTAINER_FQIN: "registry.fedoraproject.org/fedora:31"
 
     # VM Image built in containers/automation_images
-    _BUILT_IMAGE_SUFFIX: "c6110627968057344"
+    _BUILT_IMAGE_SUFFIX: "c5402398833246208"
     FEDORA_CACHE_IMAGE_NAME: "fedora-${_BUILT_IMAGE_SUFFIX}"
 
     ####
@@ -83,7 +83,7 @@ fedora_packaging_task:
         memory: 12
 
     script:
-        - dnf install -y make glib2-devel git gcc rpm-build
+        - dnf install -y make glib2-devel git gcc rpm-build golang
         - cd $CIRRUS_WORKING_DIR
         - make
         - make -f .rpmbuild/Makefile
