@@ -25,9 +25,9 @@ env:
     FEDORA_CONTAINER_FQIN: "registry.fedoraproject.org/fedora:32"
     PRIOR_FEDORA_CONTAINER_FQIN: "registry.fedoraproject.org/fedora:31"
 
-    # VM Images are maintained in the libpod repo.
-    _BUILT_IMAGE_SUFFIX: "podman-6530021898584064" 
-    FEDORA_CACHE_IMAGE_NAME: "fedora-32-${_BUILT_IMAGE_SUFFIX}"
+    # VM Image built in containers/automation_images
+    _BUILT_IMAGE_SUFFIX: "c6110627968057344"
+    FEDORA_CACHE_IMAGE_NAME: "fedora-${_BUILT_IMAGE_SUFFIX}"
 
     ####
     #### Credentials and other secret-sauces, decrypted at runtime when authorized.
