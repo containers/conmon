@@ -22,8 +22,7 @@ static void remote_sock_shutdown(struct remote_sock_s *sock, int how);
 static void schedule_local_sock_write(struct local_sock_s *local_sock);
 static void sock_try_write_to_local_sock(struct remote_sock_s *sock);
 static gboolean local_sock_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
-static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
-			      gboolean do_chdir);
+static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock);
 /*
   Since our socket handling is abstract now, handling is based on sock_type, so we can pass around a structure
   that contains everything we need to handle I/O.  Callbacks used to handle IO, for example, and whether this
@@ -110,7 +109,7 @@ char *setup_console_socket(void)
 
 char *setup_attach_socket(void)
 {
-	char *symlink_dir_path = bind_unix_socket("attach", SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0700, &remote_attach_sock, 0);
+	char *symlink_dir_path = bind_unix_socket("attach", SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0700, &remote_attach_sock);
 
 	if (listen(remote_attach_sock.fd, 10) == -1)
 		pexitf("Failed to listen on attach socket: %s/%s", symlink_dir_path, "attach");
@@ -133,12 +132,12 @@ void setup_notify_socket(char *socket_path)
 	}
 
 	_cleanup_free_ char *symlink_dir_path =
-		bind_unix_socket("notify/notify.sock", SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0777, &remote_notify_sock, 1);
+		bind_unix_socket("notify/notify.sock", SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0777, &remote_notify_sock);
 	g_unix_fd_add(remote_notify_sock.fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, &remote_notify_sock);
 }
 
 /* REMEMBER to g_free() the return value! */
-static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock, gboolean do_chdir)
+static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock)
 {
 	int socket_fd = -1;
 	struct sockaddr_un socket_addr = {0};
@@ -154,18 +153,6 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	char *base_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
 
 	/*
-	 * This is to address a corner case where the symlink path length can end up being
-	 * the same as the socket.  When it happens, the symlink prevents the socket from being
-	 * be created.  This could still be a problem with other containers, but it is safe
-	 * to assume the CUUIDs don't change length in the same directory.  As a workaround,
-	 *  in such case, make the symlink one char shorter.
-	 *
-	 * If we're using do_chdir, this is unnecessary.
-	 */
-	if (!do_chdir && strlen(base_path) == (sizeof(socket_addr.sun_path) - 1))
-		base_path[sizeof(socket_addr.sun_path) - 2] = '\0';
-
-	/*
 	 * Create a symlink so we don't exceed unix domain socket
 	 * path length limit.  We use the base path passed in from our parent.
 	 */
@@ -179,7 +166,7 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	_cleanup_free_ char *sock_relpath = g_build_filename(opt_cuuid, socket_relative_name, NULL);
 	ninfof("socket path: %s", sock_fullpath);
 
-	strncpy(socket_addr.sun_path, do_chdir ? sock_relpath : sock_fullpath, sizeof(socket_addr.sun_path) - 1);
+	strncpy(socket_addr.sun_path, sock_relpath, sizeof(socket_addr.sun_path) - 1);
 	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", socket_addr.sun_path);
 
 	/*
@@ -187,7 +174,7 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	 * before the server gets a chance to call accept. In that scenario, the server
 	 * accept blocks till a new client connection comes in.
 	 */
-	if (do_chdir && (cwd = getcwd(NULL, 0)) == NULL)
+	if ((cwd = getcwd(NULL, 0)) == NULL)
 		pexitf("Failed to get CWD for socket %s", sock_fullpath);
 
 	socket_fd = socket(AF_UNIX, sock_type, 0);
@@ -197,7 +184,7 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	if (fchmod(socket_fd, perms))
 		pexitf("Failed to change socket permissions %s", sock_fullpath);
 
-	if (do_chdir && chdir(opt_socket_path) == -1)
+	if (chdir(opt_socket_path) == -1)
 		pexitf("Could not chdir to %s", opt_socket_path);
 
 	if (unlink(sock_fullpath) == -1 && errno != ENOENT)
@@ -209,7 +196,7 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	if (chmod(sock_fullpath, perms))
 		pexitf("Failed to change socket permissions %s", sock_fullpath);
 
-	if (do_chdir && chdir(cwd) == -1)
+	if (chdir(cwd) == -1)
 		pexitf("Could not chdir to %s", cwd);
 
 	remote_sock->fd = socket_fd;
