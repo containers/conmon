@@ -131,9 +131,13 @@ void setup_notify_socket(char *socket_path)
 		strncpy(local_notify_host_addr.sun_path, socket_path, sizeof(local_notify_host_addr.sun_path) - 1);
 	}
 
-	_cleanup_free_ char *symlink_dir_path =
+	/* No _cleanup_free_ here so we don't get a warning about unused variables
+	 * when compiling with clang */
+	char *symlink_dir_path =
 		bind_unix_socket("notify/notify.sock", SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0777, &remote_notify_sock);
 	g_unix_fd_add(remote_notify_sock.fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, &remote_notify_sock);
+
+	g_free(symlink_dir_path);
 }
 
 /* REMEMBER to g_free() the return value! */
