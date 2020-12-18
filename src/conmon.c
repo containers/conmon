@@ -167,7 +167,8 @@ int main(int argc, char *argv[])
 		/* now that we've set mainfd_stdout, we can register the ctrl_winsz_cb
 		 * if we didn't set it here, we'd risk attempting to run ioctl on
 		 * a negative fd, and fail to resize the window */
-		g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
+		if (winsz_fd_r >= 0)
+			g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
 	}
 
 	/* We always create a stderr pipe, because that way we can capture
