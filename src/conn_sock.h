@@ -52,5 +52,6 @@ char *setup_attach_socket(void);
 void setup_notify_socket(char *);
 void schedule_main_stdin_write();
 void write_back_to_remote_consoles(char *buf, int len);
+void close_all_readers();
 
 #endif // CONN_SOCK_H
