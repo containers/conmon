@@ -59,10 +59,10 @@ let
     doCheck = false;
     enableParallelBuilding = true;
     outputs = [ "out" ];
-    nativeBuildInputs = [ bash git pcre pkg-config which ];
+    nativeBuildInputs = [ bash gitMinimal pcre pkg-config which ];
     buildInputs = [ glibc glibc.static glib ];
     prePatch = ''
-      export CFLAGS='-static'
+      export CFLAGS='-static -pthread'
       export LDFLAGS='-s -w -static-libgcc -static'
       export EXTRA_LDFLAGS='-s -w -linkmode external -extldflags "-static -lm"'
     '';
