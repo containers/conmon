@@ -13,6 +13,9 @@ int terminal_ctrl_fd = -1;
 int inotify_fd = -1;
 int winsz_fd_w = -1;
 int winsz_fd_r = -1;
+int attach_pipe_fd = -1;
+int dev_null_r = -1;
+int dev_null_w = -1;
 
 gboolean timed_out = FALSE;
 

@@ -18,6 +18,9 @@ extern int terminal_ctrl_fd;
 extern int inotify_fd;
 extern int winsz_fd_w;
 extern int winsz_fd_r;
+extern int attach_pipe_fd;
+extern int dev_null_r;
+extern int dev_null_w;
 
 extern gboolean timed_out;
 

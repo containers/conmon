@@ -6,7 +6,7 @@ GO ?= go
 PROJECT := github.com/containers/conmon
 PKG_CONFIG ?= pkg-config
 HEADERS := $(wildcard src/*.h)
-OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o
+OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o src/close_fds.o
 DEBUGTAG ?=
 ifneq (,$(findstring enable_debug,$(DEBUGTAG)))
 	DEBUGFLAG=-g

@@ -21,7 +21,8 @@
 
 #define CGROUP_ROOT "/sys/fs/cgroup"
 
-static int oom_event_fd = -1;
+int oom_event_fd = -1;
+int oom_cgroup_fd = -1;
 
 static char *process_cgroup_subsystem_path(int pid, bool cgroup2, const char *subsystem);
 static void setup_oom_handling_cgroup_v2(int pid);
@@ -147,14 +148,14 @@ static void setup_oom_handling_cgroup_v1(int pid)
 
 	_cleanup_free_ char *memory_cgroup_file_oom_path = g_build_filename(memory_cgroup_path, "memory.oom_control", NULL);
 
-	int ofd = open(memory_cgroup_file_oom_path, O_RDONLY | O_CLOEXEC); /* Not closed */
-	if (ofd == -1)
+	oom_cgroup_fd = open(memory_cgroup_file_oom_path, O_RDONLY | O_CLOEXEC); /* Not closed */
+	if (oom_cgroup_fd == -1)
 		pexitf("Failed to open %s", memory_cgroup_file_oom_path);
 
 	if ((oom_event_fd = eventfd(0, EFD_CLOEXEC)) == -1)
 		pexit("Failed to create eventfd");
 
-	_cleanup_free_ char *data = g_strdup_printf("%d %d", oom_event_fd, ofd);
+	_cleanup_free_ char *data = g_strdup_printf("%d %d", oom_event_fd, oom_cgroup_fd);
 	if (write_all(cfd, data, strlen(data)) < 0)
 		pexit("Failed to write to cgroup.event_control");
 
