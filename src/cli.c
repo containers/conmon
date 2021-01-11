@@ -49,6 +49,7 @@ char *opt_log_tag = NULL;
 gboolean opt_sync = FALSE;
 gboolean opt_no_sync_log = FALSE;
 char *opt_sdnotify_socket = NULL;
+gboolean opt_full_attach_path = FALSE;
 GOptionEntry opt_entries[] = {
 	{"api-version", 0, 0, G_OPTION_ARG_NONE, &opt_api_version, "Conmon API version to use", NULL},
 	{"bundle", 'b', 0, G_OPTION_ARG_STRING, &opt_bundle_path, "Location of the OCI Bundle path", NULL},
@@ -97,6 +98,7 @@ GOptionEntry opt_entries[] = {
 	{"terminal", 't', 0, G_OPTION_ARG_NONE, &opt_terminal, "Allocate a pseudo-TTY. The default is false", NULL},
 	{"timeout", 'T', 0, G_OPTION_ARG_INT, &opt_timeout, "Kill container after specified timeout in seconds.", NULL},
 	{"version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print the version and exit", NULL},
+	{"full-attach", 0, 0, G_OPTION_ARG_NONE, &opt_full_attach_path, "Don't truncate the path to the attach socket.", NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 

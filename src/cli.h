@@ -44,6 +44,7 @@ extern gboolean opt_no_sync_log;
 extern gboolean opt_sync;
 extern char *opt_sdnotify_socket;
 extern GOptionEntry opt_entries[];
+extern gboolean opt_full_attach_path;
 
 int initialize_cli(int argc, char *argv[]);
 void process_cli();
