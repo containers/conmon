@@ -22,9 +22,11 @@
 
 #include <sys/prctl.h>
 #include <sys/stat.h>
+#include <locale.h>
 
 int main(int argc, char *argv[])
 {
+	setlocale(LC_ALL, "");
 	_cleanup_gerror_ GError *err = NULL;
 	char buf[BUF_SIZE];
 	int num_read;
