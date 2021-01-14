@@ -24,7 +24,7 @@ static void sock_try_write_to_local_sock(struct remote_sock_s *sock);
 static gboolean local_sock_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
 static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
 			      gboolean use_full_attach_path);
-static char *get_sock_path(gboolean use_full_attach_path, char *base_path, size_t desired_len);
+static char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len);
 /*
   Since our socket handling is abstract now, handling is based on sock_type, so we can pass around a structure
   that contains everything we need to handle I/O.  Callbacks used to handle IO, for example, and whether this
@@ -151,30 +151,28 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	struct sockaddr_un socket_addr = {0};
 	socket_addr.sun_family = AF_UNIX;
 
-	/*
-	 * Create a symlink so we don't exceed unix domain socket
-	 * path length limit.
-	 *
-	 * We do NOT free this because it's returned to the parent, who is responsible for freeing it!
-	 */
-	char *base_path =
-		get_sock_path(use_full_attach_path, g_build_filename(opt_socket_path, opt_cuuid, NULL), sizeof(socket_addr.sun_path));
+	/* get the parent_dir of the socket. We'll use this to get the location of the socket. */
+	char *parent_dir = socket_parent_dir(use_full_attach_path, sizeof(socket_addr.sun_path));
 
 	/*
-	 * Instead of creating a symlink, open the desired socket path and use the fd reference
-	 * from /proc/self/fd.
+	 * To be able to access the location of the attach socket, without first creating the attach socket
+	 * but also be able to handle arbitrary length paths, we open the parent dir (base_path), and then use
+	 * the corresponding entry in `/proc/self/fd` to act as the path to base_path, then we use the socket_relative_name
+	 * to actually refer to the file where the socket will be created below.
 	 */
-	_cleanup_free_ char *sock_fullpath = g_build_filename(base_path, socket_relative_name, NULL);
+	_cleanup_close_ int parent_dir_fd = open(parent_dir, O_PATH);
+	if (parent_dir_fd < 0)
+		pexitf("failed to open socket path parent dir %s", parent_dir);
 
-	_cleanup_close_ int sock_fullpath_fd = open(sock_fullpath, O_PATH);
-	if (sock_fullpath_fd < 0)
-		pexitf("failed to open sockpath %s", sock_fullpath);
-
-	_cleanup_free_ char *sock_proc_entry = g_strdup_printf("/proc/self/fd/%d", sock_fullpath_fd);
-
-
+	_cleanup_free_ char *sock_proc_entry = g_strdup_printf("/proc/self/fd/%d/%s", parent_dir_fd, socket_relative_name);
 	strncpy(socket_addr.sun_path, sock_proc_entry, sizeof(socket_addr.sun_path) - 1);
 	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", socket_addr.sun_path);
+
+
+	/*
+	 * we use the fullpath for operations that aren't as limited in length as socket_addr.sun_path
+	 */
+	_cleanup_free_ char *sock_fullpath = g_build_filename(parent_dir, socket_relative_name, NULL);
 
 	/*
 	 * We make the socket non-blocking to avoid a race where client aborts connection
@@ -188,6 +186,9 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	if (fchmod(socket_fd, perms))
 		pexitf("Failed to change socket permissions %s", sock_fullpath);
 
+	if (unlink(sock_fullpath) == -1 && errno != ENOENT)
+		pexitf("Failed to remove existing socket: %s", sock_fullpath);
+
 	if (bind(socket_fd, (struct sockaddr *)&socket_addr, sizeof(struct sockaddr_un)) == -1)
 		pexitf("Failed to bind socket: %s", sock_fullpath);
 
@@ -196,20 +197,24 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 
 	remote_sock->fd = socket_fd;
 
-	return base_path;
+	return sock_fullpath;
 }
 
 /*
- * get_sock_path decides whether to truncate the socket path, to match
+ * socket_parent_dir decides whether to truncate the socket path, to match
  * the caller's expectation.
  * use_full_attach_path is whether conmon was told to not truncate the path.
  * base_path is the path of the socket
  * desired_len is the length of socket_addr.sun_path (should be strlen(char[108]) on linux).
  */
-char *get_sock_path(gboolean use_full_attach_path, char *base_path, size_t desired_len)
+char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 {
-	if (use_full_attach_path || strlen(base_path) != (desired_len - 1))
-		return base_path;
+	/* if we're to use the full path, ignore the socket path and only use the bundle_path */
+	if (use_full_attach_path)
+		return opt_bundle_path;
+
+	char *base_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
+
 	/*
 	 * This is to address a corner case where the symlink path length can end up being
 	 * the same as the socket.  When it happens, the symlink prevents the socket from being
@@ -219,7 +224,19 @@ char *get_sock_path(gboolean use_full_attach_path, char *base_path, size_t desir
 	 *
 	 * If we're using using_full_attach_path, this is unnecessary.
 	 */
-	base_path[desired_len - 2] = '\0';
+	if (strlen(base_path) == (desired_len - 1))
+		base_path[desired_len - 2] = '\0';
+
+	/*
+	 * Create a symlink so we don't exceed unix domain socket
+	 * path length limit.  We use the base path passed in from our parent.
+	 */
+	if (unlink(base_path) == -1 && errno != ENOENT)
+		pexitf("Failed to remove existing symlink for socket directory %s", base_path);
+
+	if (symlink(opt_bundle_path, base_path) == -1)
+		pexit("Failed to create symlink for notify socket");
+
 	return base_path;
 }
 

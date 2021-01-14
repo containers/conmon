@@ -98,7 +98,8 @@ GOptionEntry opt_entries[] = {
 	{"terminal", 't', 0, G_OPTION_ARG_NONE, &opt_terminal, "Allocate a pseudo-TTY. The default is false", NULL},
 	{"timeout", 'T', 0, G_OPTION_ARG_INT, &opt_timeout, "Kill container after specified timeout in seconds.", NULL},
 	{"version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print the version and exit", NULL},
-	{"full-attach", 0, 0, G_OPTION_ARG_NONE, &opt_full_attach_path, "Don't truncate the path to the attach socket.", NULL},
+	{"full-attach", 0, 0, G_OPTION_ARG_NONE, &opt_full_attach_path,
+	 "Don't truncate the path to the attach socket. This option causes conmon to ignore --socket-dir-path", NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 
