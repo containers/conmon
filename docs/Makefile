@@ -1,4 +1,4 @@
-PREFIX := /usr/local
+PREFIX ?= /usr/local
 DATADIR := ${PREFIX}/share
 MANDIR := $(DATADIR)/man
 GOMD2MAN = ../tools/build/go-md2man
