@@ -170,9 +170,10 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 
 
 	/*
-	 * we use the fullpath for operations that aren't as limited in length as socket_addr.sun_path
+	 * We use the fullpath for operations that aren't as limited in length as socket_addr.sun_path
+	 * Cleanup of this variable is up to the caller
 	 */
-	_cleanup_free_ char *sock_fullpath = g_build_filename(parent_dir, socket_relative_name, NULL);
+	char *sock_fullpath = g_build_filename(parent_dir, socket_relative_name, NULL);
 
 	/*
 	 * We make the socket non-blocking to avoid a race where client aborts connection
