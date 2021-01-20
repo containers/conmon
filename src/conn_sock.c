@@ -76,7 +76,7 @@ char *setup_console_socket(void)
 {
 	struct sockaddr_un addr = {0};
 	_cleanup_free_ const char *tmpdir = g_get_tmp_dir();
-	_cleanup_free_ char *csname = g_build_filename(tmpdir, "conmon-term.XXXXXX", NULL);
+	char *csname = g_build_filename(tmpdir, "conmon-term.XXXXXX", NULL);
 	/*
 	 * Generate a temporary name. Is this unsafe? Probably, but we can
 	 * replace it with a rename(2) setup if necessary.
@@ -106,7 +106,7 @@ char *setup_console_socket(void)
 	if (listen(console_socket_fd, 128) < 0)
 		pexit("Failed to listen on console-socket");
 
-	return g_strdup(csname);
+	return csname;
 }
 
 char *setup_attach_socket(void)
