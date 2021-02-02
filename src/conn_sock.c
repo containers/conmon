@@ -280,7 +280,6 @@ static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, gpointer
 			pexit("Failed to allocate memory");
 		}
 		init_remote_sock(remote_sock, srcsock);
-		g_unix_set_fd_nonblocking(new_fd, TRUE, NULL);
 		remote_sock->fd = new_fd;
 		g_unix_fd_add(remote_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, remote_sock);
 		g_ptr_array_add(remote_sock->dest->readers, remote_sock);
