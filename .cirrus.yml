@@ -141,28 +141,44 @@ static_binary_task:
         memory: 12
         disk: 200
 
-    init_script: |
-        set -ex
-        setenforce 0
-        growpart /dev/sda 1 || true
-        resize2fs /dev/sda1 || true
-        yum -y install podman
+    # Community-maintained task, may fail on occasion.  If so, uncomment
+    # the next line and file an issue with details about the failure.
+    # allow_failures: true
 
-    nix_cache:
-      folder: '.cache'
-      fingerprint_script: |
-        echo "nix-v1-$(sha1sum nix/nixpkgs.json | head -c 40)"
+    timeout_in: '20m'
+
+    env:
+        # Do not use 'latest', fixed-version tag for runtime stability.
+        CTR_FQIN: "docker.io/nixos/nix:2.3.6"
+        # Authentication token for pushing the build cache to cachix.
+        # This is critical, it helps to avoid a very lengthy process of
+        # statically building every dependency needed to build conmon.
+        # Assuming the pinned nix dependencies in nix/nixpkgs.json have not
+        # changed, this cache will ensure that only the static conmon binary is
+        # built.
+        CACHIX_AUTH_TOKEN: ENCRYPTED[4c3b8d82b0333abf048c56a71f2559ddb1c9ed38f0c28916eca13f79affa5904cf90c76a5bd8686680c89f41079ef341]
+
+    alias: static_binary
+
+    matrix:
+      - env:
+            TARGET: default.nix
+      - env:
+            TARGET: default-arm64.nix
 
     build_script: |
         set -ex
-        mkdir -p .cache
-        mv .cache /nix
-        if [[ -z $(ls -A /nix) ]]; then podman run --rm --privileged -ti -v /:/mnt nixos/nix cp -rfT /nix /mnt/nix; fi
-        podman run --rm --privileged -ti -v /nix:/nix -v ${PWD}:${PWD} -w ${PWD} nixos/nix nix --print-build-logs --option cores 8 --option max-jobs 8 build --file nix/
+        podman run -i --rm \
+          -e CACHIX_AUTH_TOKEN \
+          -v $PWD:$PWD:Z \
+          -w $PWD \
+          $CTR_FQIN \
+          sh -c \
+          "nix-env -iA cachix -f https://cachix.org/api/v1/install && \
+           cachix use conmon && \
+           nix-build nix/$TARGET && \
+           nix-store -qR --include-outputs \$(nix-instantiate nix/$TARGET) | grep -v conmon | cachix push conmon && \
+           cp -R result/bin ."
 
     binaries_artifacts:
-        path: "result/bin/conmon"
-
-    save_cache_script: |
-        mv /nix .cache
-        chown -Rf $(whoami) .cache
+        path: "bin/conmon"
