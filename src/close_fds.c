@@ -32,7 +32,6 @@ static void __attribute__((constructor)) init()
 	ssize_t size = 0;
 	DIR *d;
 
-	/* Store how many FDs were open before the Go runtime kicked in.  */
 	d = opendir("/proc/self/fd");
 	if (!d)
 		return;
@@ -74,10 +73,10 @@ void close_other_fds()
 {
 	int fd;
 
-	for (fd = 3; fd < open_files_max_fd; fd++) {
-		if (open_files_set == NULL || FD_ISSET(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE])))
-			if (fd == sync_pipe_fd || fd == attach_pipe_fd || fd == dev_null_r || fd == dev_null_w || fd == oom_cgroup_fd
-			    || fd == oom_event_fd)
-				close(fd);
+	if (open_files_set == NULL)
+		return;
+	for (fd = 3; fd <= open_files_max_fd; fd++) {
+		if (FD_ISSET(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE])))
+			close(fd);
 	}
 }
