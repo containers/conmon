@@ -1,0 +1,33 @@
+name: integration
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+      - ghactions # TODO: remove when it works
+  pull_request:
+jobs:
+  cri-o:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-build-${{ hashFiles('**/go.sum') }}
+          restore-keys: go-integration-
+      - run: hack/github-actions-setup
+      - run: sudo make install
+      - name: Run CRI-O integration tests
+        run: |
+          cd cri-o
+          make all test-binaries
+          sudo -E test/test_runner.sh
+        env:
+          JOBS: '2'
