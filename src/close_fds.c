@@ -76,7 +76,7 @@ void close_other_fds()
 	if (open_files_set == NULL)
 		return;
 	for (fd = 3; fd <= open_files_max_fd; fd++) {
-		if (FD_ISSET(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE])))
+		if (fd != sync_pipe_fd && FD_ISSET(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE])))
 			close(fd);
 	}
 }
