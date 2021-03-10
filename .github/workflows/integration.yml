@@ -5,7 +5,6 @@ on:
       - v*
     branches:
       - master
-      - ghactions # TODO: remove when it works
   pull_request:
 jobs:
   cri-o:
@@ -20,8 +19,8 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: go-build-${{ hashFiles('**/go.sum') }}
-          restore-keys: go-integration-
+          key: go-integration-cri-o-${{ hashFiles('**/go.mod') }}
+          restore-keys: go-integration-cri-o-
       - run: hack/github-actions-setup
       - run: sudo make install
       - name: Run CRI-O integration tests
@@ -31,3 +30,50 @@ jobs:
           sudo -E test/test_runner.sh
         env:
           JOBS: '2'
+
+  podman:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.15'
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-integration-podman-${{ hashFiles('**/go.mod') }}
+          restore-keys: go-integration-podman-
+      - run: hack/github-actions-setup
+      - name: Run Podman integration tests
+        run: |
+          git clone https://github.com/containers/podman
+          cd podman
+          make bin/podman
+          sudo -E ginkgo \
+            -skip 'run.apparmor.disabled|image.trust.show.--json|run.network.bind.to.HostIP' \
+            -noColor \
+            -v test/e2e/.
+
+  podman-system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.15'
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-integration-podman-${{ hashFiles('**/go.mod') }}
+          restore-keys: go-integration-podman-
+      - run: hack/github-actions-setup
+      - name: Run Podman system tests
+        run: |
+          git clone https://github.com/containers/podman
+          cd podman
+          make bin/podman
+          sudo -E make localsystem
