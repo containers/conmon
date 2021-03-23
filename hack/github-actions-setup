@@ -3,7 +3,7 @@ set -euo pipefail
 
 declare -A VERSIONS=(
     ["cni-plugins"]=v0.8.7
-    ["runc"]=v1.0.0-rc92
+    ["runc"]=v1.0.0-rc93
     ["bats"]=v1.2.1
 )
 
