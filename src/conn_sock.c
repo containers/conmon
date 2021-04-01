@@ -465,6 +465,8 @@ static void init_remote_sock(struct remote_sock_s *sock, struct remote_sock_s *s
 
 static void close_sock(gpointer data, G_GNUC_UNUSED gpointer user_data)
 {
+	if (data == NULL)
+		return;
 	struct remote_sock_s *sock = (struct remote_sock_s *)data;
 
 	close(sock->fd);
@@ -473,5 +475,7 @@ static void close_sock(gpointer data, G_GNUC_UNUSED gpointer user_data)
 
 void close_all_readers()
 {
+	if (local_mainfd_stdin.readers == NULL)
+		return;
 	g_ptr_array_foreach(local_mainfd_stdin.readers, close_sock, NULL);
 }
