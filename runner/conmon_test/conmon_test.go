@@ -2,6 +2,9 @@ package conmon_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/containers/conmon/runner/conmon"
 	. "github.com/onsi/ginkgo"

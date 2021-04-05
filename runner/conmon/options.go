@@ -55,12 +55,6 @@ func WithRuntimePath(path string) ConmonOption {
 	}
 }
 
-func WithLogLevel(path string) ConmonOption {
-	return func(ci *ConmonInstance) error {
-		return ci.addArgs("--log-level", path)
-	}
-}
-
 func WithLogDriver(driver, path string) ConmonOption {
 	return func(ci *ConmonInstance) error {
 		fullDriver := path
