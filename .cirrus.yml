@@ -79,8 +79,8 @@ fedora_packaging_task:
         matrix:
             image: "${FEDORA_CONTAINER_FQIN}"
             image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
+        cpu: 1
+        memory: 4
 
     script:
         - dnf install -y make glib2-devel git gcc rpm-build golang
@@ -102,8 +102,8 @@ config_task:
                # and we should only need one check to make sure
                # config changes were synced
             image: "${FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
+        cpu: 1
+        memory: 4
 
     script:
         - dnf install -y make glib2-devel git gcc golang
@@ -120,8 +120,8 @@ fmt_task:
                # and we should only need one check to make sure
                # config changes were synced
             image: "${FEDORA_CONTAINER_FQIN}"
-        cpu: 4
-        memory: 12
+        cpu: 1
+        memory: 4
 
     script:
         - dnf install -y make glib2-devel git gcc rpm-build clang golang
