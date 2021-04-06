@@ -113,6 +113,10 @@ int initialize_cli(int argc, char *argv[])
 		g_print("conmon: option parsing failed: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
+
+	g_option_context_free(context);
+	context = NULL;
+
 	if (opt_version) {
 		g_print("conmon version " VERSION "\ncommit: " GIT_COMMIT "\n");
 		exit(EXIT_SUCCESS);

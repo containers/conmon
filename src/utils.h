@@ -206,12 +206,19 @@ static inline void strv_cleanup(char ***strv)
 		g_strfreev(*strv);
 }
 
+static inline void hashtable_free_cleanup(GHashTable **tbl)
+{
+	if (tbl)
+		g_hash_table_destroy(*tbl);
+}
+
 #define _cleanup_free_ _cleanup_(freep)
 #define _cleanup_close_ _cleanup_(closep)
 #define _cleanup_fclose_ _cleanup_(fclosep)
 #define _cleanup_gstring_ _cleanup_(gstring_free_cleanup)
 #define _cleanup_gerror_ _cleanup_(gerror_free_cleanup)
 #define _cleanup_strv_ _cleanup_(strv_cleanup)
+#define _cleanup_hashtable_ _cleanup_(hashtable_free_cleanup)
 
 
 #define WRITEV_BUFFER_N_IOV 128
