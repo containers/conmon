@@ -12,6 +12,7 @@ main() {
     prepare_system
 
     install_packages
+    install_conmon
     install_bats
     install_critools
     install_runc
@@ -34,6 +35,12 @@ prepare_system() {
     sudo iptables -t nat -I POSTROUTING -s 127.0.0.0/8 ! -d 127.0.0.0/8 -j MASQUERADE
 }
 
+remove_packages() {
+    sudo apt-get remove \
+        conmon \
+        containernetworking-plugins
+}
+
 install_packages() {
     sudo apt update
     sudo apt install -y \
@@ -54,6 +61,11 @@ install_packages() {
         libudev-dev \
         socat \
         uuid-dev
+}
+
+install_conmon() {
+    sudo make install
+    conmon --version
 }
 
 install_bats() {
