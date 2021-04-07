@@ -7,6 +7,29 @@ on:
       - master
   pull_request:
 jobs:
+  conmon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-integration-conmon-${{ hashFiles('**/go.mod') }}
+          restore-keys: go-integration-conmon-
+      - run: hack/github-actions-setup
+      - name: Run conmon integration tests
+        run: |
+          make
+          sudo make install PREFIX=/usr # currently, the conmon location is hardcoded to /usr/bin/conmon
+          make vendor
+          sudo make test
+        env:
+          JOBS: '2'
   cri-o:
     runs-on: ubuntu-latest
     steps:
