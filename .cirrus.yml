@@ -5,13 +5,7 @@ env:
     ####
     #### Global variables used for all tasks
     ####
-    # File to update in home-dir with task-specific env. var values
-    ENVLIB: ".bash_profile"
     GOPATH: "/var/tmp/go"
-    PATH: "${PATH}:${GOPATH}"
-    IMAGE_PROJECT: "libpod-218412"
-    CRIO_REPO: "https://github.com/cri-o/cri-o.git"
-    CRIO_SLUG: "github.com/cri-o/cri-o"
     CONMON_SLUG: "github.com/containers/conmon"
 
     # Overrides default location (/tmp/cirrus) for repo clone (will become $SRC)
@@ -22,71 +16,80 @@ env:
     SCRIPT_BASE: "./contrib/cirrus"
     # Spoof self as travis, as cirrus has the same test issues as travis does
     TRAVIS: "true"
-    FEDORA_CONTAINER_FQIN: "registry.fedoraproject.org/fedora:32"
-    PRIOR_FEDORA_CONTAINER_FQIN: "registry.fedoraproject.org/fedora:31"
+
+    ####
+    #### Cache-image names to test with (double-quotes around names are critical)
+    ####
+    FEDORA_NAME: "fedora-34"
+    PRIOR_FEDORA_NAME: "fedora-33"
+    UBUNTU_NAME: "ubuntu-2104"
+    PRIOR_UBUNTU_NAME: "ubuntu-2010"
 
     # VM Image built in containers/automation_images
-    _BUILT_IMAGE_SUFFIX: "c5402398833246208"
-    FEDORA_CACHE_IMAGE_NAME: "fedora-${_BUILT_IMAGE_SUFFIX}"
+    IMAGE_SUFFIX: "c5032481331085312"
+    FEDORA_CACHE_IMAGE_NAME: "fedora-${IMAGE_SUFFIX}"
 
-    ####
-    #### Credentials and other secret-sauces, decrypted at runtime when authorized.
-    ####
-    # Needed to build GCE images, within a GCE VM
-    SERVICE_ACCOUNT: ENCRYPTED[0aad0b5961402c8b8e4abd48fc4d4ac762f608f32e9169381b911d19699990df1a1441897ffa94def46ff73a19ba7577]
-    # User ID for cirrus to ssh into VMs
-    GCE_SSH_USERNAME: ENCRYPTED[be60deec03db4cc5ef121397e465c6cd4f043f3c31787b2a46661e09909f2675e339e051dd89d13775d9473504432ad0]
-    # Name where this repositories cloud resources are located
-    GCP_PROJECT_ID: ENCRYPTED[bcc747708a4e2e2e493e4c479efd9cb7b38caf39c7120d849dd859250303b64cbb4d016779e128b6e2e5c5f732d54726]
+    # Container FQIN's
+    FEDORA_CONTAINER_FQIN: "quay.io/libpod/fedora_podman:${IMAGE_SUFFIX}"
+    PRIOR_FEDORA_CONTAINER_FQIN: "quay.io/libpod/prior-fedora_podman:${IMAGE_SUFFIX}"
+    UBUNTU_CONTAINER_FQIN: "quay.io/libpod/ubuntu_podman:${IMAGE_SUFFIX}"
+    PRIOR_UBUNTU_CONTAINER_FQIN: "quay.io/libpod/prior-ubuntu_podman:${IMAGE_SUFFIX}"
+
 
 # Only github users with write-access can define or use encrypted variables
 # This credential represents a service account with access to manage both VMs
 # and storage.
 gcp_credentials: ENCRYPTED[13e51806369f650e6ccc326338deeb3c24052fc0a7be29beef2b96da551aed3200abbb6c6406a936bb4388fb2758405c]
 
+
 # Default VM to use unless set or modified by task
 gce_instance:
-    image_project: "${IMAGE_PROJECT}"
-    zone: "us-central1-c"  # Required by Cirrus for the time being
+    image_project: "libpod-218412"
+    zone: "us-central1-f"  # Required by Cirrus for the time being
     cpu: 2
     memory: "4Gb"
     disk: 200  # Required for performance reasons
     image_name: "${FEDORA_CACHE_IMAGE_NAME}"
+
 
 # Default timeout for each task
 timeout_in: '120m'
 
 # Verify conmon package can be built and installed on Fedora
 fedora_packaging_task:
+    alias: fedora_packaging
 
     # Runs within Cirrus's "community cluster"
     container:
-        matrix:
-            image: "${FEDORA_CONTAINER_FQIN}"
-            image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
         cpu: 1
         memory: 4
 
+    matrix:
+        - name: "Packaging for ${FEDORA_NAME}"
+          container:
+            image: "${FEDORA_CONTAINER_FQIN}"
+        - name: "Packaging for ${PRIOR_FEDORA_NAME}"
+          container:
+            image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
+
     script:
-        - dnf install -y make glib2-devel git gcc rpm-build golang
+        - dnf install -y rpm-build golang
         - cd $CIRRUS_WORKING_DIR
         - make
         - make -f .rpmbuild/Makefile
         - rpmbuild --rebuild conmon-*.src.rpm
+        - dnf erase -y conmon
         - dnf -y install ~/rpmbuild/RPMS/x86_64/conmon*.x86_64.rpm
         - ls -l /usr/bin/conmon
 
     timeout_in: '20m'
 
+
 # Verify calls to bin/config were saved
 config_task:
     # Runs within Cirrus's "community cluster"
     container:
-        matrix:
-               # fedora:28 doesn't have go mod by default
-               # and we should only need one check to make sure
-               # config changes were synced
-            image: "${FEDORA_CONTAINER_FQIN}"
+        image: "${FEDORA_CONTAINER_FQIN}"
         cpu: 1
         memory: 4
 
@@ -96,41 +99,37 @@ config_task:
         - make config
         - ./hack/tree_status.sh
 
+
 # Verify code was fmt'ed properly
 fmt_task:
     # Runs within Cirrus's "community cluster"
     container:
-        matrix:
-               # fedora:28 doesn't have go mod by default
-               # and we should only need one check to make sure
-               # config changes were synced
-            image: "${FEDORA_CONTAINER_FQIN}"
+        image: "${FEDORA_CONTAINER_FQIN}"
         cpu: 1
         memory: 4
 
     script:
-        - dnf install -y make glib2-devel git gcc rpm-build clang golang
+        - dnf install -y clang clang-tools-extra golang
         - cd $CIRRUS_WORKING_DIR
         - make fmt
         - ./hack/tree_status.sh
 
+
 # Build the static binary
 static_binary_task:
-    depends_on:
-        - 'config'
-        - 'fmt'
-
-    gce_instance:
-        image_name: "${FEDORA_CACHE_IMAGE_NAME}"
-        cpu: 8
-        memory: 12
-        disk: 200
+    alias: static_binary
 
     # Community-maintained task, may fail on occasion.  If so, uncomment
     # the next line and file an issue with details about the failure.
     # allow_failures: true
 
     timeout_in: '20m'
+
+    gce_instance:
+        image_name: "${FEDORA_CACHE_IMAGE_NAME}"
+        cpu: 8
+        memory: 12
+        disk: 200
 
     env:
         # Do not use 'latest', fixed-version tag for runtime stability.
@@ -143,12 +142,12 @@ static_binary_task:
         # built.
         CACHIX_AUTH_TOKEN: ENCRYPTED[4c3b8d82b0333abf048c56a71f2559ddb1c9ed38f0c28916eca13f79affa5904cf90c76a5bd8686680c89f41079ef341]
 
-    alias: static_binary
-
     matrix:
-      - env:
+      - name: "Static intel binary"
+        env:
             TARGET: default.nix
-      - env:
+      - name: "Static ARM binary"
+        env:
             TARGET: default-arm64.nix
 
     build_script: |
