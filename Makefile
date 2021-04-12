@@ -7,12 +7,8 @@ PROJECT := github.com/containers/conmon
 PKG_CONFIG ?= pkg-config
 HEADERS := $(wildcard src/*.h)
 OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o src/close_fds.o
-DEBUGTAG ?=
-ifneq (,$(findstring enable_debug,$(DEBUGTAG)))
-	DEBUGFLAG=-g
-else
-	DEBUGFLAG=
-endif
+
+MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: all git-vars docs
 all: git-vars bin bin/conmon
@@ -72,8 +68,16 @@ config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runn
 	$(GO) build $(LDFLAGS) -tags "$(BUILDTAGS)" -o bin/config $(PROJECT)/cmd/conmon-config
 		( cd src && $(CURDIR)/bin/config )
 
-test: git-vars runner/conmon_test/*.go runner/conmon/*.go
+.PHONY: test-binary
+test-binary: bin/conmon _test-files
+	CONMON_BINARY="$(MAKEFILE_PATH)bin/conmon" $(GO) test $(LDFLAGS) -tags "$(BUILDTAGS)" $(PROJECT)/runner/conmon_test/ -count=1 -v
+
+.PHONY: test
+test:_test-files
 	$(GO) test $(LDFLAGS) -tags "$(BUILDTAGS)" $(PROJECT)/runner/conmon_test/
+
+.PHONY: test-files
+_test-files: git-vars runner/conmon_test/*.go runner/conmon/*.go
 
 bin:
 	mkdir -p bin

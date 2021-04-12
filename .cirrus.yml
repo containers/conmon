@@ -56,21 +56,6 @@ gce_instance:
 # Default timeout for each task
 timeout_in: '120m'
 
-# this task runs the conmon integration tests
-integration_task:
-
-    depends_on:
-        - 'config'
-        - 'fmt'
-
-    gce_instance:
-        matrix:
-            # Images are generated separately, from build_images_task (below)
-            image_name: "${FEDORA_CACHE_IMAGE_NAME}"
-
-    integration_test_script: '$SCRIPT_BASE/integration_test.sh'
-
-
 # Verify conmon package can be built and installed on Fedora
 fedora_packaging_task:
 
