@@ -223,21 +223,21 @@ int main(int argc, char *argv[])
 			workerfd_stdin = dev_null_r;
 		if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
 			_pexit("Failed to dup over stdin");
-		if (fchmod(STDIN_FILENO, 0777) < 0)
+		if (workerfd_stdin != dev_null_r && fchmod(STDIN_FILENO, 0777) < 0)
 			nwarn("Failed to chown stdin");
 
 		if (workerfd_stdout < 0)
 			workerfd_stdout = dev_null_w;
 		if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
 			_pexit("Failed to dup over stdout");
-		if (fchmod(STDOUT_FILENO, 0777) < 0)
+		if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0)
 			nwarn("Failed to chown stdout");
 
 		if (workerfd_stderr < 0)
 			workerfd_stderr = workerfd_stdout;
 		if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
 			_pexit("Failed to dup over stderr");
-		if (fchmod(STDERR_FILENO, 0777) < 0)
+		if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0)
 			nwarn("Failed to chown stderr");
 
 		/* If LISTEN_PID env is set, we need to set the LISTEN_PID
