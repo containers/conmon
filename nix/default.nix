@@ -1,20 +1,22 @@
 { system ? builtins.currentSystem }:
 let
   pkgs = (import ./nixpkgs.nix {
-    overlays = [(final: pkg: {
-      pcre = (static pkg.pcre).overrideAttrs(x: {
-        configureFlags = x.configureFlags ++ [
-          "--enable-static"
-        ];
-      });
-    })];
+    overlays = [
+      (final: pkg: {
+        pcre = (static pkg.pcre).overrideAttrs (x: {
+          configureFlags = x.configureFlags ++ [
+            "--enable-static"
+          ];
+        });
+      })
+    ];
     config = {
       packageOverrides = pkg: {
         autogen = (static pkg.autogen);
         e2fsprogs = (static pkg.e2fsprogs);
-        libuv = (static pkg.libuv);
         libseccomp = (static pkg.libseccomp);
-        glib = (static pkg.glib).overrideAttrs(x: {
+        libuv = (static pkg.libuv);
+        glib = (static pkg.glib).overrideAttrs (x: {
           outputs = [ "bin" "out" "dev" ];
           mesonFlags = [
             "-Ddefault_library=static"
@@ -22,9 +24,16 @@ let
             "-Dgtk_doc=false"
             "-Dnls=disabled"
           ];
+          postInstall = ''
+            moveToOutput "share/glib-2.0" "$dev"
+            substituteInPlace "$dev/bin/gdbus-codegen" --replace "$out" "$dev"
+            sed -i "$dev/bin/glib-gettextize" -e "s|^gettext_dir=.*|gettext_dir=$dev/share/glib-2.0/gettext|"
+            sed '1i#line 1 "${x.pname}-${x.version}/include/glib-2.0/gobject/gobjectnotifyqueue.c"' \
+              -i "$dev"/include/glib-2.0/gobject/gobjectnotifyqueue.c
+          '';
         });
-        gnutls = (static pkg.gnutls).overrideAttrs(x: {
-          configureFlags = (x.configureFlags or []) ++ [
+        gnutls = (static pkg.gnutls).overrideAttrs (x: {
+          configureFlags = (x.configureFlags or [ ]) ++ [
             "--disable-non-suiteb-curves"
             "--disable-openssl-compatibility"
             "--disable-rpath"
@@ -32,9 +41,20 @@ let
             "--without-p11-kit"
           ];
         });
-        systemd = (static pkg.systemd).overrideAttrs(x: {
+        pcsclite = (static pkg.pcsclite).overrideAttrs (x: {
+          configureFlags = [
+            "--enable-confdir=/etc"
+            "--enable-usbdropdir=/var/lib/pcsc/drivers"
+            "--disable-libsystemd"
+            "--disable-libudev"
+            "--disable-libusb"
+          ];
+          buildInputs = [ pkgs.python3 pkgs.dbus ];
+        });
+        systemd = (static pkg.systemd).overrideAttrs (x: {
           outputs = [ "out" "dev" ];
           mesonFlags = x.mesonFlags ++ [
+            "-Dglib=false"
             "-Dstatic-libsystemd=true"
           ];
         });
@@ -42,9 +62,9 @@ let
     };
   });
 
-  static = pkg: pkg.overrideAttrs(x: {
+  static = pkg: pkg.overrideAttrs (x: {
     doCheck = false;
-    configureFlags = (x.configureFlags or []) ++ [
+    configureFlags = (x.configureFlags or [ ]) ++ [
       "--without-shared"
       "--disable-shared"
     ];
@@ -75,4 +95,5 @@ let
       install -Dm755 bin/conmon $out/bin/conmon
     '';
   };
-in self
+in
+self
