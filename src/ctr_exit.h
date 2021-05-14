@@ -24,5 +24,6 @@ void runtime_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer 
 void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer user_data);
 void do_exit_command();
 void reap_children();
+void handle_signal(G_GNUC_UNUSED const int signum);
 
 #endif // CTR_EXIT_H
