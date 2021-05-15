@@ -200,3 +200,8 @@ void reap_children()
 	while (waitpid(-1, NULL, WNOHANG) > 0)
 		;
 }
+
+void handle_signal(G_GNUC_UNUSED const int signum)
+{
+	exit(EXIT_FAILURE);
+}

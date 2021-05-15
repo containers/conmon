@@ -45,6 +45,8 @@ int main(int argc, char *argv[])
 
 	/* ignoring SIGPIPE prevents conmon from being spuriously killed */
 	signal(SIGPIPE, SIG_IGN);
+	/* Catch SIGTERM and call exit(). This causes the atexit functions to be called. */
+	signal(SIGTERM, handle_signal);
 
 	int start_pipe_fd = get_pipe_fd_from_env("_OCI_STARTPIPE");
 	if (start_pipe_fd > 0) {
