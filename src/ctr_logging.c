@@ -55,6 +55,8 @@ static char *container_name = NULL;
 static char *container_tag = NULL;
 static size_t container_tag_len;
 
+#define WRITEV_BUFFER_N_IOV 128
+
 typedef struct {
 	int iovcnt;
 	struct iovec iov[WRITEV_BUFFER_N_IOV];
