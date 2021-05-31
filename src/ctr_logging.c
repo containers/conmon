@@ -54,8 +54,9 @@ static size_t name_len = 0;
 static char *container_id_full = NULL;
 static char *container_id = NULL;
 static char *container_name = NULL;
+static size_t container_name_len = 0;
 static char *container_tag = NULL;
-static size_t container_tag_len;
+static size_t container_tag_len = 0;
 
 static void parse_log_path(char *log_config);
 static const char *stdpipe_name(stdpipe_t pipe);
@@ -123,6 +124,7 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 			/* save the length so we don't have to compute every sd_journal_* call */
 			name_len = strlen(name);
 			container_name = g_strdup_printf("CONTAINER_NAME=%s", name);
+			container_name_len = strlen(container_name);
 		}
 	}
 }
@@ -204,63 +206,66 @@ static int write_journald(stdpipe_t pipe, ssize_t buflen)
 {
 	char *buf = writev_buffer.buf;
 
-	/* When using writev_buffer_append_segment, we should never approach the number of
-	 * entries necessary to flush the buffer. Therefore, the fd passed in is for /dev/null
+	/* Since we know the priority values for the journal (6 being log info and
+	 * 3 being log err) we can set it statically here. This will also save on
+	 * runtime, at the expense of needing to be changed if this convention is
+	 * changed.
 	 */
-	_cleanup_close_ int dev_null = open("/dev/null", O_WRONLY | O_CLOEXEC);
-	if (dev_null < 0)
-		pexit("Failed to open /dev/null");
-
-	/* Since we know the priority values for the journal (6 being log info and 3 being log err
-	 * we can set it statically here. This will also save on runtime, at the expense of needing
-	 * to be changed if this convention is changed.
-	 */
-	const char *message_priority = "PRIORITY=6";
+	char *message_priority = "PRIORITY=6";
 	if (pipe == STDERR_PIPE)
 		message_priority = "PRIORITY=3";
 
 	ptrdiff_t line_len = 0;
 
+	/*
+	 * Writing to journald requires one `sd_journal_sendv()` call per line in
+	 * the buffer received from the pipe.  
+	 */
+	struct iovec sendv_vecs[7] = {
+		{ (char *)0, 0 },					 // filled in as we go
+		{ container_id_full, cuuid_len + CID_FULL_EQ_LEN },
+		{ message_priority, PRIORITY_EQ_LEN },
+		{ container_id, TRUNC_ID_LEN + CID_EQ_LEN },
+	};
+	ssize_t sendv_vecs_len = 4;
+    if (container_tag) {
+		sendv_vecs[sendv_vecs_len].iov_base = (void *)container_tag;
+		sendv_vecs[sendv_vecs_len].iov_len = container_tag_len;
+		sendv_vecs_len += 1;
+	}
+	if (name) {
+		sendv_vecs[sendv_vecs_len].iov_base = (void *)container_name;
+		sendv_vecs[sendv_vecs_len].iov_len = container_name_len;
+		sendv_vecs_len += 1;
+	}
+
+	char *msg_buf = (char *)alloca(buflen + MESSAGE_EQ_LEN);
+	memcpy(msg_buf, "MESSAGE=", MESSAGE_EQ_LEN);
+
 	while (buflen > 0) {
 		bool partial = get_line_len(&line_len, buf, buflen);
-		/* sd_journal_* doesn't have an option to specify the number of bytes to write in the message, and instead writes the
-		 * entire string. Copying every line doesn't make very much sense, so instead we do this tmp_line_end
-		 * hack to emulate separate strings.
-		 */
-		char tmp_line_end = buf[line_len];
-		buf[line_len] = '\0';
 
-		_cleanup_free_ char *message = g_strdup_printf("MESSAGE=%s", buf);
-		if (writev_buffer_append_segment(&writev_buffer, dev_null, message, line_len + MESSAGE_EQ_LEN) < 0)
-			return -1;
-
-		/* Restore state of the buffer */
-		buf[line_len] = tmp_line_end;
-
-		if (writev_buffer_append_segment(&writev_buffer, dev_null, container_id_full, cuuid_len + CID_FULL_EQ_LEN) < 0)
-			return -1;
-
-		if (writev_buffer_append_segment(&writev_buffer, dev_null, message_priority, PRIORITY_EQ_LEN) < 0)
-			return -1;
-
-		if (writev_buffer_append_segment(&writev_buffer, dev_null, container_id, TRUNC_ID_LEN + CID_EQ_LEN) < 0)
-			return -1;
-
-		if (container_tag && writev_buffer_append_segment(&writev_buffer, dev_null, container_tag, container_tag_len) < 0)
-			return -1;
-
-		/* only print the name if we have a name to print */
-		if (name && writev_buffer_append_segment(&writev_buffer, dev_null, container_name, name_len + NAME_EQ_LEN) < 0)
-			return -1;
+		// Fill in the message
+		memcpy(msg_buf + MESSAGE_EQ_LEN, buf, line_len);
+		sendv_vecs[0].iov_base = (void *)msg_buf;
+		sendv_vecs[0].iov_len = buflen + MESSAGE_EQ_LEN;
 
 		/* per docker journald logging format, CONTAINER_PARTIAL_MESSAGE is set to true if it's partial, but otherwise not set. */
-		if (partial && writev_buffer_append_segment(&writev_buffer, dev_null, "CONTAINER_PARTIAL_MESSAGE=true", PARTIAL_MESSAGE_EQ_LEN) < 0)
-			return -1;
+		if (partial) {
+			sendv_vecs[sendv_vecs_len].iov_base = "CONTAINER_PARTIAL_MESSAGE=true";
+			sendv_vecs[sendv_vecs_len].iov_len = PARTIAL_MESSAGE_EQ_LEN;
+			sendv_vecs_len += 1;
+		}
 
-		int err = sd_journal_sendv(writev_buffer.iov, writev_buffer.iovcnt);
+		int err = sd_journal_sendv(sendv_vecs, sendv_vecs_len);
 		if (err < 0) {
 			pwarn(strerror(err));
 			return err;
+		}
+
+		if (partial) {
+			// We don't have to do this, because we'll only get a partial line at the end.
+			sendv_vecs_len -= 1;
 		}
 
 		buf += line_len;
@@ -420,17 +425,26 @@ void writev_buffer_init(int pipe_size)
 	if (target_lines_cnt < 0)
 		nexitf("Logic bomb!  target # of lines per pipe is negative!  pipe_size = %d, target_lines_cnt = %d", pipe_size, target_lines_cnt);
 
-	writev_buffer.iovcnt_max = target_lines_cnt;
-	writev_buffer.buf_len = pipe_size;
+	int iovectors_bytes_page_aligned;
+	if (use_k8s_logging) {
+		unsigned int iovectors_bytes = sizeof(struct iovec) * (unsigned int)target_lines_cnt;
+		iovectors_bytes_page_aligned = (int)ceilf(iovectors_bytes / (float)getpagesize()) * getpagesize();
+	}
+	else {
+		iovectors_bytes_page_aligned = 0;
+	}
 
-	unsigned int iovectors_bytes = sizeof(struct iovec) * (unsigned int)target_lines_cnt;
-	int iovectors_bytes_page_aligned = (int)ceilf(iovectors_bytes / (float)getpagesize()) * getpagesize();
 	char *memory = mmap(NULL, iovectors_bytes_page_aligned + pipe_size, PROT_READ|PROT_WRITE, MAP_ANONYMOUS, -1, 0);
 	if (memory == NULL)
 		nexitf("mmap() failed for I/O vectors and buffer");
 
-	writev_buffer.iov = (struct iovec *)memory;
+	if (use_k8s_logging) {
+		writev_buffer.iov = (struct iovec *)memory;
+		writev_buffer.iovcnt_max = target_lines_cnt;
+	}
+
 	writev_buffer.buf = &memory[iovectors_bytes_page_aligned];
+	writev_buffer.buf_len = pipe_size;
 }
 
 
