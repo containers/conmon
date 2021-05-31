@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
 {
 	setlocale(LC_ALL, "");
 	_cleanup_gerror_ GError *err = NULL;
-	char buf[BUF_SIZE];
 	int num_read;
 	_cleanup_close_ int dev_null_r_cleanup = -1;
 	_cleanup_close_ int dev_null_w_cleanup = -1;
@@ -48,12 +47,18 @@ int main(int argc, char *argv[])
 	/* Catch SIGTERM and call exit(). This causes the atexit functions to be called. */
 	signal(SIGTERM, handle_signal);
 
+	char *start_pipe_fd_buf = NULL;
+	int start_pipe_fd_size = 0;
 	int start_pipe_fd = get_pipe_fd_from_env("_OCI_STARTPIPE");
 	if (start_pipe_fd > 0) {
+		start_pipe_fd_size = fcntl(start_pipe_fd, F_GETPIPE_SZ);
+		if (start_pipe_fd_size < 0)
+			pexit("start-pipe size determination failed");
+		start_pipe_fd_buf = alloca(start_pipe_fd_size);
 		/* Block for an initial write to the start pipe before
-		   spawning any childred or exiting, to ensure the
+		   spawning any children or exiting, to ensure the
 		   parent can put us in the right cgroup. */
-		num_read = read(start_pipe_fd, buf, BUF_SIZE);
+		num_read = read(start_pipe_fd, start_pipe_fd_buf, start_pipe_fd_size);
 		if (num_read < 0) {
 			pexit("start-pipe read failed");
 		}
@@ -156,6 +161,9 @@ int main(int argc, char *argv[])
 				pexit("Failed to create !terminal stdin pipe");
 
 			mainfd_stdin = fds[1];
+			mainfd_stdin_size = fcntl(mainfd_stdin, F_GETPIPE_SZ);
+			if (mainfd_stdin < 0)
+				pexit("main stdin pipe size determination failed");
 			workerfd_stdin = fds[0];
 
 			if (g_unix_set_fd_nonblocking(mainfd_stdin, TRUE, NULL) == FALSE)
@@ -166,6 +174,9 @@ int main(int argc, char *argv[])
 			pexit("Failed to create !terminal stdout pipe");
 
 		mainfd_stdout = fds[0];
+		mainfd_stdout_size = fcntl(mainfd_stdout, F_GETPIPE_SZ);
+		if (mainfd_stdout_size < 0)
+			pexit("main stdout pipe size determination failed");
 		workerfd_stdout = fds[1];
 
 		/* now that we've set mainfd_stdout, we can register the ctrl_winsz_cb
@@ -181,6 +192,12 @@ int main(int argc, char *argv[])
 		pexit("Failed to create stderr pipe");
 
 	mainfd_stderr = fds[0];
+	mainfd_stderr_size = fcntl(mainfd_stderr, F_GETPIPE_SZ);
+	if (mainfd_stderr_size < 0)
+		pexit("main stderr pipe size determination failed");
+	if ((mainfd_stdout >= 0) && (mainfd_stderr_size != mainfd_stdout_size)) {
+		nwarn("main stderr and stdout pipe sizes don't match");
+	}
 	workerfd_stderr = fds[1];
 
 	GPtrArray *runtime_argv = configure_runtime_args(csname);
@@ -266,11 +283,11 @@ int main(int argc, char *argv[])
 		if (opt_attach) {
 			if (start_pipe_fd > 0) {
 				ndebug("exec with attach is waiting for start message from parent");
-				num_read = read(start_pipe_fd, buf, BUF_SIZE);
-				ndebug("exec with attach got start message from parent");
+				num_read = read(start_pipe_fd, start_pipe_fd_buf, start_pipe_fd_size);
 				if (num_read < 0) {
 					_pexit("start-pipe read failed");
 				}
+				ndebug("exec with attach got start message from parent");
 				close(start_pipe_fd);
 			}
 		}
@@ -347,16 +364,17 @@ int main(int argc, char *argv[])
 		 * Read from container stderr for any error and send it to parent
 		 * We send -1 as pid to signal to parent that create container has failed.
 		 */
-		num_read = read(mainfd_stderr, buf, BUF_SIZE - 1);
+		char *mainfd_stderr_buf = (char *)alloca(start_pipe_fd_size + 1);
+		num_read = read(mainfd_stderr, mainfd_stderr_buf, mainfd_stderr_size);
 		if (num_read > 0) {
-			buf[num_read] = '\0';
-			nwarnf("runtime stderr: %s", buf);
+			mainfd_stderr_buf[num_read] = '\0';
+			nwarnf("runtime stderr: %s", mainfd_stderr_buf);
 			if (sync_pipe_fd > 0) {
 				int to_report = -1;
 				if (opt_exec && container_status > 0) {
 					to_report = -1 * container_status;
 				}
-				write_sync_fd(sync_pipe_fd, to_report, buf);
+				write_sync_fd(sync_pipe_fd, to_report, mainfd_stderr_buf);
 			}
 		}
 		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
@@ -386,6 +404,9 @@ int main(int argc, char *argv[])
 		write_sync_fd(sync_pipe_fd, container_pid, NULL);
 
 	setup_oom_handling(container_pid);
+
+	// Setup the buffers used by the stdio call-back.
+	writev_buffer_init(mainfd_stderr_size);
 
 	if (mainfd_stdout >= 0) {
 		g_unix_fd_add(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));

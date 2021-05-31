@@ -100,18 +100,12 @@ void drain_stdio()
 
 static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 {
-	/* We use two extra bytes. One at the start, which we don't read into, instead
-	   we use that for marking the pipe when we write to the attached socket.
-	   One at the end to guarantee a null-terminated buffer for journald logging*/
-
-	char real_buf[STDIO_BUF_SIZE + 2];
-	char *buf = real_buf + 1;
 	ssize_t num_read = 0;
 
 	if (eof)
 		*eof = false;
 
-	num_read = read(fd, buf, STDIO_BUF_SIZE);
+	num_read = read(fd, writev_buffer.buf, writev_buffer.buf_len);
 	if (num_read == 0) {
 		if (eof)
 			*eof = true;
@@ -120,15 +114,11 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 		nwarnf("stdio_input read failed %s", strerror(errno));
 		return false;
 	} else {
-		// Always null terminate the buffer, just in case.
-		buf[num_read] = '\0';
-
-		bool written = write_to_logs(pipe, buf, num_read);
+		bool written = write_to_logs(pipe, num_read);
 		if (!written)
 			return written;
 
-		real_buf[0] = pipe;
-		write_back_to_remote_consoles(real_buf, num_read + 1);
+		write_back_to_remote_consoles(pipe, writev_buffer.buf, num_read);
 		return true;
 	}
 }
