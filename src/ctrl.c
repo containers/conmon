@@ -8,6 +8,7 @@
 #include "conn_sock.h"
 #include "cmsg.h"
 #include "cli.h" // opt_bundle_path
+#include "seccomp_notify.h"
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>

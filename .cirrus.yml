@@ -73,7 +73,7 @@ fedora_packaging_task:
             image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
 
     script:
-        - dnf install -y rpm-build golang
+        - dnf install -y rpm-build golang libseccomp-devel
         - cd $CIRRUS_WORKING_DIR
         - make
         - make -f .rpmbuild/Makefile
@@ -123,7 +123,7 @@ static_binary_task:
     # the next line and file an issue with details about the failure.
     # allow_failures: true
 
-    timeout_in: '20m'
+    timeout_in: '120m'
 
     gce_instance:
         image_name: "${FEDORA_CACHE_IMAGE_NAME}"

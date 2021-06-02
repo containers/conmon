@@ -22,6 +22,7 @@ ExclusiveArch: aarch64 %{arm} ppc64le s390x x86_64
 BuildRequires: gcc
 BuildRequires: glib2-devel
 BuildRequires: glibc-devel
+BuildRequires: libseccomp-devel
 BuildRequires: git
 # If go_compiler is not set to 1, there is no virtual provide. Use golang instead.
 BuildRequires: golang

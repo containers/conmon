@@ -18,6 +18,7 @@
 #include "parent_pipe_fd.h"
 #include "ctr_exit.h"
 #include "close_fds.h"
+#include "seccomp_notify.h"
 #include "runtime_args.h"
 
 #include <sys/prctl.h>
@@ -133,6 +134,7 @@ int main(int argc, char *argv[])
 	}
 
 	_cleanup_free_ char *csname = NULL;
+	_cleanup_free_ char *seccomp_listener = NULL;
 	int workerfd_stdin = -1;
 	int workerfd_stdout = -1;
 	int workerfd_stderr = -1;
@@ -173,6 +175,15 @@ int main(int argc, char *argv[])
 		 * a negative fd, and fail to resize the window */
 		if (winsz_fd_r >= 0)
 			g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
+	}
+
+	if (opt_seccomp_notify_socket != NULL) {
+#if !USE_SECCOMP
+		pexit("seccomp support not present");
+#endif
+		if (opt_seccomp_notify_plugins == NULL)
+			pexit("seccomp notify socket specified without any plugin");
+		seccomp_listener = setup_seccomp_socket(opt_seccomp_notify_socket);
 	}
 
 	/* We always create a stderr pipe, because that way we can capture
@@ -318,6 +329,9 @@ int main(int argc, char *argv[])
 		close(workerfd_stdout);
 	if (workerfd_stderr > -1)
 		close(workerfd_stderr);
+
+	if (seccomp_listener != NULL)
+		g_unix_fd_add(seccomp_socket_fd, G_IO_IN, seccomp_accept_cb, csname);
 
 	if (csname != NULL) {
 		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
@@ -492,6 +506,8 @@ int main(int argc, char *argv[])
 		if (!g_file_set_contents(exit_file_path, status_str, -1, &err))
 			nexitf("Failed to write %s to exit file: %s", status_str, err->message);
 	}
+	if (seccomp_listener != NULL)
+		unlink(seccomp_listener);
 
 	/* Send the command exec exit code back to the parent */
 	if (opt_exec && sync_pipe_fd >= 0)

@@ -17,6 +17,7 @@ let
         autogen = (static pkg.autogen);
         e2fsprogs = (static pkg.e2fsprogs);
         libuv = (static pkg.libuv);
+        libseccomp = (static pkg.libseccomp);
         glib = (static pkg.glib).overrideAttrs (x: {
           outputs = [ "bin" "out" "dev" ];
           mesonFlags = [
@@ -77,7 +78,7 @@ let
       pkg-config
       which
     ];
-    buildInputs = [ glibc glibc.static glib ];
+    buildInputs = [ glibc glibc.static glib libseccomp ];
     prePatch = ''
       export CFLAGS='-static -pthread'
       export LDFLAGS='-s -w -static-libgcc -static'
