@@ -21,6 +21,8 @@
 #include "cmsg.h"
 #include "seccomp_notify.h"
 
+#if USE_SECCOMP
+
 #ifndef SECCOMP_USER_NOTIF_FLAG_CONTINUE
 #define SECCOMP_USER_NOTIF_FLAG_CONTINUE (1UL << 0)
 #endif
@@ -37,19 +39,15 @@ struct seccomp_notify_context_s {
 	struct plugin *plugins;
 	size_t n_plugins;
 
-#if USE_SECCOMP
 	struct seccomp_notif_resp *sresp;
 	struct seccomp_notif *sreq;
 	struct seccomp_notif_sizes sizes;
-#endif
 };
 
 static inline void *xmalloc0(size_t size);
 static void cleanup_seccomp_plugins();
 
-#if USE_SECCOMP
 static int seccomp_syscall(unsigned int op, unsigned int flags, void *args);
-#endif
 
 gboolean seccomp_cb(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
@@ -100,7 +98,6 @@ gboolean seccomp_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_
 	return G_SOURCE_CONTINUE;
 }
 
-#if USE_SECCOMP
 int seccomp_notify_plugins_load(struct seccomp_notify_context_s **out, const char *plugins, struct seccomp_notify_conf_s *conf)
 {
 	cleanup_seccomp_notify_context struct seccomp_notify_context_s *ctx = xmalloc0(sizeof *ctx);
@@ -273,27 +270,6 @@ int seccomp_notify_plugins_free(struct seccomp_notify_context_s *ctx)
 	return 0;
 }
 
-#else
-int seccomp_notify_plugins_load(G_GNUC_UNUSED struct seccomp_notify_context_s **out, G_GNUC_UNUSED const char *plugins,
-				G_GNUC_UNUSED struct seccomp_notify_conf_s *conf)
-{
-	pexit("seccomp support not available");
-	return -1;
-}
-
-int seccomp_notify_plugins_event(G_GNUC_UNUSED struct seccomp_notify_context_s *ctx, G_GNUC_UNUSED int seccomp_fd)
-{
-	pexit("seccomp support not available");
-	return -1;
-}
-
-int seccomp_notify_plugins_free(G_GNUC_UNUSED struct seccomp_notify_context_s *ctx)
-{
-	pexit("seccomp support not available");
-	return -1;
-}
-#endif
-
 static void cleanup_seccomp_plugins()
 {
 	if (seccomp_notify_ctx) {
@@ -319,10 +295,15 @@ static inline void *xmalloc0(size_t size)
 	return res;
 }
 
-#if USE_SECCOMP
 static int seccomp_syscall(unsigned int op, unsigned int flags, void *args)
 {
 	errno = 0;
 	return syscall(__NR_seccomp, op, flags, args);
+}
+#else
+gboolean seccomp_accept_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
+{
+	pexit("seccomp support not available");
+	return G_SOURCE_REMOVE;
 }
 #endif

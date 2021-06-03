@@ -1,6 +1,8 @@
-#ifndef SECCOMP_NOTIFY_PLUGINPLUGIN_H
+#ifndef SECCOMP_NOTIFY_PLUGIN_H
 
 #include <linux/seccomp.h>
+
+#if USE_SECCOMP
 
 struct seccomp_notify_conf_s {
 	const char *runtime_root_path;
@@ -37,4 +39,5 @@ typedef int (*run_oci_seccomp_notify_stop_cb)(void *opaque);
 /* Retrieve the API version used by the plugin.  It MUST return 1. */
 typedef int (*run_oci_seccomp_notify_plugin_version_cb)();
 
-#endif
+#endif // USE_SECCOMP
+#endif // SECCOMP_NOTIFY_PLUGIN_H
