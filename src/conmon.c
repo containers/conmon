@@ -180,10 +180,11 @@ int main(int argc, char *argv[])
 	if (opt_seccomp_notify_socket != NULL) {
 #if !USE_SECCOMP
 		pexit("seccomp support not present");
-#endif
+#else
 		if (opt_seccomp_notify_plugins == NULL)
 			pexit("seccomp notify socket specified without any plugin");
 		seccomp_listener = setup_seccomp_socket(opt_seccomp_notify_socket);
+#endif
 	}
 
 	/* We always create a stderr pipe, because that way we can capture
