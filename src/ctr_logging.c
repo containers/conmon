@@ -47,6 +47,7 @@ static char *k8s_log_path = NULL;
 static char short_cuuid[TRUNC_ID_LEN + 1];
 static char *cuuid = NULL;
 static char *name = NULL;
+static char *msg_prefix = "";
 static size_t cuuid_len = 0;
 static size_t name_len = 0;
 static char *container_id_full = NULL;
@@ -111,14 +112,6 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 		short_cuuid[TRUNC_ID_LEN] = '\0';
 		name = name_;
 
-		/* Setup some sd_journal_sendv arguments that won't change */
-		container_id_full = g_strdup_printf("CONTAINER_ID_FULL=%s", cuuid);
-		container_id = g_strdup_printf("CONTAINER_ID=%s", short_cuuid);
-		if (tag) {
-			container_tag = g_strdup_printf("CONTAINER_TAG=%s", tag);
-			container_tag_len = strlen(container_tag);
-		}
-
 		/* To maintain backwards compatibility with older versions of conmon, we need to skip setting
 		 * the name value if it isn't present
 		 */
@@ -126,6 +119,16 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 			/* save the length so we don't have to compute every sd_journal_* call */
 			name_len = strlen(name);
 			container_name = g_strdup_printf("CONTAINER_NAME=%s", name);
+			msg_prefix = g_strdup_printf("%s ", name);
+		}
+
+		/* Setup some sd_journal_sendv arguments that won't change */
+		container_id_full = g_strdup_printf("CONTAINER_ID_FULL=%s", cuuid);
+		container_id = g_strdup_printf("CONTAINER_ID=%s", short_cuuid);
+		if (tag) {
+			container_tag = g_strdup_printf("CONTAINER_TAG=%s", tag);
+			container_tag_len = strlen(container_tag);
+			msg_prefix = g_strdup_printf("%s[%s] ", name ?: "", tag);
 		}
 	}
 }
@@ -233,8 +236,8 @@ int write_journald(int pipe, char *buf, ssize_t buflen)
 		char tmp_line_end = buf[line_len];
 		buf[line_len] = '\0';
 
-		_cleanup_free_ char *message = g_strdup_printf("MESSAGE=%s", buf);
-		if (writev_buffer_append_segment(dev_null, &bufv, message, line_len + MESSAGE_EQ_LEN) < 0)
+		_cleanup_free_ char *message = g_strdup_printf("MESSAGE=%s%s", msg_prefix, buf);
+		if (writev_buffer_append_segment(dev_null, &bufv, message, line_len + strlen(msg_prefix) + MESSAGE_EQ_LEN) < 0)
 			return -1;
 
 		/* Restore state of the buffer */
