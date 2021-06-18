@@ -56,7 +56,7 @@ CIRRUS_REPO_NAME=${CIRRUS_REPO_NAME-$(dirname $0)}
 # shellcheck disable=SC2154
 if [[ -z "$CIRRUS_BASE_SHA" ]] && [[ -z "$CIRRUS_TAG" ]]
 then  # Operating on a branch, or under `get_ci_vm.sh`
-    CIRRUS_BASE_SHA=$(git rev-parse ${UPSTREAM_REMOTE:-origin}/master)
+    CIRRUS_BASE_SHA=$(git rev-parse ${UPSTREAM_REMOTE:-origin}/main)
 elif [[ -z "$CIRRUS_BASE_SHA" ]]
 then  # Operating on a tag
     CIRRUS_BASE_SHA=$(git rev-parse HEAD)
