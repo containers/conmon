@@ -32,7 +32,7 @@ task (pass or fail) is set based on the exit status of the last script to execut
 
 ### ``cache_images`` Task
 
-1. When a PR is merged (``$CIRRUS_BRANCH`` == ``master``), run another
+1. When a PR is merged (``$CIRRUS_BRANCH`` == ``main``), run another
    round of the ``integration`` task (above).
 
 2. After confirming the tests all pass post-merge, cirrus will
