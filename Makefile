@@ -15,7 +15,7 @@ MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 all: git-vars bin bin/conmon
 
 git-vars:
-ifeq ($(shell bash -c '[[ `command -v git` && `git rev-parse --git-dir 2>/dev/null` ]] && echo true'),true)
+ifeq ($(shell bash -c '[[ `command -v git` && `git rev-parse --git-dir 2>/dev/null` ]] && echo 0'),0)
 	$(eval COMMIT_NO :=$(shell git rev-parse HEAD 2> /dev/null || true))
 	$(eval GIT_COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}"))
 	$(eval GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null))
@@ -38,15 +38,15 @@ override CFLAGS += $(shell $(PKG_CONFIG) --cflags glib-2.0) -DVERSION=\"$(VERSIO
 # "pkg-config --exists" will error if the package doesn't exist. Make can only compare
 # output of commands, so the echo commands are to allow pkg-config to error out, make to catch it,
 # and allow the compilation to complete.
-ifeq ($(shell $(PKG_CONFIG) --exists libsystemd-journal && echo "0" || echo "1"), 0)
+ifeq ($(shell $(PKG_CONFIG) --exists libsystemd-journal && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd-journal)
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd-journal) -D USE_JOURNALD=0
-else ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0" || echo "1"), 0)
+else ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd)
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=0
 endif
 
-ifeq ($(shell $(PKG_CONFIG) --atleast-version 2.5.0 libseccomp && echo "0" || echo "1"), 0)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version 2.5.0 libseccomp && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libseccomp) -ldl
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libseccomp) -D USE_SECCOMP=1
 else
