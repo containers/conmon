@@ -46,7 +46,7 @@ else ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0"), 0)
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=1
 endif
 
-ifeq ($(shell $(PKG_CONFIG) --atleast-version 2.5.0 libseccomp && echo "0"), 0)
+ifeq ($(shell hack/seccomp-notify.sh), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libseccomp) -ldl
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libseccomp) -D USE_SECCOMP=1
 else
