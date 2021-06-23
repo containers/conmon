@@ -40,10 +40,10 @@ override CFLAGS += $(shell $(PKG_CONFIG) --cflags glib-2.0) -DVERSION=\"$(VERSIO
 # and allow the compilation to complete.
 ifeq ($(shell $(PKG_CONFIG) --exists libsystemd-journal && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd-journal)
-	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd-journal) -D USE_JOURNALD=0
+	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd-journal) -D USE_JOURNALD=1
 else ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd)
-	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=0
+	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=1
 endif
 
 ifeq ($(shell $(PKG_CONFIG) --atleast-version 2.5.0 libseccomp && echo "0"), 0)
