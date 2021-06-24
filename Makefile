@@ -49,8 +49,6 @@ endif
 ifeq ($(shell hack/seccomp-notify.sh), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libseccomp) -ldl
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libseccomp) -D USE_SECCOMP=1
-else
-	override CFLAGS += -D USE_SECCOMP=0
 endif
 
 # Update nix/nixpkgs.json its latest stable commit

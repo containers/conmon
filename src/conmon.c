@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_seccomp_notify_socket != NULL) {
-#if !USE_SECCOMP
+#ifdef USE_SECCOMP
 		pexit("seccomp support not present");
 #else
 		if (opt_seccomp_notify_plugins == NULL)
