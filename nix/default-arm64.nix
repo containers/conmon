@@ -16,8 +16,8 @@ let
       packageOverrides = pkg: {
         autogen = (static pkg.autogen);
         e2fsprogs = (static pkg.e2fsprogs);
-        libuv = (static pkg.libuv);
         libseccomp = (static pkg.libseccomp);
+        libuv = (static pkg.libuv);
         glib = (static pkg.glib).overrideAttrs (x: {
           outputs = [ "bin" "out" "dev" ];
           mesonFlags = [
@@ -43,9 +43,20 @@ let
             "--without-p11-kit"
           ];
         });
+        pcsclite = (static pkg.pcsclite).overrideAttrs (x: {
+          configureFlags = [
+            "--enable-confdir=/etc"
+            "--enable-usbdropdir=/var/lib/pcsc/drivers"
+            "--disable-libsystemd"
+            "--disable-libudev"
+            "--disable-libusb"
+          ];
+          buildInputs = [ pkgs.python3 pkgs.dbus ];
+        });
         systemd = (static pkg.systemd).overrideAttrs (x: {
           outputs = [ "out" "dev" ];
           mesonFlags = x.mesonFlags ++ [
+            "-Dglib=false"
             "-Dstatic-libsystemd=true"
           ];
         });
@@ -71,13 +82,7 @@ let
     doCheck = false;
     enableParallelBuilding = true;
     outputs = [ "out" ];
-    nativeBuildInputs = with buildPackages; [
-      bash
-      gitMinimal
-      pcre
-      pkg-config
-      which
-    ];
+    nativeBuildInputs = [ bash gitMinimal pcre pkg-config which ];
     buildInputs = [ glibc glibc.static glib libseccomp ];
     prePatch = ''
       export CFLAGS='-static -pthread'
