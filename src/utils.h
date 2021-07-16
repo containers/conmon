@@ -221,8 +221,6 @@ static inline void hashtable_free_cleanup(GHashTable **tbl)
 #define _cleanup_hashtable_ _cleanup_(hashtable_free_cleanup)
 
 
-#define WRITEV_BUFFER_N_IOV 128
-
 ssize_t write_all(int fd, const void *buf, size_t count);
 
 #endif /* !defined(UTILS_H) */

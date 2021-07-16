@@ -9,8 +9,11 @@ extern int runtime_status;
 extern int container_status;
 
 extern int mainfd_stdin;
+extern int mainfd_stdin_size;
 extern int mainfd_stdout;
+extern int mainfd_stdout_size;
 extern int mainfd_stderr;
+extern int mainfd_stderr_size;
 
 extern int attach_socket_fd;
 extern int console_socket_fd;

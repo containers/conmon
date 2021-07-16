@@ -4,8 +4,11 @@ int runtime_status = -1;
 int container_status = -1;
 
 int mainfd_stdin = -1;
+int mainfd_stdin_size = 0;
 int mainfd_stdout = -1;
+int mainfd_stdout_size = 0;
 int mainfd_stderr = -1;
+int mainfd_stderr_size = 0;
 
 int attach_socket_fd = -1;
 int console_socket_fd = -1;
