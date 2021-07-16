@@ -21,7 +21,7 @@
 #include "cmsg.h"
 #include "seccomp_notify.h"
 
-#if USE_SECCOMP
+#ifdef USE_SECCOMP
 
 #ifndef SECCOMP_USER_NOTIF_FLAG_CONTINUE
 #define SECCOMP_USER_NOTIF_FLAG_CONTINUE (1UL << 0)

@@ -3,7 +3,7 @@
 
 #include "seccomp_notify_plugin.h"
 
-#if USE_SECCOMP
+#ifdef USE_SECCOMP
 
 struct seccomp_notify_context_s;
 
