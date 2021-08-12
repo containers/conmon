@@ -169,12 +169,6 @@ int main(int argc, char *argv[])
 
 		mainfd_stdout = fds[0];
 		workerfd_stdout = fds[1];
-
-		/* now that we've set mainfd_stdout, we can register the ctrl_winsz_cb
-		 * if we didn't set it here, we'd risk attempting to run ioctl on
-		 * a negative fd, and fail to resize the window */
-		if (winsz_fd_r >= 0)
-			g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
 	}
 
 	if (opt_seccomp_notify_socket != NULL) {
