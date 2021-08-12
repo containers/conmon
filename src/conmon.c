@@ -169,12 +169,6 @@ int main(int argc, char *argv[])
 
 		mainfd_stdout = fds[0];
 		workerfd_stdout = fds[1];
-
-		/* now that we've set mainfd_stdout, we can register the ctrl_winsz_cb
-		 * if we didn't set it here, we'd risk attempting to run ioctl on
-		 * a negative fd, and fail to resize the window */
-		if (winsz_fd_r >= 0)
-			g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
 	}
 
 	if (opt_seccomp_notify_socket != NULL) {
@@ -203,6 +197,15 @@ int main(int argc, char *argv[])
 		attach_symlink_dir_path = setup_attach_socket();
 		dummyfd = setup_terminal_control_fifo();
 		setup_console_fifo();
+
+		if (!opt_terminal) {
+			/* in the terminal case, the registration of the ctrl_winsz will be taken
+			 * care of once the terminal connection is connected.
+			 * However, in the case of !terminal, we setup mainfd_stdout above,
+			 * and thus can register crl_winsz_cb (now that we've opened winsz_fd_r).
+			 */
+			g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
+		}
 
 		if (opt_attach) {
 			ndebug("sending attach message to parent");
