@@ -374,6 +374,9 @@ static gboolean read_remote_sock(struct remote_sock_s *sock)
 		if (strstr(sock->buf, "READY=1")) {
 			strncpy(sock->buf, "READY=1", 8);
 			sock->remaining = 7;
+		} else if (strstr(sock->buf, "WATCHDOG=1")) {
+			strncpy(sock->buf, "WATCHDOG=1", 11);
+			sock->remaining = 10;
 		} else {
 			sock->remaining = 0;
 		}
