@@ -9,5 +9,6 @@ void reopen_log_files(void);
 bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read);
 void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuuid_, char *name_, char *tag);
 void sync_logs(void);
+gboolean logging_is_passthrough(void);
 
 #endif /* !defined(CTR_LOGGING_H) */

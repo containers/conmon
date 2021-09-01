@@ -55,6 +55,11 @@ var _ = Describe("conmon ctr logs", func() {
 		_, err := os.Stat(tmpLogPath)
 		Expect(err).To(BeNil())
 	})
+	It("log driver as passthrough should pass", func() {
+		stdout, stderr := getConmonOutputGivenLogOpts(conmon.WithLogDriver("passthrough", ""))
+		Expect(stdout).To(BeEmpty())
+		Expect(stderr).To(BeEmpty())
+	})
 	It("log driver as k8s-file with invalid path should fail", func() {
 		_, stderr := getConmonOutputGivenLogOpts(conmon.WithLogDriver("k8s-file", invalidPath))
 		Expect(stderr).To(ContainSubstring("Failed to open log file"))

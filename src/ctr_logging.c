@@ -24,6 +24,7 @@ static inline int sd_journal_sendv(G_GNUC_UNUSED const struct iovec *iov, G_GNUC
 /* Different types of container logging */
 static gboolean use_journald_logging = FALSE;
 static gboolean use_k8s_logging = FALSE;
+static gboolean use_logging_passthrough = FALSE;
 
 /* Value the user must input for each log driver */
 static const char *const K8S_FILE_STRING = "k8s-file";
@@ -70,6 +71,11 @@ static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf);
 static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
 static void reopen_k8s_file(void);
 
+
+gboolean logging_is_passthrough(void)
+{
+	return use_logging_passthrough;
+}
 
 /*
  * configures container log specific information, such as the drivers the user
@@ -157,6 +163,14 @@ static void parse_log_path(char *log_config)
 
 	if (!strcmp(driver, "off") || !strcmp(driver, "null") || !strcmp(driver, "none")) {
 		// no-op, this means things like --log-driver journald --log-driver none will still log to journald.
+		return;
+	}
+
+	if (!strcmp(driver, "passthrough")) {
+		if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO) || isatty(STDERR_FILENO))
+			nexitf("cannot use a tty with passthrough logging mode to prevent attacks via TIOCSTI");
+
+		use_logging_passthrough = TRUE;
 		return;
 	}
 

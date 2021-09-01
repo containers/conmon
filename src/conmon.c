@@ -25,6 +25,16 @@
 #include <sys/stat.h>
 #include <locale.h>
 
+static void disconnect_std_streams(int dev_null_r, int dev_null_w)
+{
+	if (dup2(dev_null_r, STDIN_FILENO) < 0)
+		pexit("Failed to dup over stdin");
+	if (dup2(dev_null_w, STDOUT_FILENO) < 0)
+		pexit("Failed to dup over stdout");
+	if (dup2(dev_null_w, STDERR_FILENO) < 0)
+		pexit("Failed to dup over stderr");
+}
+
 int main(int argc, char *argv[])
 {
 	setlocale(LC_ALL, "");
@@ -114,13 +124,8 @@ int main(int argc, char *argv[])
 	/* Disconnect stdio from parent. We need to do this, because
 	   the parent is waiting for the stdout to end when the intermediate
 	   child dies */
-	if (dup2(dev_null_r, STDIN_FILENO) < 0)
-		pexit("Failed to dup over stdin");
-	if (dup2(dev_null_w, STDOUT_FILENO) < 0)
-		pexit("Failed to dup over stdout");
-	if (dup2(dev_null_w, STDERR_FILENO) < 0)
-		pexit("Failed to dup over stderr");
-
+	if (!logging_is_passthrough())
+		disconnect_std_streams(dev_null_r, dev_null_w);
 	/* Create a new session group */
 	setsid();
 
@@ -193,7 +198,7 @@ int main(int argc, char *argv[])
 
 	/* Setup endpoint for attach */
 	_cleanup_free_ char *attach_symlink_dir_path = NULL;
-	if (opt_bundle_path != NULL) {
+	if (opt_bundle_path != NULL && !logging_is_passthrough()) {
 		attach_symlink_dir_path = setup_attach_socket();
 		dummyfd = setup_terminal_control_fifo();
 		setup_console_fifo();
@@ -227,27 +232,28 @@ int main(int argc, char *argv[])
 		if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
 			_pexit("Failed to unblock signals");
 
-		if (workerfd_stdin < 0)
-			workerfd_stdin = dev_null_r;
-		if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
-			_pexit("Failed to dup over stdin");
-		if (workerfd_stdin != dev_null_r && fchmod(STDIN_FILENO, 0777) < 0)
-			nwarn("Failed to chown stdin");
+		if (!logging_is_passthrough()) {
+			if (workerfd_stdin < 0)
+				workerfd_stdin = dev_null_r;
+			if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
+				_pexit("Failed to dup over stdin");
+			if (workerfd_stdin != dev_null_r && fchmod(STDIN_FILENO, 0777) < 0)
+				nwarn("Failed to chown stdin");
 
-		if (workerfd_stdout < 0)
-			workerfd_stdout = dev_null_w;
-		if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
-			_pexit("Failed to dup over stdout");
-		if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0)
-			nwarn("Failed to chown stdout");
+			if (workerfd_stdout < 0)
+				workerfd_stdout = dev_null_w;
+			if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
+				_pexit("Failed to dup over stdout");
+			if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0)
+				nwarn("Failed to chown stdout");
 
-		if (workerfd_stderr < 0)
-			workerfd_stderr = workerfd_stdout;
-		if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
-			_pexit("Failed to dup over stderr");
-		if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0)
-			nwarn("Failed to chown stderr");
-
+			if (workerfd_stderr < 0)
+				workerfd_stderr = workerfd_stdout;
+			if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
+				_pexit("Failed to dup over stderr");
+			if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0)
+				nwarn("Failed to chown stderr");
+		}
 		/* If LISTEN_PID env is set, we need to set the LISTEN_PID
 		   it to the new child process */
 		char *listenpid = getenv("LISTEN_PID");
@@ -286,6 +292,9 @@ int main(int argc, char *argv[])
 		execv(g_ptr_array_index(runtime_argv, 0), (char **)runtime_argv->pdata);
 		exit(127);
 	}
+
+	if (logging_is_passthrough())
+		disconnect_std_streams(dev_null_r, dev_null_w);
 
 	if ((signal(SIGTERM, on_sig_exit) == SIG_ERR) || (signal(SIGQUIT, on_sig_exit) == SIG_ERR)
 	    || (signal(SIGINT, on_sig_exit) == SIG_ERR))
