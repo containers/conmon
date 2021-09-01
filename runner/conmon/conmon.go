@@ -22,6 +22,7 @@ type ConmonInstance struct {
 	pidFile string
 	stdout  io.Writer
 	stderr  io.Writer
+	stdin   io.Reader
 
 	parentStartPipe  *os.File
 	parentAttachPipe *os.File
@@ -61,6 +62,7 @@ func NewConmonInstance(options ...ConmonOption) (*ConmonInstance, error) {
 
 	ci.cmd.Stdout = ci.stdout
 	ci.cmd.Stderr = ci.stderr
+	ci.cmd.Stdin = ci.stdin
 	return ci, nil
 }
 

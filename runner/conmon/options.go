@@ -30,6 +30,13 @@ func WithStderr(stderr io.Writer) ConmonOption {
 	}
 }
 
+func WithStdin(stdin io.Reader) ConmonOption {
+	return func(ci *ConmonInstance) error {
+		ci.stdin = stdin
+		return nil
+	}
+}
+
 func WithPath(path string) ConmonOption {
 	return func(ci *ConmonInstance) error {
 		ci.path = path

@@ -37,8 +37,9 @@ func TestConmon(t *testing.T) {
 func getConmonOutputGivenOptions(options ...conmon.ConmonOption) (string, string) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+	var stdin bytes.Buffer
 
-	options = append(options, conmon.WithStdout(&stdout), conmon.WithStderr(&stderr))
+	options = append(options, conmon.WithStdout(&stdout), conmon.WithStderr(&stderr), conmon.WithStdin(&stdin))
 
 	ci, err := conmon.CreateAndExecConmon(options...)
 	Expect(err).To(BeNil())
