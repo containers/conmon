@@ -160,7 +160,7 @@ void do_exit_command()
 			exit_status = 0;
 			ret = waitpid(-1, &tmp, 0);
 			if (ret == exit_pid)
-				exit_status = tmp;
+				exit_status = get_exit_status(tmp);
 		} while ((ret < 0 && errno == EINTR) || ret > 0);
 
 		if (exit_status)
