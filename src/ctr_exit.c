@@ -133,12 +133,6 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 
 void do_exit_command()
 {
-	/* even though we've already registered reap_children,
-	 * atexit() runs functions in reverse, so we need to
-	 * manually call here. Repeated calls will not cause trouble
-	 */
-	reap_children();
-
 	if (sync_pipe_fd > 0) {
 		close(sync_pipe_fd);
 		sync_pipe_fd = -1;
@@ -156,9 +150,18 @@ void do_exit_command()
 	if (exit_pid) {
 		int ret, exit_status = 0;
 
-		do
-			ret = waitpid(exit_pid, &exit_status, 0);
-		while (ret < 0 && errno == EINTR);
+		/*
+		 * Make sure to cleanup any zombie process that the container runtime
+		 * could have left around.
+		 */
+		do {
+			int tmp;
+
+			exit_status = 0;
+			ret = waitpid(-1, &tmp, 0);
+			if (ret == exit_pid)
+				exit_status = get_exit_status(tmp);
+		} while ((ret < 0 && errno == EINTR) || ret > 0);
 
 		if (exit_status)
 			_exit(exit_status);
