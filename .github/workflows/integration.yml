@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.15'
+          go-version: '1.16'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -81,6 +81,10 @@ jobs:
             ~/.cache/go-build
           key: go-integration-podman-${{ hashFiles('**/go.mod') }}
           restore-keys: go-integration-podman-
+      # https://github.com/actions/setup-go/issues/107
+      - run: |
+        export PATH=${GOROOT}/bin:$PATH
+        go version
       - run: hack/github-actions-setup
       - name: Run Podman integration tests
         run: |
@@ -97,7 +101,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.15'
+          go-version: '1.16'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -106,6 +110,10 @@ jobs:
             ~/.cache/go-build
           key: go-integration-podman-${{ hashFiles('**/go.mod') }}
           restore-keys: go-integration-podman-
+      # https://github.com/actions/setup-go/issues/107
+      - run: |
+        export PATH=${GOROOT}/bin:$PATH
+        go version
       - run: hack/github-actions-setup
       - name: Run Podman system tests
         run: |
