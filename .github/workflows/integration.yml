@@ -64,7 +64,8 @@ jobs:
         run: |
           cd cri-o
           make all test-binaries
-          sudo -E test/test_runner.sh
+          # skip seccomp tests because they have permission denied issues in a container
+          sudo -E test/test_runner.sh $(ls test/ | grep bats | grep -v seccomp)
         env:
           JOBS: '2'
 
