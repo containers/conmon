@@ -3,6 +3,7 @@
 
 #include <glib.h>   /* gboolean */
 #include "config.h" /* CONN_SOCK_BUF_SIZE */
+#include "utils.h"  /* stdpipe_t */
 
 #define SOCK_TYPE_CONSOLE 1
 #define SOCK_TYPE_NOTIFY 2
@@ -52,7 +53,7 @@ char *setup_seccomp_socket(const char *socket);
 char *setup_attach_socket(void);
 void setup_notify_socket(char *);
 void schedule_main_stdin_write();
-void write_back_to_remote_consoles(char *buf, int len);
+void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, int len);
 void close_all_readers();
 
 #endif // CONN_SOCK_H
