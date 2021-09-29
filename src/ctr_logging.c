@@ -533,6 +533,14 @@ static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 	return err;
 }
 
+/* Force closing any open FD. */
+void close_logging_fds(void)
+{
+	if (k8s_log_fd >= 0)
+		close(k8s_log_fd);
+	k8s_log_fd = -1;
+}
+
 /* reopen all log files */
 void reopen_log_files(void)
 {

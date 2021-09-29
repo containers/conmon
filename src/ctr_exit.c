@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "parent_pipe_fd.h"
 #include "globals.h"
+#include "ctr_logging.h"
 
 #include <errno.h>
 #include <glib.h>
@@ -131,6 +132,13 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 	g_main_loop_quit(main_loop);
 }
 
+static void close_fd(int *fd)
+{
+	if (*fd >= 0)
+		close(*fd);
+	*fd = -1;
+}
+
 void do_exit_command()
 {
 	if (sync_pipe_fd > 0) {
@@ -141,6 +149,15 @@ void do_exit_command()
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
+
+	close_logging_fds();
+	close_fd(&terminal_ctrl_fd);
+	close_fd(&winsz_fd_w);
+	close_fd(&winsz_fd_r);
+	close_fd(&mainfd_stdin);
+	close_fd(&attach_socket_fd);
+	close_fd(&console_socket_fd);
+	close_fd(&attach_pipe_fd);
 
 	pid_t exit_pid = fork();
 	if (exit_pid < 0) {

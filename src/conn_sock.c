@@ -524,4 +524,8 @@ void close_all_readers()
 	if (local_mainfd_stdin.readers == NULL)
 		return;
 	g_ptr_array_foreach(local_mainfd_stdin.readers, close_sock, NULL);
+
+	if (remote_attach_sock.fd >= 0)
+		close(remote_attach_sock.fd);
+	remote_attach_sock.fd = -1;
 }
