@@ -38,13 +38,22 @@ static int k8s_log_fd = -1;
 static char *k8s_log_path = NULL;
 
 /* journald log file parameters */
+// short ID length
 #define TRUNC_ID_LEN 12
+// MESSAGE=
 #define MESSAGE_EQ_LEN 8
+// PRIORITY=x
 #define PRIORITY_EQ_LEN 10
+// CONTAINER_ID_FULL=
 #define CID_FULL_EQ_LEN 18
+// CONTAINER_ID=
 #define CID_EQ_LEN 13
+// CONTAINER_NAME=
 #define NAME_EQ_LEN 15
+// CONTAINER_PARTIAL_MESSAGE=true
 #define PARTIAL_MESSAGE_EQ_LEN 30
+// SYSLOG_IDENTIFIER=
+#define SYSLOG_IDENTIFIER_EQ_LEN 18
 static char short_cuuid[TRUNC_ID_LEN + 1];
 static char *cuuid = NULL;
 static char *name = NULL;
@@ -55,6 +64,8 @@ static char *container_id = NULL;
 static char *container_name = NULL;
 static char *container_tag = NULL;
 static size_t container_tag_len;
+static char *syslog_identifier = NULL;
+static size_t syslog_identifier_len;
 
 typedef struct {
 	int iovcnt;
@@ -132,6 +143,12 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 			/* save the length so we don't have to compute every sd_journal_* call */
 			name_len = strlen(name);
 			container_name = g_strdup_printf("CONTAINER_NAME=%s", name);
+
+			syslog_identifier = g_strdup_printf("SYSLOG_IDENTIFIER=%s", name);
+			syslog_identifier_len = name_len + SYSLOG_IDENTIFIER_EQ_LEN;
+		} else {
+			syslog_identifier = g_strdup_printf("SYSLOG_IDENTIFIER=%s", short_cuuid);
+			syslog_identifier_len = TRUNC_ID_LEN + SYSLOG_IDENTIFIER_EQ_LEN;
 		}
 	}
 }
@@ -269,6 +286,9 @@ int write_journald(int pipe, char *buf, ssize_t buflen)
 
 		/* only print the name if we have a name to print */
 		if (name && writev_buffer_append_segment(dev_null, &bufv, container_name, name_len + NAME_EQ_LEN) < 0)
+			return -1;
+
+		if (writev_buffer_append_segment(dev_null, &bufv, syslog_identifier, syslog_identifier_len) < 0)
 			return -1;
 
 		/* per docker journald logging format, CONTAINER_PARTIAL_MESSAGE is set to true if it's partial, but otherwise not set. */
