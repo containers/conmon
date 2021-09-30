@@ -134,12 +134,10 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuu
 		if (tag) {
 			container_tag = g_strdup_printf("CONTAINER_TAG=%s", tag);
 			container_tag_len = strlen(container_tag);
-		}
 
-		/* To maintain backwards compatibility with older versions of conmon, we need to skip setting
-		 * the name value if it isn't present
-		 */
-		if (name) {
+			syslog_identifier = g_strdup_printf("SYSLOG_IDENTIFIER=%s", tag);
+			syslog_identifier_len = strlen(syslog_identifier);
+		} else if (name) {
 			/* save the length so we don't have to compute every sd_journal_* call */
 			name_len = strlen(name);
 			container_name = g_strdup_printf("CONTAINER_NAME=%s", name);
