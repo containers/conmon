@@ -238,21 +238,21 @@ int main(int argc, char *argv[])
 			if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
 				_pexit("Failed to dup over stdin");
 			if (workerfd_stdin != dev_null_r && fchmod(STDIN_FILENO, 0777) < 0)
-				nwarn("Failed to chown stdin");
+				nwarn("Failed to chmod stdin");
 
 			if (workerfd_stdout < 0)
 				workerfd_stdout = dev_null_w;
 			if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
 				_pexit("Failed to dup over stdout");
 			if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0)
-				nwarn("Failed to chown stdout");
+				nwarn("Failed to chmod stdout");
 
 			if (workerfd_stderr < 0)
 				workerfd_stderr = workerfd_stdout;
 			if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
 				_pexit("Failed to dup over stderr");
 			if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0)
-				nwarn("Failed to chown stderr");
+				nwarn("Failed to chmod stderr");
 		}
 		/* If LISTEN_PID env is set, we need to set the LISTEN_PID
 		   it to the new child process */
