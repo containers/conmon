@@ -72,9 +72,11 @@ jobs:
   podman:
     runs-on: ubuntu-latest
     steps:
+      - run:
+          sudo apt-get remove golang
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -86,8 +88,6 @@ jobs:
       - run: hack/github-actions-setup
       - name: Run Podman integration tests
         run: |
-          # https://github.com/actions/setup-go/issues/107
-          export PATH=${GOROOT}/bin:$PATH
           git clone https://github.com/containers/podman
           cd podman
           make bin/podman
