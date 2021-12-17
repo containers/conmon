@@ -12,6 +12,7 @@
 #include <glib-unix.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 
 volatile pid_t container_pid = -1;
@@ -158,6 +159,16 @@ void do_exit_command()
 	close_fd(&attach_socket_fd);
 	close_fd(&console_socket_fd);
 	close_fd(&attach_pipe_fd);
+
+	/*
+	 * We don't want the exit command to be reaped by the parent conmon
+	 * as that would prevent double-fork from doing its job.
+	 * Unfortunately, that also means that any new subchildren from
+	 * still running processes could also get lost
+	 */
+	if (prctl(PR_SET_CHILD_SUBREAPER, 0) != 0) {
+		nwarn("Failed to disable self subreaper attribute - might wait for indirect children a long time");
+	}
 
 	pid_t exit_pid = fork();
 	if (exit_pid < 0) {
