@@ -527,6 +527,6 @@ void close_all_readers()
 	g_ptr_array_foreach(local_mainfd_stdin.readers, close_sock, NULL);
 
 	if (remote_attach_sock.fd >= 0)
-		close(remote_attach_sock.fd);
+		close_remove_g_unix_fd(remote_attach_sock.fd);
 	remote_attach_sock.fd = -1;
 }
