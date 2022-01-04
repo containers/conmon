@@ -313,22 +313,21 @@ static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, gpointer
 	if (new_fd == -1) {
 		if (errno != EWOULDBLOCK)
 			nwarn("Failed to accept client connection on attach socket");
-	} else {
-		struct remote_sock_s *remote_sock;
-		if (srcsock->dest->readers == NULL) {
-			srcsock->dest->readers = g_ptr_array_new_with_free_func(free);
-		}
-		remote_sock = malloc(sizeof(*remote_sock));
-		if (remote_sock == NULL) {
-			pexit("Failed to allocate memory");
-		}
-		init_remote_sock(remote_sock, srcsock);
-		remote_sock->fd = new_fd;
-		g_unix_fd_add(remote_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, remote_sock);
-		g_ptr_array_add(remote_sock->dest->readers, remote_sock);
-		ninfof("Accepted%s connection %d", SOCK_IS_CONSOLE(srcsock->sock_type) ? " console" : "", remote_sock->fd);
+		return G_SOURCE_CONTINUE;
 	}
-
+	struct remote_sock_s *remote_sock;
+	if (srcsock->dest->readers == NULL) {
+		srcsock->dest->readers = g_ptr_array_new_with_free_func(free);
+	}
+	remote_sock = malloc(sizeof(*remote_sock));
+	if (remote_sock == NULL) {
+		pexit("Failed to allocate memory");
+	}
+	init_remote_sock(remote_sock, srcsock);
+	remote_sock->fd = new_fd;
+	g_unix_fd_add(remote_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, remote_sock);
+	g_ptr_array_add(remote_sock->dest->readers, remote_sock);
+	ninfof("Accepted%s connection %d", SOCK_IS_CONSOLE(srcsock->sock_type) ? " console" : "", remote_sock->fd);
 	return G_SOURCE_CONTINUE;
 }
 
