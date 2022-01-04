@@ -9,6 +9,7 @@
 #include "cmsg.h"
 #include "cli.h" // opt_bundle_path
 #include "seccomp_notify.h"
+#include "close_fds.h"
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -70,7 +71,7 @@ exit:
 	/* now that we've set mainfd_stdout, we can register the ctrl_winsz_cb
 	 * if we didn't set it here, we'd risk attempting to run ioctl on
 	 * a negative fd, and fail to resize the window */
-	g_unix_fd_add(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
+	add_save_g_unix_fd(winsz_fd_r, G_IO_IN, ctrl_winsz_cb, NULL);
 
 	/* Clean up everything */
 	close(connfd);
@@ -240,7 +241,7 @@ int setup_terminal_control_fifo()
 	int dummyfd = -1;
 	setup_fifo(&terminal_ctrl_fd, &dummyfd, "ctl", "terminal control fifo");
 	ninfof("terminal_ctrl_fd: %d", terminal_ctrl_fd);
-	g_unix_fd_add(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
+	add_save_g_unix_fd(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
 
 	return dummyfd;
 }

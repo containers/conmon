@@ -6,6 +6,7 @@
 #include "parent_pipe_fd.h"
 #include "globals.h"
 #include "ctr_logging.h"
+#include "close_fds.h"
 
 #include <errno.h>
 #include <glib.h>
@@ -151,6 +152,7 @@ void do_exit_command()
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
 
+	remove_g_unix_fds();
 	close_logging_fds();
 	close_fd(&terminal_ctrl_fd);
 	close_fd(&winsz_fd_w);

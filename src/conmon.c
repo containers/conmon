@@ -335,10 +335,10 @@ int main(int argc, char *argv[])
 		close(workerfd_stderr);
 
 	if (seccomp_listener != NULL)
-		g_unix_fd_add(seccomp_socket_fd, G_IO_IN, seccomp_accept_cb, csname);
+		add_save_g_unix_fd(seccomp_socket_fd, G_IO_IN, seccomp_accept_cb, csname);
 
 	if (csname != NULL) {
-		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
+		add_save_g_unix_fd(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
 		/* Process any SIGCHLD we may have missed before the signal handler was in place.  */
 		if (!opt_exec || !opt_terminal || container_status < 0) {
 			GHashTable *exit_status_cache = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, g_free);
@@ -408,10 +408,10 @@ int main(int argc, char *argv[])
 	setup_oom_handling(container_pid);
 
 	if (mainfd_stdout >= 0) {
-		g_unix_fd_add(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
+		add_save_g_unix_fd(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
 	}
 	if (mainfd_stderr >= 0) {
-		g_unix_fd_add(mainfd_stderr, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDERR_PIPE));
+		add_save_g_unix_fd(mainfd_stderr, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDERR_PIPE));
 	}
 
 	if (opt_timeout > 0) {

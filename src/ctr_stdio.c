@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "ctr_logging.h"
 #include "cli.h"
+#include "close_fds.h"
 
 #include <stdbool.h>
 #include <sys/socket.h>
@@ -137,6 +138,6 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 static gboolean tty_hup_timeout_cb(G_GNUC_UNUSED gpointer user_data)
 {
 	tty_hup_timeout_scheduled = false;
-	g_unix_fd_add(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
+	add_save_g_unix_fd(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
 	return G_SOURCE_REMOVE;
 }

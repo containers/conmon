@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "cli.h"
 #include "config.h"
+#include "close_fds.h"
 
 #include <fcntl.h>
 #include <glib.h>
@@ -126,7 +127,7 @@ static void setup_oom_handling_cgroup_v2(int pid)
 	inotify_fd = ifd;
 	ifd = -1;
 
-	g_unix_fd_add(inotify_fd, G_IO_IN, oom_cb_cgroup_v2, NULL);
+	add_save_g_unix_fd(inotify_fd, G_IO_IN, oom_cb_cgroup_v2, NULL);
 }
 
 static void setup_oom_handling_cgroup_v1(int pid)
@@ -159,7 +160,7 @@ static void setup_oom_handling_cgroup_v1(int pid)
 	if (write_all(cfd, data, strlen(data)) < 0)
 		pexit("Failed to write to cgroup.event_control");
 
-	g_unix_fd_add(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, memory_cgroup_file_path);
+	add_save_g_unix_fd(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, memory_cgroup_file_path);
 }
 
 static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data)

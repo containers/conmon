@@ -2,6 +2,7 @@
 #include "cli.h"
 #include "config.h"
 #include "utils.h"
+#include "close_fds.h"
 
 static void add_argv(GPtrArray *argv_array, ...) G_GNUC_NULL_TERMINATED;
 static void add_argv(GPtrArray *argv_array, ...);

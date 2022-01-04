@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "config.h"
 #include "cli.h" // opt_stdin
+#include "close_fds.h"
 
 #include <libgen.h>
 #include <stdbool.h>
@@ -160,7 +161,7 @@ char *setup_attach_socket(void)
 	if (listen(remote_attach_sock.fd, 10) == -1)
 		pexitf("Failed to listen on attach socket: %s/%s", symlink_dir_path, "attach");
 
-	g_unix_fd_add(remote_attach_sock.fd, G_IO_IN, attach_cb, &remote_attach_sock);
+	add_save_g_unix_fd(remote_attach_sock.fd, G_IO_IN, attach_cb, &remote_attach_sock);
 
 	return symlink_dir_path;
 }
@@ -181,7 +182,7 @@ void setup_notify_socket(char *socket_path)
 	 * when compiling with clang */
 	char *symlink_dir_path =
 		bind_unix_socket("notify/notify.sock", SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0777, &remote_notify_sock, TRUE);
-	g_unix_fd_add(remote_notify_sock.fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, &remote_notify_sock);
+	add_save_g_unix_fd(remote_notify_sock.fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, &remote_notify_sock);
 
 	g_free(symlink_dir_path);
 }
@@ -324,7 +325,7 @@ static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, gpointer
 		}
 		init_remote_sock(remote_sock, srcsock);
 		remote_sock->fd = new_fd;
-		g_unix_fd_add(remote_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, remote_sock);
+		add_save_g_unix_fd(remote_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, remote_sock);
 		g_ptr_array_add(remote_sock->dest->readers, remote_sock);
 		ninfof("Accepted%s connection %d", SOCK_IS_CONSOLE(srcsock->sock_type) ? " console" : "", remote_sock->fd);
 	}
@@ -446,7 +447,7 @@ static void write_to_local_sock(gpointer data, gpointer user_data)
 		*has_data = true;
 	else if (sock->data_ready) {
 		sock->data_ready = false;
-		g_unix_fd_add(sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, sock);
+		add_save_g_unix_fd(sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, sock);
 	}
 }
 
@@ -491,7 +492,7 @@ static void schedule_local_sock_write(struct local_sock_s *local_sock)
 	if (*(local_sock->fd) < 0)
 		return;
 
-	g_unix_fd_add(*(local_sock->fd), G_IO_OUT, local_sock_write_cb, local_sock);
+	add_save_g_unix_fd(*(local_sock->fd), G_IO_OUT, local_sock_write_cb, local_sock);
 }
 
 static void init_remote_sock(struct remote_sock_s *sock, struct remote_sock_s *src)

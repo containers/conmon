@@ -20,6 +20,7 @@
 #include "utils.h"
 #include "cmsg.h"
 #include "seccomp_notify.h"
+#include "close_fds.h"
 
 #ifdef USE_SECCOMP
 
@@ -92,7 +93,7 @@ gboolean seccomp_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_
 	}
 
 	g_unix_set_fd_nonblocking(listener.fd, TRUE, NULL);
-	g_unix_fd_add(listener.fd, G_IO_IN | G_IO_HUP, seccomp_cb, NULL);
+	add_save_g_unix_fd(listener.fd, G_IO_IN | G_IO_HUP, seccomp_cb, NULL);
 	atexit(cleanup_seccomp_plugins);
 
 	return G_SOURCE_CONTINUE;
