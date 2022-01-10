@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <termios.h>
+#include <unistd.h>
 
 static void resize_winsz(int height, int width);
 static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char *));
@@ -61,7 +62,9 @@ exit:
 	/* We only have a single fd for both pipes, so we just treat it as
 	 * stdout. stderr is ignored. */
 	mainfd_stdin = console.fd;
-	mainfd_stdout = console.fd;
+	mainfd_stdout = dup(console.fd);
+	if (mainfd_stdout < 0)
+		pexit("Failed to dup console file descriptor");
 
 	/* Now that we have a fd to the tty, make sure we handle any pending data
 	 * that was already buffered. */
