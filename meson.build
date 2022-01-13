@@ -34,7 +34,14 @@ add_project_arguments('-Os', '-Wall', '-Werror',
                       language : 'c')
 
 glib = dependency('glib-2.0')
-libdl = cc.find_library('dl')
+
+cc = meson.get_compiler('c')
+null_dep = dependency('', required : false)
+if cc.has_function('dlopen')
+  libdl = null_dep
+else
+  libdl = cc.find_library('dl')
+endif
 
 executable('conmon',
            ['src/conmon.c',
@@ -75,4 +82,3 @@ executable('conmon',
            install : true,
            install_dir : join_paths(get_option('libexecdir'), 'podman'),
 )
-
