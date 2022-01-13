@@ -143,6 +143,7 @@ static void setup_oom_handling_cgroup_v1(int pid)
 	_cleanup_close_ int cfd = open(memory_cgroup_file_path, O_WRONLY | O_CLOEXEC);
 	if (cfd == -1) {
 		nwarnf("Failed to open %s", memory_cgroup_file_path);
+		g_free(memory_cgroup_file_path);
 		return;
 	}
 
@@ -197,7 +198,7 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 		/* End of input */
 		close(fd);
 		oom_event_fd = -1;
-		free(cgroup_event_control_path);
+		g_free(cgroup_event_control_path);
 		return G_SOURCE_REMOVE;
 	}
 
@@ -226,7 +227,7 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 	if (num_read == 0) {
 		close(fd);
 		oom_event_fd = -1;
-		free(cgroup_event_control_path);
+		g_free(cgroup_event_control_path);
 		return G_SOURCE_REMOVE;
 	}
 
