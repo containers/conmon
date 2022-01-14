@@ -80,3 +80,27 @@ void close_other_fds()
 			close(fd);
 	}
 }
+
+void close_all_fds_ge_than(int firstfd)
+{
+	struct dirent *ent;
+	DIR *d;
+
+	d = opendir("/proc/self/fd");
+	if (!d)
+		return;
+
+	for (ent = readdir(d); ent; ent = readdir(d)) {
+		int fd;
+
+		if (ent->d_name[0] == '.')
+			continue;
+
+		fd = atoi(ent->d_name);
+		if (fd == dirfd(d))
+			continue;
+		if (fd >= firstfd)
+			close(fd);
+	}
+	closedir(d);
+}

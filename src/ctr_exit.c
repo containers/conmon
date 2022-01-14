@@ -6,6 +6,7 @@
 #include "parent_pipe_fd.h"
 #include "globals.h"
 #include "ctr_logging.h"
+#include "close_fds.h"
 
 #include <errno.h>
 #include <glib.h>
@@ -133,32 +134,16 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 	g_main_loop_quit(main_loop);
 }
 
-static void close_fd(int *fd)
-{
-	if (*fd >= 0)
-		close(*fd);
-	*fd = -1;
-}
-
 void do_exit_command()
 {
-	if (sync_pipe_fd > 0) {
-		close(sync_pipe_fd);
-		sync_pipe_fd = -1;
-	}
-
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
 
-	close_logging_fds();
-	close_fd(&terminal_ctrl_fd);
-	close_fd(&winsz_fd_w);
-	close_fd(&winsz_fd_r);
-	close_fd(&mainfd_stdin);
-	close_fd(&attach_socket_fd);
-	close_fd(&console_socket_fd);
-	close_fd(&attach_pipe_fd);
+	/*
+	 * Close everything except stdin, stdout and stderr.
+	 */
+	close_all_fds_ge_than(3);
 
 	/*
 	 * We don't want the exit command to be reaped by the parent conmon
