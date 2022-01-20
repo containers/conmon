@@ -118,5 +118,5 @@ jobs:
           export PATH=${GOROOT}/bin:$PATH
           git clone https://github.com/containers/podman
           cd podman
-          make bin/podman
+          make && sudo make install
           sudo -E make localsystem
