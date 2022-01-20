@@ -11,6 +11,7 @@
 
 static gboolean tty_hup_timeout_scheduled = false;
 static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof);
+static void drain_log_buffers(stdpipe_t pipe);
 static gboolean tty_hup_timeout_cb(G_GNUC_UNUSED gpointer user_data);
 
 
@@ -90,12 +91,23 @@ void drain_stdio()
 		while (read_stdio(mainfd_stdout, STDOUT_PIPE, NULL))
 			;
 	}
+	drain_log_buffers(STDOUT_PIPE);
 	if (mainfd_stderr != -1) {
 		g_unix_set_fd_nonblocking(mainfd_stderr, TRUE, NULL);
 		while (read_stdio(mainfd_stderr, STDERR_PIPE, NULL))
 			;
 	}
-	return;
+	drain_log_buffers(STDERR_PIPE);
+}
+
+/* the journald log writer is buffering partial lines so that whole log lines are emitted
+ * to the journal as a unit. this flushes those buffers */
+static void drain_log_buffers(stdpipe_t pipe)
+{
+	/* We pass a single byte buffer because write_to_logs expects that there is one
+	   byte of capacity beyond the buflen that we specify */
+	char buf;
+	write_to_logs(pipe, &buf, 0);
 }
 
 static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
