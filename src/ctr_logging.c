@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "ctr_logging.h"
 #include "cli.h"
+#include "config.h"
 #include <string.h>
 
 // if the systemd development files were found, we can log to systemd
@@ -230,10 +231,19 @@ bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
 
 
 /* write to systemd journal. If the pipe is stdout, write with notice priority,
- * otherwise, write with error priority
+ * otherwise, write with error priority. Partial lines (that don't end in a newline) are buffered
+ * between invocations. A 0 buflen argument forces a buffered partial line to be flushed.
  */
 int write_journald(int pipe, char *buf, ssize_t buflen)
 {
+	static char stdout_partial_buf[STDIO_BUF_SIZE];
+	static size_t stdout_partial_buf_len = 0;
+	static char stderr_partial_buf[STDIO_BUF_SIZE];
+	static size_t stderr_partial_buf_len = 0;
+
+	char *partial_buf;
+	size_t *partial_buf_len;
+
 	/* When using writev_buffer_append_segment, we should never approach the number of
 	 * entries necessary to flush the buffer. Therefore, the fd passed in is for /dev/null
 	 */
@@ -246,15 +256,31 @@ int write_journald(int pipe, char *buf, ssize_t buflen)
 	 * to be changed if this convention is changed.
 	 */
 	const char *message_priority = "PRIORITY=6";
-	if (pipe == STDERR_PIPE)
+	if (pipe == STDERR_PIPE) {
 		message_priority = "PRIORITY=3";
+		partial_buf = stderr_partial_buf;
+		partial_buf_len = &stderr_partial_buf_len;
+	} else {
+		partial_buf = stdout_partial_buf;
+		partial_buf_len = &stdout_partial_buf_len;
+	}
 
 	ptrdiff_t line_len = 0;
 
-	while (buflen > 0) {
+	while (buflen > 0 || *partial_buf_len > 0) {
 		writev_buffer_t bufv = {0};
 
-		bool partial = get_line_len(&line_len, buf, buflen);
+		bool partial = buflen == 0 || get_line_len(&line_len, buf, buflen);
+
+		/* If this is a partial line, and we have capacity to buffer it, buffer it and return.
+		 * The capacity of the partial_buf is one less than its size so that we can always add
+		 * a null terminating char later */
+		if (buflen && partial && ((unsigned long)line_len < (STDIO_BUF_SIZE - *partial_buf_len))) {
+			memcpy(partial_buf + *partial_buf_len, buf, line_len);
+			*partial_buf_len += line_len;
+			return 0;
+		}
+
 		/* sd_journal_* doesn't have an option to specify the number of bytes to write in the message, and instead writes the
 		 * entire string. Copying every line doesn't make very much sense, so instead we do this tmp_line_end
 		 * hack to emulate separate strings.
@@ -262,13 +288,14 @@ int write_journald(int pipe, char *buf, ssize_t buflen)
 		char tmp_line_end = buf[line_len];
 		buf[line_len] = '\0';
 
-		_cleanup_free_ char *message = g_strdup_printf("MESSAGE=%s", buf);
-		if (writev_buffer_append_segment(dev_null, &bufv, message, line_len + MESSAGE_EQ_LEN) < 0)
+		ssize_t msg_len = line_len + MESSAGE_EQ_LEN + *partial_buf_len;
+		partial_buf[*partial_buf_len] = '\0';
+		_cleanup_free_ char *message = g_strdup_printf("MESSAGE=%s%s", partial_buf, buf);
+		if (writev_buffer_append_segment(dev_null, &bufv, message, msg_len) < 0)
 			return -1;
 
 		/* Restore state of the buffer */
 		buf[line_len] = tmp_line_end;
-
 
 		if (writev_buffer_append_segment(dev_null, &bufv, container_id_full, cuuid_len + CID_FULL_EQ_LEN) < 0)
 			return -1;
@@ -301,6 +328,7 @@ int write_journald(int pipe, char *buf, ssize_t buflen)
 
 		buf += line_len;
 		buflen -= line_len;
+		*partial_buf_len = 0;
 	}
 	return 0;
 }
