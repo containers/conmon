@@ -89,6 +89,7 @@ export PATH="$GOPATH/src/k8s.io/kubernetes/_output/local/bin/linux/amd64:$PATH"
 export KUBE_MASTER_URL=$IP
 export KUBE_MASTER_IP=$IP
 export KUBE_MASTER=$IP
+export HOSTNAME_OVERRIDE=$IP
 
 export GINKGO_PARALLEL_NODES=4
 export GINKGO_PARALLEL=y
