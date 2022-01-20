@@ -90,7 +90,8 @@ jobs:
           export PATH=${GOROOT}/bin:$PATH
           git clone https://github.com/containers/podman
           cd podman
-          make bin/podman
+          make vendor
+          make
           sudo -E ginkgo \
             -skip 'run.apparmor.disabled|image.trust.show.--json|run.network.bind.to.HostIP' \
             -noColor \
