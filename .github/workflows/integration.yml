@@ -41,7 +41,7 @@ jobs:
       - run: hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
-          make vendor
+          sudo make vendor
           sudo mkdir -p /var/run/crio
           sudo make test-binary
 
