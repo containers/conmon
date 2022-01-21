@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -41,7 +41,7 @@ jobs:
       - run: hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
-          make vendor
+          sudo make vendor
           sudo mkdir -p /var/run/crio
           sudo make test-binary
 
@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -74,7 +74,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -90,7 +90,8 @@ jobs:
           export PATH=${GOROOT}/bin:$PATH
           git clone https://github.com/containers/podman
           cd podman
-          make bin/podman
+          make vendor
+          make
           sudo -E ginkgo \
             -skip 'run.apparmor.disabled|image.trust.show.--json|run.network.bind.to.HostIP' \
             -noColor \
@@ -101,7 +102,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -117,5 +118,5 @@ jobs:
           export PATH=${GOROOT}/bin:$PATH
           git clone https://github.com/containers/podman
           cd podman
-          make bin/podman
+          make && sudo make install
           sudo -E make localsystem
