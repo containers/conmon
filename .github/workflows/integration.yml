@@ -110,8 +110,8 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: go-integration-podman-${{ hashFiles('**/go.mod') }}
-          restore-keys: go-integration-podman-
+          key: go-integration-podman-system-${{ hashFiles('**/go.mod') }}
+          restore-keys: go-integration-podman-system-
       - run: hack/github-actions-setup
       - name: Run Podman system tests
         run: |
