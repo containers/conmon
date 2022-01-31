@@ -43,6 +43,14 @@ else
   libdl = cc.find_library('dl')
 endif
 
+sd_journal = dependency('libsystemd-journal', required : false)
+if not sd_journal.found()
+	sd_journal = dependency('libsystemd', required : false)
+endif
+if sd_journal.found()
+	add_project_arguments('-DUSE_JOURNALD=1', language : 'c')
+endif
+
 executable('conmon',
            ['src/conmon.c',
             'src/config.h',
@@ -78,7 +86,7 @@ executable('conmon',
             'src/utils.h',
             'src/seccomp_notify.c',
             'src/seccomp_notify.h'],
-           dependencies : [glib, libdl],
+           dependencies : [glib, libdl, sd_journal],
            install : true,
            install_dir : join_paths(get_option('libexecdir'), 'podman'),
 )
