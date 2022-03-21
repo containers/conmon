@@ -136,7 +136,7 @@ static char *setup_socket(int *fd, const char *path)
 	}
 
 	addr.sun_family = AF_UNIX;
-	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
+	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
 
 	/* Bind to the console socket path. */
 	*fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
@@ -209,7 +209,7 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 
 	_cleanup_free_ char *sock_proc_entry = g_strdup_printf("/proc/self/fd/%d/%s", parent_dir_fd, socket_relative_name);
 	strncpy(socket_addr.sun_path, sock_proc_entry, sizeof(socket_addr.sun_path) - 1);
-	ninfof("addr{sun_family=AF_UNIX, sun_path=%s}", socket_addr.sun_path);
+	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", socket_addr.sun_path);
 
 
 	/*
@@ -326,7 +326,7 @@ static gboolean attach_cb(int fd, G_GNUC_UNUSED GIOCondition condition, gpointer
 		remote_sock->fd = new_fd;
 		g_unix_fd_add(remote_sock->fd, G_IO_IN | G_IO_HUP | G_IO_ERR, remote_sock_cb, remote_sock);
 		g_ptr_array_add(remote_sock->dest->readers, remote_sock);
-		ninfof("Accepted%s connection %d", SOCK_IS_CONSOLE(srcsock->sock_type) ? " console" : "", remote_sock->fd);
+		ndebugf("Accepted%s connection %d", SOCK_IS_CONSOLE(srcsock->sock_type) ? " console" : "", remote_sock->fd);
 	}
 
 	return G_SOURCE_CONTINUE;
