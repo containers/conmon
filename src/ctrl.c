@@ -25,7 +25,7 @@ static void setup_fifo(int *fifo_r, int *fifo_w, char *filename, char *error_var
 gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
 
-	ninfof("about to accept from console_socket_fd: %d", fd);
+	ndebugf("about to accept from console_socket_fd: %d", fd);
 	int connfd = accept4(fd, NULL, NULL, SOCK_CLOEXEC);
 	if (connfd < 0) {
 		nwarn("Failed to accept console-socket connection");
@@ -40,10 +40,10 @@ gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC
 	close(fd);
 
 	/* We exit if this fails. */
-	ninfof("about to recvfd from connfd: %d", connfd);
+	ndebugf("about to recvfd from connfd: %d", connfd);
 	struct file_t console = recvfd(connfd);
 
-	ninfof("console = {.name = '%s'; .fd = %d}", console.name, console.fd);
+	ndebugf("console = {.name = '%s'; .fd = %d}", console.name, console.fd);
 	free(console.name);
 
 	/* We change the terminal settings to match kube settings */
@@ -100,7 +100,7 @@ static gboolean process_winsz_ctrl_line(char *line)
 {
 	int height, width, ret = -1;
 	ret = sscanf(line, "%d %d\n", &height, &width);
-	ninfof("Height: %d, Width: %d", height, width);
+	ndebugf("Height: %d, Width: %d", height, width);
 	if (ret != 2) {
 		nwarn("Failed to sscanf message");
 		return FALSE;
@@ -135,7 +135,7 @@ static gboolean process_terminal_ctrl_line(char *line)
 		return FALSE;
 	}
 
-	ninfof("Message type: %d", ctl_msg_type);
+	ndebugf("Message type: %d", ctl_msg_type);
 	switch (ctl_msg_type) {
 	case WIN_RESIZE_EVENT: {
 		_cleanup_free_ char *hw_str = g_strdup_printf("%d %d\n", height, width);
@@ -149,7 +149,7 @@ static gboolean process_terminal_ctrl_line(char *line)
 		reopen_log_files();
 		break;
 	default:
-		ninfof("Unknown message type: %d", ctl_msg_type);
+		nwarnf("Unknown message type: %d", ctl_msg_type);
 		break;
 	}
 	return TRUE;
@@ -174,7 +174,7 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char
 	}
 
 	readptr[num_read] = '\0';
-	ninfof("Got ctl message: %s on fd %d", ctlbuf, fd);
+	ndebugf("Got ctl message: %s on fd %d", ctlbuf, fd);
 
 	char *beg = ctlbuf;
 	char *newline = strchrnul(beg, '\n');
@@ -231,7 +231,7 @@ static void resize_winsz(int height, int width)
 void setup_console_fifo()
 {
 	setup_fifo(&winsz_fd_r, &winsz_fd_w, "winsz", "window resize control fifo");
-	ninfof("winsz read side: %d, winsz write side: %d", winsz_fd_r, winsz_fd_r);
+	ndebugf("winsz read side: %d, winsz write side: %d", winsz_fd_r, winsz_fd_r);
 }
 
 int setup_terminal_control_fifo()
@@ -242,7 +242,7 @@ int setup_terminal_control_fifo()
 	 */
 	int dummyfd = -1;
 	setup_fifo(&terminal_ctrl_fd, &dummyfd, "ctl", "terminal control fifo");
-	ninfof("terminal_ctrl_fd: %d", terminal_ctrl_fd);
+	ndebugf("terminal_ctrl_fd: %d", terminal_ctrl_fd);
 	g_unix_fd_add(terminal_ctrl_fd, G_IO_IN, ctrl_cb, NULL);
 
 	return dummyfd;

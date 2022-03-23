@@ -63,7 +63,7 @@ gboolean seccomp_cb(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_
 
 gboolean seccomp_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
-	ninfof("about to accept from seccomp_socket_fd: %d", fd);
+	ndebugf("about to accept from seccomp_socket_fd: %d", fd);
 	int connfd = accept4(fd, NULL, NULL, SOCK_CLOEXEC);
 	if (connfd < 0) {
 		nwarn("Failed to accept console-socket connection");
