@@ -234,7 +234,7 @@ bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
  * otherwise, write with error priority. Partial lines (that don't end in a newline) are buffered
  * between invocations. A 0 buflen argument forces a buffered partial line to be flushed.
  */
-int write_journald(int pipe, char *buf, ssize_t buflen)
+static int write_journald(int pipe, char *buf, ssize_t buflen)
 {
 	static char stdout_partial_buf[STDIO_BUF_SIZE];
 	static size_t stdout_partial_buf_len = 0;
