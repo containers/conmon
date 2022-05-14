@@ -32,6 +32,10 @@
 #error cmsg.c requires C99 or later
 #endif
 
+#ifdef __FreeBSD__
+#define ECOMM EINVAL
+#endif
+
 #define error(s) \
 	do { \
 		fprintf(stderr, "nsenter: %s %s\n", s, strerror(errno)); \

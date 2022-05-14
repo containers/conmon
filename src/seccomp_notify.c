@@ -6,10 +6,7 @@
 #endif
 
 #include <errno.h>
-#include <seccomp.h>
 #include <sys/ioctl.h>
-#include <linux/seccomp.h>
-#include <sys/sysmacros.h>
 #include <dlfcn.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
@@ -19,9 +16,15 @@
 #include "cli.h" // opt_bundle_path
 #include "utils.h"
 #include "cmsg.h"
-#include "seccomp_notify.h"
 
 #ifdef USE_SECCOMP
+
+#include <sys/sysmacros.h>
+#include <linux/seccomp.h>
+#include <seccomp.h>
+
+#include "seccomp_notify.h"
+
 
 #ifndef SECCOMP_USER_NOTIF_FLAG_CONTINUE
 #define SECCOMP_USER_NOTIF_FLAG_CONTINUE (1UL << 0)

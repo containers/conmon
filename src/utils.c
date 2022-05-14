@@ -1,6 +1,16 @@
+#define _GNU_SOURCE
+
 #include "utils.h"
 #include <string.h>
 #include <strings.h>
+#ifdef __linux__
+#include <sys/prctl.h>
+#include <sys/signalfd.h>
+#endif
+#ifdef __FreeBSD__
+#include <sys/procctl.h>
+#include <sys/event.h>
+#endif
 
 log_level_t log_level = WARN_LEVEL;
 char *log_cid = NULL;
@@ -39,6 +49,18 @@ void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag)
 	nexitf("No such log level %s", level_name);
 }
 
+#ifdef __FreeBSD__
+static bool retryable_error(int err)
+{
+	return err == EINTR || err == EAGAIN;
+}
+#else
+static bool retryable_error(int err)
+{
+	return err == EINTR;
+}
+#endif
+
 ssize_t write_all(int fd, const void *buf, size_t count)
 {
 	size_t remaining = count;
@@ -48,7 +70,7 @@ ssize_t write_all(int fd, const void *buf, size_t count)
 	while (remaining > 0) {
 		do {
 			res = write(fd, p, remaining);
-		} while (res == -1 && errno == EINTR);
+		} while (res == -1 && retryable_error(errno));
 
 		if (res <= 0)
 			return -1;
@@ -59,3 +81,79 @@ ssize_t write_all(int fd, const void *buf, size_t count)
 
 	return count;
 }
+
+#ifdef __linux__
+
+int set_subreaper(gboolean enabled)
+{
+	return prctl(PR_SET_CHILD_SUBREAPER, enabled, 0, 0, 0);
+}
+
+int set_pdeathsig(int sig)
+{
+	return prctl(PR_SET_PDEATHSIG, sig);
+}
+
+int get_signal_descriptor(int sig)
+{
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, sig);
+	sigprocmask(SIG_BLOCK, &set, NULL);
+	return signalfd(-1, &set, SFD_CLOEXEC);
+}
+
+int dequeue_signal_event(int fd)
+{
+	struct signalfd_siginfo siginfo;
+	ssize_t s = read(fd, &siginfo, sizeof siginfo);
+	g_assert_cmpint(s, ==, sizeof siginfo);
+	return siginfo.ssi_signo;
+}
+
+#endif
+
+#ifdef __FreeBSD__
+
+int set_subreaper(gboolean enabled)
+{
+	if (enabled) {
+		return procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, NULL);
+	} else {
+		return procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
+	}
+}
+
+int set_pdeathsig(int sig)
+{
+	return procctl(P_PID, getpid(), PROC_PDEATHSIG_CTL, &sig);
+}
+
+int get_signal_descriptor(int sig)
+{
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, sig);
+	sigprocmask(SIG_BLOCK, &set, NULL);
+
+	int kq = kqueue();
+	fcntl(kq, F_SETFD, FD_CLOEXEC);
+	struct kevent kev;
+	EV_SET(&kev, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+	if (kevent(kq, &kev, 1, NULL, 0, NULL)) {
+		pexitf("failed to add kevent signal %d", sig);
+	}
+	return kq;
+}
+
+int dequeue_signal_event(int kq)
+{
+	struct kevent kev;
+	int n = kevent(kq, NULL, 0, &kev, 1, NULL);
+	if (n != 1) {
+		pexit("failed to read signal event");
+	}
+	return kev.ident;
+}
+
+#endif

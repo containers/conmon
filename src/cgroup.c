@@ -9,11 +9,13 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <stdio.h>
+#ifdef __linux__
 #include <linux/limits.h>
 #include <sys/eventfd.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
 #include <sys/statfs.h>
+#endif
 
 #ifndef CGROUP2_SUPER_MAGIC
 #define CGROUP2_SUPER_MAGIC 0x63677270
@@ -23,6 +25,8 @@
 
 int oom_event_fd = -1;
 int oom_cgroup_fd = -1;
+
+#ifdef __linux__
 
 static char *process_cgroup_subsystem_path(int pid, bool cgroup2, const char *subsystem);
 static void setup_oom_handling_cgroup_v2(int pid);
@@ -314,3 +318,5 @@ static int write_oom_files()
 	}
 	return oom_fd >= 0 ? 0 : -1;
 }
+
+#endif

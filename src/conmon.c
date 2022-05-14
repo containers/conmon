@@ -21,8 +21,6 @@
 #include "seccomp_notify.h"
 #include "runtime_args.h"
 
-#include <sys/prctl.h>
-#include <sys/signalfd.h>
 #include <sys/stat.h>
 #include <locale.h>
 
@@ -134,7 +132,7 @@ int main(int argc, char *argv[])
 	 * Set self as subreaper so we can wait for container process
 	 * and return its exit code.
 	 */
-	int ret = prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0);
+	int ret = set_subreaper(true);
 	if (ret != 0) {
 		pexit("Failed to set as subreaper");
 	}
@@ -228,7 +226,7 @@ int main(int argc, char *argv[])
 	if (create_pid < 0) {
 		pexit("Failed to fork the create command");
 	} else if (!create_pid) {
-		if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0)
+		if (set_pdeathsig(SIGKILL) < 0)
 			_pexit("Failed to set PDEATHSIG");
 		if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0)
 			_pexit("Failed to unblock signals");
@@ -238,21 +236,21 @@ int main(int argc, char *argv[])
 				workerfd_stdin = dev_null_r;
 			if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
 				_pexit("Failed to dup over stdin");
-			if (workerfd_stdin != dev_null_r && fchmod(STDIN_FILENO, 0777) < 0)
+			if (workerfd_stdin != dev_null_r && isatty(workerfd_stdin) && fchmod(STDIN_FILENO, 0777) < 0)
 				nwarn("Failed to chmod stdin");
 
 			if (workerfd_stdout < 0)
 				workerfd_stdout = dev_null_w;
 			if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
 				_pexit("Failed to dup over stdout");
-			if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0)
+			if (workerfd_stdout != dev_null_w && isatty(workerfd_stdout) && fchmod(STDOUT_FILENO, 0777) < 0)
 				nwarn("Failed to chmod stdout");
 
 			if (workerfd_stderr < 0)
 				workerfd_stderr = workerfd_stdout;
 			if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
 				_pexit("Failed to dup over stderr");
-			if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0)
+			if (workerfd_stderr != dev_null_w && isatty(workerfd_stderr) && fchmod(STDERR_FILENO, 0777) < 0)
 				nwarn("Failed to chmod stderr");
 		}
 		/* If LISTEN_PID env is set, we need to set the LISTEN_PID
@@ -314,11 +312,7 @@ int main(int argc, char *argv[])
 		.pid_to_handler = pid_to_handler,
 		.exit_status_cache = NULL,
 	};
-	sigset_t set;
-	sigemptyset(&set);
-	sigaddset(&set, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &set, NULL);
-	int signal_fd = signalfd(-1, &set, SFD_CLOEXEC);
+	int signal_fd = get_signal_descriptor(SIGCHLD);
 	if (signal_fd < 0)
 		pexit("Failed to create signalfd for SIGCHLD");
 	int signal_fd_tag = g_unix_fd_add(signal_fd, G_IO_IN, on_signalfd_cb, &data);
@@ -407,7 +401,9 @@ int main(int argc, char *argv[])
 	if ((opt_api_version >= 1 || !opt_exec) && sync_pipe_fd >= 0)
 		write_sync_fd(sync_pipe_fd, container_pid, NULL);
 
+#ifdef __linux__
 	setup_oom_handling(container_pid);
+#endif
 
 	if (mainfd_stdout >= 0) {
 		g_unix_fd_add(mainfd_stdout, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDOUT_PIPE));
@@ -457,7 +453,9 @@ int main(int argc, char *argv[])
 		g_main_loop_run(main_loop);
 	}
 
+#ifdef __linux__
 	check_cgroup2_oom();
+#endif
 
 	/* Drain stdout and stderr only if a timeout doesn't occur */
 	if (!timed_out)
