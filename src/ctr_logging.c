@@ -34,6 +34,9 @@ static const char *const JOURNALD_FILE_STRING = "journald";
 /* Max log size for any log file types */
 static int64_t log_size_max = -1;
 
+/* Max total log size for any log file types */
+static int64_t log_global_size_max = -1;
+
 /* k8s log file parameters */
 static int k8s_log_fd = -1;
 static char *k8s_log_path = NULL;
@@ -95,9 +98,10 @@ gboolean logging_is_passthrough(void)
  * (currently just k8s log file), it will also open the log_fd for that specific
  * log file.
  */
-void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, char *cuuid_, char *name_, char *tag)
+void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t log_global_size_max_, char *cuuid_, char *name_, char *tag)
 {
 	log_size_max = log_size_max_;
+	log_global_size_max = log_global_size_max_;
 	if (log_drivers == NULL)
 		nexit("Log driver not provided. Use --log-path");
 	for (int driver = 0; log_drivers[driver]; ++driver) {
@@ -345,6 +349,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 	writev_buffer_t bufv = {0};
 	static int64_t bytes_written = 0;
 	int64_t bytes_to_be_written = 0;
+	static int64_t total_bytes_written = 0;
 
 	/*
 	 * Use the same timestamp for every line of the log in this buffer.
@@ -367,6 +372,10 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		if (partial) {
 			bytes_to_be_written += 1;
 		}
+
+		/* If the caller specified a global max, enforce it before writing */
+		if (total_bytes_written >= log_global_size_max)
+			break;
 
 		/*
 		 * We re-open the log file if writing out the bytes will exceed the max
@@ -421,6 +430,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		}
 
 		bytes_written += bytes_to_be_written;
+		total_bytes_written += bytes_to_be_written;
 	next:
 		/* Update the head of the buffer remaining to output. */
 		buf += line_len;
