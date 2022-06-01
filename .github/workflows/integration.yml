@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -74,7 +74,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -93,7 +93,7 @@ jobs:
           git clone https://github.com/containers/podman
           cd podman
           make
-          sudo -E ginkgo \
+          sudo -E ACK_GINKGO_DEPRECATIONS=2.1.4 ginkgo \
             -skip 'run.apparmor.disabled|image.trust.show.--json|run.network.bind.to.HostIP' \
             -noColor \
             -v test/e2e/.
@@ -103,7 +103,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
