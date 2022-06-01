@@ -2,8 +2,8 @@
 set -euo pipefail
 
 declare -A VERSIONS=(
-    ["cni-plugins"]=v0.8.7
-    ["runc"]=v1.0.0-rc93
+    ["cni-plugins"]=v1.1.0
+    ["runc"]=v1.1.2
     ["bats"]=v1.2.1
 )
 
