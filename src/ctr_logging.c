@@ -374,7 +374,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		}
 
 		/* If the caller specified a global max, enforce it before writing */
-		if (total_bytes_written >= log_global_size_max)
+		if (log_global_size_max > 0 && total_bytes_written >= log_global_size_max)
 			break;
 
 		/*
