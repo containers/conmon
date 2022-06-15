@@ -22,6 +22,7 @@
 #include "runtime_args.h"
 
 #include <sys/prctl.h>
+#include <sys/signalfd.h>
 #include <sys/stat.h>
 #include <locale.h>
 
@@ -308,18 +309,19 @@ int main(int argc, char *argv[])
 	_cleanup_hashtable_ GHashTable *pid_to_handler = g_hash_table_new(g_int_hash, g_int_equal);
 	g_hash_table_insert(pid_to_handler, (pid_t *)&create_pid, runtime_exit_cb);
 
-	/*
-	 * Glib does not support SIGCHLD so use SIGUSR1 with the same semantic.  We will
-	 * catch SIGCHLD and raise(SIGUSR1) in the signal handler.
-	 */
+	/* Register a handler via signalfd for handling SIGCHLD */
 	struct pid_check_data data = {
 		.pid_to_handler = pid_to_handler,
 		.exit_status_cache = NULL,
 	};
-	g_unix_signal_add(SIGUSR1, on_sigusr1_cb, &data);
-
-	if (signal(SIGCHLD, on_sigchld) == SIG_ERR)
-		pexit("Failed to set handler for SIGCHLD");
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &set, NULL);
+	int signal_fd = signalfd(-1, &set, SFD_CLOEXEC);
+	if (signal_fd < 0)
+		pexit("Failed to create signalfd for SIGCHLD");
+	int signal_fd_tag = g_unix_fd_add(signal_fd, G_IO_IN, on_signalfd_cb, &data);
 
 	if (opt_exit_command)
 		atexit(do_exit_command);
@@ -483,6 +485,10 @@ int main(int argc, char *argv[])
 	} else {
 		exit_status = get_exit_status(container_status);
 	}
+
+	/* Close down the signalfd */
+	g_source_remove(signal_fd_tag);
+	close(signal_fd);
 
 	/*
 	 * Podman injects some fd's into the conmon process so that exposed ports are kept busy while

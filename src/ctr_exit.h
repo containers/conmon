@@ -13,11 +13,10 @@ struct pid_check_data {
 	GHashTable *exit_status_cache;
 };
 
-void on_sigchld(G_GNUC_UNUSED int signal);
 void on_sig_exit(int signal);
 void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer user_data);
 gboolean check_child_processes_cb(gpointer user_data);
-gboolean on_sigusr1_cb(gpointer user_data);
+gboolean on_signalfd_cb(gint fd, GIOCondition condition, gpointer user_data);
 gboolean timeout_cb(G_GNUC_UNUSED gpointer user_data);
 int get_exit_status(int status);
 void runtime_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer user_data);
