@@ -73,7 +73,7 @@ GOptionEntry opt_entries[] = {
 	{"log-level", 0, 0, G_OPTION_ARG_STRING, &opt_log_level, "Print debug logs based on log level", NULL},
 	{"log-path", 'l', 0, G_OPTION_ARG_STRING_ARRAY, &opt_log_path, "Log file path", NULL},
 	{"log-size-max", 0, 0, G_OPTION_ARG_INT64, &opt_log_size_max, "Maximum size of log file", NULL},
-	{"log-size-global-max", 0, 0, G_OPTION_ARG_INT64, &opt_log_global_size_max, "Maximum size of all log files", NULL},
+	{"log-global-size-max", 0, 0, G_OPTION_ARG_INT64, &opt_log_global_size_max, "Maximum size of all log files", NULL},
 	{"log-tag", 0, 0, G_OPTION_ARG_STRING, &opt_log_tag, "Additional tag to use for logging", NULL},
 	{"name", 'n', 0, G_OPTION_ARG_STRING, &opt_name, "Container name", NULL},
 	{"no-new-keyring", 0, 0, G_OPTION_ARG_NONE, &opt_no_new_keyring, "Do not create a new session keyring for the container", NULL},
