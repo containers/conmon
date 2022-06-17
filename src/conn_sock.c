@@ -112,6 +112,12 @@ static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
 #endif
 
 #ifdef __FreeBSD__
+
+// FreeBSD earlier than 13.1-RELEASE doesn't have O_PATH
+#ifndef O_PATH
+#define O_PATH 0
+#endif
+
 static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
 {
 	struct sockaddr_un addr;
