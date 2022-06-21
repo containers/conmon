@@ -13,16 +13,12 @@
 #include <glib-unix.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/signalfd.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 
 volatile pid_t container_pid = -1;
 volatile pid_t create_pid = -1;
-
-void on_sigchld(G_GNUC_UNUSED int signal)
-{
-	raise(SIGUSR1);
-}
 
 void on_sig_exit(int signal)
 {
@@ -83,9 +79,16 @@ gboolean check_child_processes_cb(gpointer user_data)
 	return G_SOURCE_REMOVE;
 }
 
-gboolean on_sigusr1_cb(gpointer user_data)
+gboolean on_signalfd_cb(gint fd, G_GNUC_UNUSED GIOCondition condition, gpointer user_data)
 {
 	struct pid_check_data *data = (struct pid_check_data *)user_data;
+
+	/* dequeue the signal from the signalfd */
+	struct signalfd_siginfo siginfo;
+	ssize_t s = read(fd, &siginfo, sizeof siginfo);
+	g_assert_cmpint(s, ==, sizeof siginfo);
+	g_assert_cmpint(siginfo.ssi_signo, ==, SIGCHLD);
+
 	check_child_processes(data->pid_to_handler, data->exit_status_cache);
 	return G_SOURCE_CONTINUE;
 }
