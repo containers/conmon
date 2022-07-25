@@ -34,6 +34,10 @@ add_project_arguments('-Os', '-Wall', '-Werror',
                       language : 'c')
 
 glib = dependency('glib-2.0')
+seccomp = dependency('libseccomp', version : '>= 2.5.2')
+if seccomp.found()
+  add_project_arguments('-DUSE_SECCOMP=1', language : 'c')
+endif
 
 cc = meson.get_compiler('c')
 null_dep = dependency('', required : false)
@@ -86,7 +90,7 @@ executable('conmon',
             'src/utils.h',
             'src/seccomp_notify.c',
             'src/seccomp_notify.h'],
-           dependencies : [glib, libdl, sd_journal],
+           dependencies : [glib, libdl, sd_journal, seccomp],
            install : true,
            install_dir : join_paths(get_option('libexecdir'), 'podman'),
 )
