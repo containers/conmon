@@ -225,4 +225,11 @@ static inline void hashtable_free_cleanup(GHashTable **tbl)
 
 ssize_t write_all(int fd, const void *buf, size_t count);
 
+int set_subreaper(gboolean enabled);
+
+int set_pdeathsig(int sig);
+
+int get_signal_descriptor(int sig);
+int dequeue_signal_event(int fd);
+
 #endif /* !defined(UTILS_H) */

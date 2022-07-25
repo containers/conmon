@@ -85,10 +85,61 @@ char *setup_seccomp_socket(const char *socket)
 	return setup_socket(&seccomp_socket_fd, socket);
 }
 
+#ifdef __linux__
+static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
+{
+	struct sockaddr_un addr;
+
+	/*
+	 * To be able to access the location of the attach socket, without first creating the attach socket
+	 * but also be able to handle arbitrary length paths, we open the parent dir (base_path), and then use
+	 * the corresponding entry in `/proc/self/fd` to act as the path to base_path, then we use the socket_relative_name
+	 * to actually refer to the file where the socket will be created below.
+	 */
+	addr.sun_family = AF_UNIX;
+	if (dir_fd == -1) {
+		strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+	} else {
+		snprintf(addr.sun_path, sizeof(addr.sun_path) - 1, "/proc/self/fd/%d/%s", dir_fd, path);
+	}
+	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
+
+	if (fchmod(sock_fd, 0700))
+		pexit("Failed to change console-socket permissions");
+	if (bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+		pexit("Failed to bind to console-socket");
+}
+#endif
+
+#ifdef __FreeBSD__
+
+// FreeBSD earlier than 13.1-RELEASE doesn't have O_PATH
+#ifndef O_PATH
+#define O_PATH 0
+#endif
+
+static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
+{
+	struct sockaddr_un addr;
+
+	if (dir_fd == -1) {
+		dir_fd = AT_FDCWD;
+	}
+
+	addr.sun_family = AF_UNIX;
+	strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
+	if (bindat(dir_fd, sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+		pexit("Failed to bind to console-socket");
+	if (fchmodat(dir_fd, addr.sun_path, 0700, AT_SYMLINK_NOFOLLOW))
+		pexit("Failed to change console-socket permissions");
+}
+#endif
+
 static char *setup_socket(int *fd, const char *path)
 {
-	struct sockaddr_un addr = {0};
 	char *csname = NULL;
+	char *bname = NULL;
 	_cleanup_close_ int sfd = -1;
 
 	if (path != NULL) {
@@ -114,8 +165,6 @@ static char *setup_socket(int *fd, const char *path)
 		bname = basename(bname_buf);
 		if (bname == NULL)
 			pexitf("Cannot get basename for %s", csname);
-
-		snprintf(addr.sun_path, sizeof(addr.sun_path) - 1, "/proc/self/fd/%d/%s", sfd, bname);
 	} else {
 		_cleanup_free_ const char *tmpdir = g_get_tmp_dir();
 
@@ -132,20 +181,14 @@ static char *setup_socket(int *fd, const char *path)
 		if (unlink(csname) < 0)
 			pexit("Failed to unlink temporary random path");
 
-		strncpy(addr.sun_path, csname, sizeof(addr.sun_path) - 1);
+		bname = csname;
 	}
-
-	addr.sun_family = AF_UNIX;
-	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
 
 	/* Bind to the console socket path. */
 	*fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (*fd < 0)
 		pexit("Failed to create socket");
-	if (fchmod(*fd, 0700))
-		pexit("Failed to change console-socket permissions");
-	if (bind(*fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-		pexit("Failed to bind to console-socket");
+	bind_relative_to_dir(sfd, *fd, bname);
 	if (listen(*fd, 128) < 0)
 		pexit("Failed to listen on console-socket");
 
@@ -186,16 +229,20 @@ void setup_notify_socket(char *socket_path)
 	g_free(symlink_dir_path);
 }
 
+static size_t max_socket_path_len()
+{
+	struct sockaddr_un addr;
+	return sizeof(addr.sun_path);
+}
+
 /* REMEMBER to g_free() the return value! */
 static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
 			      gboolean use_full_attach_path)
 {
 	int socket_fd = -1;
-	struct sockaddr_un socket_addr = {0};
-	socket_addr.sun_family = AF_UNIX;
 
 	/* get the parent_dir of the socket. We'll use this to get the location of the socket. */
-	char *parent_dir = socket_parent_dir(use_full_attach_path, sizeof(socket_addr.sun_path));
+	char *parent_dir = socket_parent_dir(use_full_attach_path, max_socket_path_len());
 
 	/*
 	 * To be able to access the location of the attach socket, without first creating the attach socket
@@ -206,11 +253,6 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	_cleanup_close_ int parent_dir_fd = open(parent_dir, O_PATH);
 	if (parent_dir_fd < 0)
 		pexitf("failed to open socket path parent dir %s", parent_dir);
-
-	_cleanup_free_ char *sock_proc_entry = g_strdup_printf("/proc/self/fd/%d/%s", parent_dir_fd, socket_relative_name);
-	strncpy(socket_addr.sun_path, sock_proc_entry, sizeof(socket_addr.sun_path) - 1);
-	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", socket_addr.sun_path);
-
 
 	/*
 	 * We use the fullpath for operations that aren't as limited in length as socket_addr.sun_path
@@ -227,14 +269,10 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	if (socket_fd == -1)
 		pexitf("Failed to create socket %s", sock_fullpath);
 
-	if (fchmod(socket_fd, perms))
-		pexitf("Failed to change socket permissions %s", sock_fullpath);
-
 	if (unlink(sock_fullpath) == -1 && errno != ENOENT)
 		pexitf("Failed to remove existing socket: %s", sock_fullpath);
 
-	if (bind(socket_fd, (struct sockaddr *)&socket_addr, sizeof(struct sockaddr_un)) == -1)
-		pexitf("Failed to bind socket: %s", sock_fullpath);
+	bind_relative_to_dir(parent_dir_fd, socket_fd, socket_relative_name);
 
 	if (chmod(sock_fullpath, perms))
 		pexitf("Failed to change socket permissions %s", sock_fullpath);

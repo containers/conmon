@@ -20,7 +20,6 @@
 #include "close_fds.h"
 #include "runtime_args.h"
 
-#include <sys/prctl.h>
 #include <sys/stat.h>
 
 static int open_files_max_fd;

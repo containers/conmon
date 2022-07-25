@@ -1,8 +1,8 @@
 #ifndef SECCOMP_NOTIFY_PLUGIN_H
 
-#include <linux/seccomp.h>
-
 #ifdef USE_SECCOMP
+
+#include <linux/seccomp.h>
 
 struct seccomp_notify_conf_s {
 	const char *runtime_root_path;

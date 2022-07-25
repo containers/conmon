@@ -8,7 +8,9 @@
 #include <glib-unix.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef __linux__
 #include <linux/limits.h>
+#endif
 
 gboolean opt_version = FALSE;
 gboolean opt_terminal = FALSE;
