@@ -164,3 +164,25 @@ static_binary_task:
 
     binaries_artifacts:
         path: "bin/conmon"
+
+# This task is critical.  It updates the "last-used by" timestamp stored
+# in metadata for all VM images.  This mechanism functions in tandem with
+# an out-of-band pruning operation to remove disused VM images.
+meta_task:
+    name: "VM img. keepalive"
+    alias: meta
+    container:
+        cpu: 2
+        memory: 2
+        image: quay.io/libpod/imgts:latest
+    env:
+        # Space-separated list of images used by this repository state
+        IMGNAMES: >-
+            ${FEDORA_CACHE_IMAGE_NAME}
+        BUILDID: "${CIRRUS_BUILD_ID}"
+        REPOREF: "${CIRRUS_REPO_NAME}"
+        GCPJSON: ENCRYPTED[08de2c74178470b1bc85a107e9962f06dbd11d33c7adf024d3e48ae4399ca5383f9d3ad0e2fd65c3ce12750dd6ef8803]
+        GCPNAME: ENCRYPTED[561ce33a9357e5b8e3fb54739c3af31730c0c3b736792f16a67026a8544379d83ff3c27d6fea1c7797a6ae49b6e58115]
+        GCPPROJECT: libpod-218412
+    clone_script: &noop mkdir -p $CIRRUS_WORKING_DIR
+    script: /usr/local/bin/entrypoint.sh
