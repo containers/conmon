@@ -312,9 +312,9 @@ int main(int argc, char *argv[])
 		.pid_to_handler = pid_to_handler,
 		.exit_status_cache = NULL,
 	};
-	int signal_fd = get_signal_descriptor(SIGCHLD);
+	int signal_fd = get_signal_descriptor();
 	if (signal_fd < 0)
-		pexit("Failed to create signalfd for SIGCHLD");
+		pexit("Failed to create signalfd");
 	int signal_fd_tag = g_unix_fd_add(signal_fd, G_IO_IN, on_signalfd_cb, &data);
 
 	if (opt_exit_command)

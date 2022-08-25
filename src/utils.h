@@ -229,7 +229,7 @@ int set_subreaper(gboolean enabled);
 
 int set_pdeathsig(int sig);
 
-int get_signal_descriptor(int sig);
-int dequeue_signal_event(int fd);
+int get_signal_descriptor();
+void drop_signal_event(int fd);
 
 #endif /* !defined(UTILS_H) */

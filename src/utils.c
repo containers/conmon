@@ -61,6 +61,14 @@ static bool retryable_error(int err)
 }
 #endif
 
+static void get_signal_descriptor_mask(sigset_t *set)
+{
+	sigemptyset(set);
+	sigaddset(set, SIGCHLD);
+	sigaddset(set, SIGUSR1);
+	sigprocmask(SIG_BLOCK, set, NULL);
+}
+
 ssize_t write_all(int fd, const void *buf, size_t count)
 {
 	size_t remaining = count;
@@ -94,21 +102,18 @@ int set_pdeathsig(int sig)
 	return prctl(PR_SET_PDEATHSIG, sig);
 }
 
-int get_signal_descriptor(int sig)
+int get_signal_descriptor()
 {
 	sigset_t set;
-	sigemptyset(&set);
-	sigaddset(&set, sig);
-	sigprocmask(SIG_BLOCK, &set, NULL);
+	get_signal_descriptor_mask(&set);
 	return signalfd(-1, &set, SFD_CLOEXEC);
 }
 
-int dequeue_signal_event(int fd)
+void drop_signal_event(int fd)
 {
 	struct signalfd_siginfo siginfo;
 	ssize_t s = read(fd, &siginfo, sizeof siginfo);
 	g_assert_cmpint(s, ==, sizeof siginfo);
-	return siginfo.ssi_signo;
 }
 
 #endif
@@ -129,12 +134,10 @@ int set_pdeathsig(int sig)
 	return procctl(P_PID, getpid(), PROC_PDEATHSIG_CTL, &sig);
 }
 
-int get_signal_descriptor(int sig)
+int get_signal_descriptor()
 {
 	sigset_t set;
-	sigemptyset(&set);
-	sigaddset(&set, sig);
-	sigprocmask(SIG_BLOCK, &set, NULL);
+	get_signal_descriptor_mask(&set);
 
 	int kq = kqueue();
 	fcntl(kq, F_SETFD, FD_CLOEXEC);
@@ -146,14 +149,13 @@ int get_signal_descriptor(int sig)
 	return kq;
 }
 
-int dequeue_signal_event(int kq)
+void drop_signal_event(int kq)
 {
 	struct kevent kev;
 	int n = kevent(kq, NULL, 0, &kev, 1, NULL);
 	if (n != 1) {
 		pexit("failed to read signal event");
 	}
-	return kev.ident;
 }
 
 #endif

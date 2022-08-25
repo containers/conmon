@@ -81,9 +81,8 @@ gboolean on_signalfd_cb(gint fd, G_GNUC_UNUSED GIOCondition condition, gpointer 
 {
 	struct pid_check_data *data = (struct pid_check_data *)user_data;
 
-	/* dequeue the signal from the signalfd */
-	int sig = dequeue_signal_event(fd);
-	g_assert_cmpint(sig, ==, SIGCHLD);
+	/* drop the signal from the signalfd */
+	drop_signal_event(fd);
 
 	check_child_processes(data->pid_to_handler, data->exit_status_cache);
 	return G_SOURCE_CONTINUE;
