@@ -141,10 +141,14 @@ int get_signal_descriptor()
 
 	int kq = kqueue();
 	fcntl(kq, F_SETFD, FD_CLOEXEC);
-	struct kevent kev;
-	EV_SET(&kev, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
-	if (kevent(kq, &kev, 1, NULL, 0, NULL)) {
-		pexitf("failed to add kevent signal %d", sig);
+	for (int sig = 1; sig < SIGRTMIN; sig++) {
+		if (sigismember(&set, sig)) {
+			struct kevent kev;
+			EV_SET(&kev, sig, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+			if (kevent(kq, &kev, 1, NULL, 0, NULL)) {
+				pexitf("failed to add kevent signal %d", sig);
+			}
+		}
 	}
 	return kq;
 }
