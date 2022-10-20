@@ -112,16 +112,19 @@ podman: install.podman
 crio: install.crio
 
 install.bin: bin/conmon
-	install ${SELINUXOPT} -D -m 755 bin/conmon $(DESTDIR)$(BINDIR)/conmon
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(BINDIR)
+	install ${SELINUXOPT} -m 755 bin/conmon $(DESTDIR)$(BINDIR)/conmon
 
 install.crio: bin/conmon
-	install ${SELINUXOPT} -D -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/crio/conmon
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(LIBEXECDIR)/crio
+	install ${SELINUXOPT} -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/crio/conmon
 
 install.podman: bin/conmon
-	install ${SELINUXOPT} -D -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/podman/conmon
+	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(LIBEXECDIR)/podman
+	install ${SELINUXOPT} -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/podman/conmon
 
 install.tools:
-	make -C tools
+	$(MAKE) -C tools
 
 .PHONY: fmt
 fmt:
