@@ -327,7 +327,7 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 
 		int err = sd_journal_sendv(bufv.iov, bufv.iovcnt);
 		if (err < 0) {
-			pwarn(strerror(err));
+			pwarn(strerror(-err));
 			return err;
 		}
 
