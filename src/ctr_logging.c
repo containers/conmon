@@ -144,6 +144,7 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 			name_len = strlen(name);
 			container_name = g_strdup_printf("CONTAINER_NAME=%s", name);
 
+			g_free(syslog_identifier);
 			syslog_identifier = g_strdup_printf("SYSLOG_IDENTIFIER=%s", name);
 			syslog_identifier_len = name_len + SYSLOG_IDENTIFIER_EQ_LEN;
 		}
@@ -151,6 +152,7 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 			container_tag = g_strdup_printf("CONTAINER_TAG=%s", tag);
 			container_tag_len = strlen(container_tag);
 
+			g_free(syslog_identifier);
 			syslog_identifier = g_strdup_printf("SYSLOG_IDENTIFIER=%s", tag);
 			syslog_identifier_len = strlen(syslog_identifier);
 		}
