@@ -286,21 +286,17 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 			return 0;
 		}
 
-		/* sd_journal_* doesn't have an option to specify the number of bytes to write in the message, and instead writes the
-		 * entire string. Copying every line doesn't make very much sense, so instead we do this tmp_line_end
-		 * hack to emulate separate strings.
-		 */
-		char tmp_line_end = buf[line_len];
-		buf[line_len] = '\0';
-
 		ssize_t msg_len = line_len + MESSAGE_EQ_LEN + *partial_buf_len;
 		partial_buf[*partial_buf_len] = '\0';
-		_cleanup_free_ char *message = g_strdup_printf("MESSAGE=%s%s", partial_buf, buf);
+
+		_cleanup_free_ char *message = g_malloc(msg_len);
+
+		memcpy(message, "MESSAGE=", MESSAGE_EQ_LEN);
+		memcpy(message + MESSAGE_EQ_LEN, partial_buf, *partial_buf_len);
+		memcpy(message + MESSAGE_EQ_LEN + *partial_buf_len, buf, line_len);
+
 		if (writev_buffer_append_segment(dev_null, &bufv, message, msg_len) < 0)
 			return -1;
-
-		/* Restore state of the buffer */
-		buf[line_len] = tmp_line_end;
 
 		if (writev_buffer_append_segment(dev_null, &bufv, container_id_full, cuuid_len + CID_FULL_EQ_LEN) < 0)
 			return -1;
