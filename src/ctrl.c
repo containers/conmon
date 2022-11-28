@@ -255,10 +255,10 @@ static void setup_fifo(int *fifo_r, int *fifo_w, char *filename, char *error_var
 	if (!fifo_r || !fifo_w)
 		pexitf("setup fifo was passed a NULL pointer");
 
-	if (mkfifo(fifo_path, 0666) == -1) {
+	if (mkfifo(fifo_path, 0660) == -1) {
 		if (errno == EEXIST) {
 			unlink(fifo_path);
-			if (mkfifo(fifo_path, 0666) == -1)
+			if (mkfifo(fifo_path, 0660) == -1)
 				pexitf("Failed to mkfifo at %s", fifo_path);
 		}
 	}
