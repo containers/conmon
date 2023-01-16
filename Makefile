@@ -128,8 +128,8 @@ install.tools:
 
 .PHONY: fmt
 fmt:
-	find . '(' -name '*.h' -o -name '*.c' ! -path './vendor/*' ')'  -exec clang-format -i {} \+
-	find . -name '*.go' ! -path './vendor/*' -exec gofmt -s -w {} \+
+	find . '(' -name '*.h' -o -name '*.c' ! -path './vendor/*' ! -path './tools/vendor/*' ')' -exec clang-format -i {} \+
+	find . -name '*.go' ! -path './vendor/*' ! -path './tools/vendor/*' -exec gofmt -s -w {} \+
 	git diff --exit-code
 
 
