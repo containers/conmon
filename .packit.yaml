@@ -6,6 +6,9 @@ downstream_package_name: conmon
 
 jobs:
   - job: copr_build
+    # build in new Copr projects
+    # workaround for https://github.com/packit/packit-service/issues/1854
+    identifier: rawhide
     # Run on every PR
     trigger: pull_request
     # Defaults to x86_64 unless architecture is explicitly specified
@@ -20,6 +23,7 @@ jobs:
         - "curl -O https://src.fedoraproject.org/rpms/conmon/raw/rawhide/f/conmon.spec"
 
   - job: copr_build
+    identifier: f37
     trigger: pull_request
     targets:
       - fedora-37-aarch64
@@ -32,6 +36,7 @@ jobs:
         - "curl -O https://src.fedoraproject.org/rpms/conmon/raw/f37/f/conmon.spec"
 
   - job: copr_build
+    identifier: f36
     trigger: pull_request
     targets:
       - fedora-36-aarch64
