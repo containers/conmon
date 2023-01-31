@@ -279,19 +279,28 @@ gboolean check_cgroup2_oom()
 	ssize_t read;
 	while ((read = getline(&line, &len, fp)) != -1) {
 		long int counter;
+		const int oom_len = 4, oom_kill_len = 9;
 
-		if (read < 6 || memcmp(line, "oom ", 4))
+		if (read >= oom_kill_len + 2 && memcmp(line, "oom_kill ", oom_kill_len) == 0)
+			len = oom_kill_len;
+		else if (read >= oom_len + 2 && memcmp(line, "oom ", oom_len) == 0)
+			len = oom_len;
+		else
 			continue;
 
-		counter = strtol(&line[4], NULL, 10);
+		counter = strtol(&line[len], NULL, 10);
+
 		if (counter == LONG_MAX) {
-			nwarnf("Failed to parse %s", &line[4]);
+			nwarnf("Failed to parse: %s", &line[len]);
+			continue;
 		}
 
+		if (counter == 0)
+			continue;
+
 		if (counter != last_counter) {
-			if (write_oom_files() == 0) {
+			if (write_oom_files() == 0)
 				last_counter = counter;
-			}
 		}
 		return G_SOURCE_CONTINUE;
 	}
