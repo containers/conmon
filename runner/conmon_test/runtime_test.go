@@ -8,7 +8,7 @@ import (
 
 	"github.com/containers/conmon/runner/conmon"
 	"github.com/containers/storage/pkg/stringid"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/opencontainers/runtime-tools/generate"
 )

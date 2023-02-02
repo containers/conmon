@@ -12,7 +12,7 @@ import (
 
 	"github.com/containers/conmon/runner/conmon"
 	"github.com/coreos/go-systemd/v22/sdjournal"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/containers/conmon/runner/conmon"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
