@@ -18,7 +18,7 @@ main() {
     install_runc
     install_cni_plugins
     install_testdeps
-	setup_etc_subid
+    setup_etc_subid
 }
 
 prepare_system() {
@@ -119,6 +119,10 @@ install_runc() {
 }
 
 install_testdeps() {
+    CLONE_PATH=$(go env GOPATH)/src/github.com/cri-o
+    mkdir -p "$CLONE_PATH"
+    pushd "$CLONE_PATH"
+
     URL=https://github.com/cri-o/cri-o
     git clone $URL
     pushd cri-o
@@ -131,11 +135,12 @@ install_testdeps() {
     sudo cp test/redhat_sigstore.yaml /etc/containers/registries.d/registry.access.redhat.com.yaml
     sudo cp test/registries.conf /etc/containers/registries.conf
     popd
+    popd
 }
 
 setup_etc_subid() {
-	echo "containers:200000:65536" | sudo tee -a /etc/subuid
-	echo "containers:200000:65536" | sudo tee -a /etc/subgid
+    echo "containers:200000:65536" | sudo tee -a /etc/subuid
+    echo "containers:200000:65536" | sudo tee -a /etc/subgid
 
 }
 

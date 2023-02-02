@@ -62,7 +62,7 @@ jobs:
       - run: hack/github-actions-setup
       - name: Run CRI-O integration tests
         run: |
-          cd cri-o
+          cd $(go env GOPATH)/src/github.com/cri-o/cri-o
           make all test-binaries
           # skip seccomp tests because they have permission denied issues in a container
           sudo -E test/test_runner.sh $(ls test/ | grep bats | grep -v seccomp)
