@@ -33,7 +33,7 @@ require (
 	github.com/containers/ocicrypt v1.1.0 // indirect
 	github.com/containers/psgo v1.5.2 // indirect
 	github.com/cri-o/ocicni v0.2.1-0.20210301205850-541cf7c703cf // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
+	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/docker v20.10.3-0.20210216175712-646072ed6524+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
