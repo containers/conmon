@@ -10,7 +10,7 @@ require (
 	github.com/onsi/gomega v1.24.1
 	github.com/opencontainers/runtime-tools v0.9.0
 	github.com/pkg/errors v0.9.1
-	golang.org/x/sys v0.3.0
+	golang.org/x/sys v0.5.0
 )
 
 require (
@@ -96,10 +96,10 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	go.opencensus.io v0.22.3 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
-	golang.org/x/net v0.3.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
-	golang.org/x/term v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a // indirect
 	google.golang.org/grpc v1.33.2 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
