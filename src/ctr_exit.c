@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 
 #include "ctr_exit.h"
-#include "cli.h" // opt_exit_command, opt_exit_delay
+#include "cli.h" // opt_exit_command, opt_exit_delay, opt_socket_path, opt_cuuid
 #include "utils.h"
 #include "parent_pipe_fd.h"
 #include "globals.h"
@@ -213,6 +213,16 @@ void reap_children()
 	   exiting */
 	while (waitpid(-1, NULL, WNOHANG) > 0)
 		;
+}
+
+void cleanup_socket_dir_symlink()
+{
+	/* A symbolic link might be created at {opt_socket_path}/{opt_cuuid} if the container
+	   is created successfully.
+	   This function will take care of removing the link when the conmon process exits. */
+	char *base_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
+	if (unlink(base_path) == -1 && errno != ENOENT)
+		pexitf("Failed to remove existing symlink for the socket directory %s", base_path);
 }
 
 void handle_signal(G_GNUC_UNUSED const int signum)

@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
 #include "conn_sock.h"
+#include "ctr_exit.h"
 #include "globals.h"
 #include "utils.h"
 #include "config.h"
@@ -318,6 +319,9 @@ char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 
 	if (symlink(opt_bundle_path, base_path) == -1)
 		pexit("Failed to create symlink for notify socket");
+
+	// Ensure the link is deleted when we exit
+	atexit(cleanup_socket_dir_symlink);
 
 	return base_path;
 }
