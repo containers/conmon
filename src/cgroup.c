@@ -161,8 +161,15 @@ static void setup_oom_handling_cgroup_v1(int pid)
 		pexit("Failed to create eventfd");
 
 	_cleanup_free_ char *data = g_strdup_printf("%d %d", oom_event_fd, oom_cgroup_fd);
-	if (write_all(cfd, data, strlen(data)) < 0)
-		pexit("Failed to write to cgroup.event_control");
+	if (write_all(cfd, data, strlen(data)) < 0) {
+		/* This used to be fatal, but we make it advisory and stumble on because
+		 * https://github.com/torvalds/linux/commit/2343e88d238f5de973d609d861c505890f94f22e
+		 * disables this interface in PREEMPT_RT kernel configs.
+		 */
+		nwarnf("Failed to write to cgroup.event_control");
+		g_free(memory_cgroup_file_path);
+		return;
+	}
 
 	g_unix_fd_add(oom_event_fd, G_IO_IN, oom_cb_cgroup_v1, memory_cgroup_file_path);
 }
