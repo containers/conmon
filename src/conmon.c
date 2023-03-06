@@ -34,9 +34,12 @@ static void disconnect_std_streams(int dev_null_r, int dev_null_w)
 		pexit("Failed to dup over stderr");
 }
 
+#define DEFAULT_UMASK 0022
+
 int main(int argc, char *argv[])
 {
 	setlocale(LC_ALL, "");
+	umask(DEFAULT_UMASK);
 	_cleanup_gerror_ GError *err = NULL;
 	char buf[BUF_SIZE];
 	int num_read;
