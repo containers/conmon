@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
 	_cleanup_gerror_ GError *err = NULL;
 	char buf[BUF_SIZE];
 	int num_read;
+	int old_oom_score = 0;
 	_cleanup_close_ int dev_null_r_cleanup = -1;
 	_cleanup_close_ int dev_null_w_cleanup = -1;
 	_cleanup_close_ int dummyfd = -1;
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
 
 	process_cli();
 
-	attempt_oom_adjust("-1000");
+	attempt_oom_adjust(-1000, &old_oom_score);
 
 	/* ignoring SIGPIPE prevents conmon from being spuriously killed */
 	signal(SIGPIPE, SIG_IGN);
@@ -290,7 +291,7 @@ int main(int argc, char *argv[])
 		}
 
 		// We don't want runc to be unkillable so we reset the oom_score_adj back to 0
-		attempt_oom_adjust("0");
+		attempt_oom_adjust(old_oom_score, NULL);
 		execv(g_ptr_array_index(runtime_argv, 0), (char **)runtime_argv->pdata);
 		exit(127);
 	}
