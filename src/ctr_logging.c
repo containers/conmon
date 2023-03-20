@@ -82,6 +82,7 @@ static int write_journald(int pipe, char *buf, ssize_t num_read);
 static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen);
 static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen);
 static ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *data, ssize_t len);
+static ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const void *data, ssize_t len);
 static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf);
 static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
 static void reopen_k8s_file(void);
@@ -251,13 +252,6 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 	char *partial_buf;
 	size_t *partial_buf_len;
 
-	/* When using writev_buffer_append_segment, we should never approach the number of
-	 * entries necessary to flush the buffer. Therefore, the fd passed in is for /dev/null
-	 */
-	_cleanup_close_ int dev_null = open("/dev/null", O_WRONLY | O_CLOEXEC);
-	if (dev_null < 0)
-		pexit("Failed to open /dev/null");
-
 	/* Since we know the priority values for the journal (6 being log info and 3 being log err
 	 * we can set it statically here. This will also save on runtime, at the expense of needing
 	 * to be changed if this convention is changed.
@@ -297,30 +291,30 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 		memcpy(message + MESSAGE_EQ_LEN, partial_buf, *partial_buf_len);
 		memcpy(message + MESSAGE_EQ_LEN + *partial_buf_len, buf, line_len);
 
-		if (writev_buffer_append_segment(dev_null, &bufv, message, msg_len) < 0)
+		if (writev_buffer_append_segment_no_flush(&bufv, message, msg_len) < 0)
 			return -1;
 
-		if (writev_buffer_append_segment(dev_null, &bufv, container_id_full, cuuid_len + CID_FULL_EQ_LEN) < 0)
+		if (writev_buffer_append_segment_no_flush(&bufv, container_id_full, cuuid_len + CID_FULL_EQ_LEN) < 0)
 			return -1;
 
-		if (writev_buffer_append_segment(dev_null, &bufv, message_priority, PRIORITY_EQ_LEN) < 0)
+		if (writev_buffer_append_segment_no_flush(&bufv, message_priority, PRIORITY_EQ_LEN) < 0)
 			return -1;
 
-		if (writev_buffer_append_segment(dev_null, &bufv, container_id, TRUNC_ID_LEN + CID_EQ_LEN) < 0)
+		if (writev_buffer_append_segment_no_flush(&bufv, container_id, TRUNC_ID_LEN + CID_EQ_LEN) < 0)
 			return -1;
 
-		if (container_tag && writev_buffer_append_segment(dev_null, &bufv, container_tag, container_tag_len) < 0)
+		if (container_tag && writev_buffer_append_segment_no_flush(&bufv, container_tag, container_tag_len) < 0)
 			return -1;
 
 		/* only print the name if we have a name to print */
-		if (name && writev_buffer_append_segment(dev_null, &bufv, container_name, name_len + NAME_EQ_LEN) < 0)
+		if (name && writev_buffer_append_segment_no_flush(&bufv, container_name, name_len + NAME_EQ_LEN) < 0)
 			return -1;
 
-		if (writev_buffer_append_segment(dev_null, &bufv, syslog_identifier, syslog_identifier_len) < 0)
+		if (writev_buffer_append_segment_no_flush(&bufv, syslog_identifier, syslog_identifier_len) < 0)
 			return -1;
 
 		/* per docker journald logging format, CONTAINER_PARTIAL_MESSAGE is set to true if it's partial, but otherwise not set. */
-		if (partial && writev_buffer_append_segment(dev_null, &bufv, "CONTAINER_PARTIAL_MESSAGE=true", PARTIAL_MESSAGE_EQ_LEN) < 0)
+		if (partial && writev_buffer_append_segment_no_flush(&bufv, "CONTAINER_PARTIAL_MESSAGE=true", PARTIAL_MESSAGE_EQ_LEN) < 0)
 			return -1;
 
 		int err = sd_journal_sendv(bufv.iov, bufv.iovcnt);
@@ -500,6 +494,23 @@ ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *d
 		return 1;
 
 	if (buf->iovcnt == WRITEV_BUFFER_N_IOV && writev_buffer_flush(fd, buf) < 0)
+		return -1;
+
+	if (len > 0) {
+		buf->iov[buf->iovcnt].iov_base = (void *)data;
+		buf->iov[buf->iovcnt].iov_len = (size_t)len;
+		buf->iovcnt++;
+	}
+
+	return 1;
+}
+
+ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const void *data, ssize_t len)
+{
+	if (data == NULL)
+		return 1;
+
+	if (buf->iovcnt == WRITEV_BUFFER_N_IOV)
 		return -1;
 
 	if (len > 0) {
