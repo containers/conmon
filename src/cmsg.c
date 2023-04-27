@@ -162,5 +162,5 @@ err:
 	olderrno = errno;
 	free(file.name);
 	errno = olderrno;
-	return (struct file_t){0};
+	return (struct file_t){.name = NULL, .fd = -1};
 }
