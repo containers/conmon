@@ -26,7 +26,11 @@ gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC
 {
 
 	ndebugf("about to accept from console_socket_fd: %d", fd);
-	int connfd = accept4(fd, NULL, NULL, SOCK_CLOEXEC);
+
+	int connfd;
+	do {
+		connfd = accept4(fd, NULL, NULL, SOCK_CLOEXEC);
+	} while (connfd < 0 && errno == EINTR);
 	if (connfd < 0) {
 		nwarn("Failed to accept console-socket connection");
 		return G_SOURCE_CONTINUE;
