@@ -38,14 +38,14 @@
 
 #define error(s) \
 	do { \
-		fprintf(stderr, "nsenter: %s %s\n", s, strerror(errno)); \
+		fprintf(stderr, "conmon: %s %s\n", s, strerror(errno)); \
 		errno = ECOMM; \
 		goto err; /* return value */ \
 	} while (0)
 
 #define errorf(fmt, ...) \
 	do { \
-		fprintf(stderr, "nsenter: " fmt ": %s\n", ##__VA_ARGS__, strerror(errno)); \
+		fprintf(stderr, "conmon: " fmt ": %s\n", ##__VA_ARGS__, strerror(errno)); \
 		errno = ECOMM; \
 		goto err; /* return value */ \
 	} while (0)
