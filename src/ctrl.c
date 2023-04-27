@@ -47,6 +47,10 @@ gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC
 	ndebugf("about to recvfd from connfd: %d", connfd);
 	struct file_t console = recvfd(connfd);
 
+	if (console.fd < 0) {
+		pexit("Failed to receive console file descriptor");
+	}
+
 	ndebugf("console = {.name = '%s'; .fd = %d}", console.name, console.fd);
 	free(console.name);
 
