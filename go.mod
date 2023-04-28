@@ -3,7 +3,7 @@ module github.com/containers/conmon
 go 1.18
 
 require (
-	github.com/containers/libpod v1.9.3
+	github.com/containers/libpod/v4 v4.5.0
 	github.com/containers/storage v1.28.1
 	github.com/coreos/go-systemd/v22 v22.3.1
 	github.com/onsi/ginkgo/v2 v2.6.1
