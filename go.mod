@@ -7,7 +7,7 @@ require (
 	github.com/containers/storage v1.28.1
 	github.com/coreos/go-systemd/v22 v22.3.1
 	github.com/onsi/ginkgo/v2 v2.6.1
-	github.com/onsi/gomega v1.24.1
+	github.com/onsi/gomega v1.27.6
 	github.com/opencontainers/runtime-tools v0.9.0
 	github.com/pkg/errors v0.9.1
 	golang.org/x/sys v0.3.0
