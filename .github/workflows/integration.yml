@@ -84,10 +84,6 @@ jobs:
           key: go-integration-podman-${{ hashFiles('**/go.mod') }}
           restore-keys: go-integration-podman-
       - run: hack/github-actions-setup
-      - run: |
-          # https://github.com/actions/setup-go/issues/107
-          cp -f `which go` /usr/bin/go
-
       - name: Run Podman integration tests
         run: |
           git clone https://github.com/containers/podman
