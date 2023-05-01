@@ -89,9 +89,9 @@ jobs:
           git clone https://github.com/containers/podman
           cd podman
           make
-          sudo -E ACK_GINKGO_DEPRECATIONS=2.1.4 ginkgo \
+          sudo -E ACK_GINKGO_DEPRECATIONS=2.9.2 ginkgo \
             -skip 'run.apparmor.disabled|image.trust.show.--json|run.network.bind.to.HostIP' \
-            -noColor \
+            -no-color \
             -v test/e2e/.
 
   podman-system:
