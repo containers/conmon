@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.20'
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
           path: |
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.20'
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
           path: |
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.20'
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
           path: |
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.20'
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
           path: |
@@ -104,7 +104,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.20'
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
           path: |
