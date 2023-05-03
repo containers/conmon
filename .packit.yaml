@@ -11,39 +11,16 @@ jobs:
     identifier: rawhide
     # Run on every PR
     trigger: pull_request
-    # Defaults to x86_64 unless architecture is explicitly specified
+    # Disable i386 as it's no longer supported.
+    # Disable ppc64le and s390x as they take too long on copr.
     targets:
       - fedora-rawhide-aarch64
-      - fedora-rawhide-i386
-      - fedora-rawhide-ppc64le
-      - fedora-rawhide-s390x
       - fedora-rawhide-x86_64
-    actions:
-      post-upstream-clone:
-        - "curl -O https://src.fedoraproject.org/rpms/conmon/raw/rawhide/f/conmon.spec"
-
-  - job: copr_build
-    identifier: f37
-    trigger: pull_request
-    targets:
+      - fedora-38-aarch64
+      - fedora-38-x86_64
       - fedora-37-aarch64
-      - fedora-37-i386
-      - fedora-37-ppc64le
-      - fedora-37-s390x
       - fedora-37-x86_64
     actions:
+      # Rawhide spec file should also build for the released versions of Fedora.
       post-upstream-clone:
-        - "curl -O https://src.fedoraproject.org/rpms/conmon/raw/f37/f/conmon.spec"
-
-  - job: copr_build
-    identifier: f36
-    trigger: pull_request
-    targets:
-      - fedora-36-aarch64
-      - fedora-36-i386
-      - fedora-36-ppc64le
-      - fedora-36-s390x
-      - fedora-36-x86_64
-    actions:
-      post-upstream-clone:
-        - "curl -O https://src.fedoraproject.org/rpms/conmon/raw/f36/f/conmon.spec"
+        - "curl -O https://src.fedoraproject.org/rpms/conmon/raw/rawhide/f/conmon.spec"
