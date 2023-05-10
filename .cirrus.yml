@@ -119,7 +119,7 @@ static_binary_task:
     # the next line and file an issue with details about the failure.
     # allow_failures: true
 
-    timeout_in: '240m'
+    timeout_in: '360m'
 
     gce_instance:
         image_name: "${FEDORA_CACHE_IMAGE_NAME}"
@@ -139,12 +139,15 @@ static_binary_task:
         CACHIX_AUTH_TOKEN: ENCRYPTED[4c3b8d82b0333abf048c56a71f2559ddb1c9ed38f0c28916eca13f79affa5904cf90c76a5bd8686680c89f41079ef341]
 
     matrix:
-      - name: "Static intel binary"
+      - name: "Static amd64 binary"
         env:
             TARGET: default.nix
-      - name: "Static ARM binary"
+      - name: "Static arm64 binary"
         env:
             TARGET: default-arm64.nix
+      - name: "Static ppc64le binary"
+        env:
+            TARGET: default-ppc64le.nix
 
     build_script: |
         set -ex
