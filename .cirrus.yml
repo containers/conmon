@@ -129,7 +129,7 @@ static_binary_task:
 
     env:
         # Do not use 'latest', fixed-version tag for runtime stability.
-        CTR_FQIN: "docker.io/nixos/nix:2.3.6"
+        CTR_FQIN: "docker.io/nixos/nix:2.15.0"
         # Authentication token for pushing the build cache to cachix.
         # This is critical, it helps to avoid a very lengthy process of
         # statically building every dependency needed to build conmon.
