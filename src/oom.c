@@ -27,5 +27,6 @@ void attempt_oom_adjust(int oom_score, int *old_value)
 	close(oom_score_fd);
 #else
 	(void)oom_score;
+	(void)old_value;
 #endif
 }
