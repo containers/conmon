@@ -179,16 +179,21 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 	const size_t events_size = sizeof(struct inotify_event) + NAME_MAX + 1;
 	char events[events_size];
 
+	g_mutex_lock(&mutex);
+
+	gboolean ret = G_SOURCE_CONTINUE;
+
 	/* Drop the inotify events.  */
 	ssize_t num_read = read(fd, &events, events_size);
 	if (num_read < 0) {
 		nwarn("Failed to read oom event from eventfd in v2");
-		return G_SOURCE_CONTINUE;
+		goto out;
 	}
 
-	gboolean ret = G_SOURCE_REMOVE;
 	if ((condition & G_IO_IN) != 0) {
 		ret = check_cgroup2_oom();
+	} else {
+		ret = G_SOURCE_REMOVE;
 	}
 
 	if (ret == G_SOURCE_REMOVE) {
@@ -197,6 +202,8 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 		inotify_fd = -1;
 	}
 
+out:
+	g_mutex_unlock(&mutex);
 	return ret;
 }
 
@@ -205,12 +212,16 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_data)
 {
 	char *cgroup_event_control_path = (char *)user_data;
+	g_mutex_lock(&mutex);
+	gboolean ret = G_SOURCE_CONTINUE;
+
 	if ((condition & G_IO_IN) == 0) {
 		/* End of input */
 		close(fd);
 		oom_event_fd = -1;
 		g_free(cgroup_event_control_path);
-		return G_SOURCE_REMOVE;
+		ret = G_SOURCE_REMOVE;
+		goto out;
 	}
 
 	/* Attempt to read the container's cgroup path.
@@ -232,38 +243,42 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 	ssize_t num_read = read(fd, &event_count, sizeof(uint64_t));
 	if (num_read < 0) {
 		nwarn("Failed to read oom event from eventfd");
-		return G_SOURCE_CONTINUE;
+		goto out;
 	}
 
 	if (num_read == 0) {
 		close(fd);
 		oom_event_fd = -1;
 		g_free(cgroup_event_control_path);
-		return G_SOURCE_REMOVE;
+		ret = G_SOURCE_REMOVE;
+		goto out;
 	}
 
 	if (num_read != sizeof(uint64_t)) {
 		nwarn("Failed to read full oom event from eventfd");
-		return G_SOURCE_CONTINUE;
+		goto out;
 	}
 
 	ndebugf("Memory cgroup event count: %ld", (long)event_count);
 	if (event_count == 0) {
 		nwarn("Unexpected event count (zero) when reading for oom event");
-		return G_SOURCE_CONTINUE;
+		goto out;
 	}
 
 	/* if there's only one event, and the cgroup was removed
 	 * we know the event was for a cgroup removal, not an OOM kill
 	 */
-	if (event_count == 1 && cgroup_removed)
-		return G_SOURCE_CONTINUE;
+	if (event_count == 1 && cgroup_removed) {
+		goto out;
+	}
 
 	/* we catch the two other cases here, both of which are OOM kill events */
 	ninfo("OOM event received");
 	write_oom_files();
 
-	return G_SOURCE_CONTINUE;
+out:
+	g_mutex_unlock(&mutex);
+	return ret;
 }
 
 gboolean check_cgroup2_oom()

@@ -129,7 +129,9 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 		return;
 	}
 
+	g_mutex_lock(&mutex);
 	g_main_loop_quit(main_loop);
+	g_mutex_unlock(&mutex);
 }
 
 void do_exit_command()

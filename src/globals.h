@@ -26,6 +26,7 @@ extern int dev_null_w;
 extern gboolean timed_out;
 
 extern GMainLoop *main_loop;
+extern GMutex mutex;
 
 
 #endif // GLOBALS_H

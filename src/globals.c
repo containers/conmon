@@ -21,3 +21,4 @@ int dev_null_w = -1;
 gboolean timed_out = FALSE;
 
 GMainLoop *main_loop = NULL;
+GMutex mutex;
