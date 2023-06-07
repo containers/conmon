@@ -236,25 +236,29 @@ int main(int argc, char *argv[])
 			_pexit("Failed to unblock signals");
 
 		if (!logging_is_passthrough()) {
+			/*
+			 * EINVAL indicates the type of file descriptor used is not supporting fchmod(2) on the given platform.
+			 * Only more unusual cases are logged.
+			 */
 			if (workerfd_stdin < 0)
 				workerfd_stdin = dev_null_r;
 			if (dup2(workerfd_stdin, STDIN_FILENO) < 0)
 				_pexit("Failed to dup over stdin");
-			if (workerfd_stdin != dev_null_r && isatty(workerfd_stdin) && fchmod(STDIN_FILENO, 0777) < 0)
+			if (workerfd_stdin != dev_null_r && fchmod(STDIN_FILENO, 0777) < 0 && errno != EINVAL)
 				nwarn("Failed to chmod stdin");
 
 			if (workerfd_stdout < 0)
 				workerfd_stdout = dev_null_w;
 			if (dup2(workerfd_stdout, STDOUT_FILENO) < 0)
 				_pexit("Failed to dup over stdout");
-			if (workerfd_stdout != dev_null_w && isatty(workerfd_stdout) && fchmod(STDOUT_FILENO, 0777) < 0)
+			if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0 && errno != EINVAL)
 				nwarn("Failed to chmod stdout");
 
 			if (workerfd_stderr < 0)
 				workerfd_stderr = workerfd_stdout;
 			if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
 				_pexit("Failed to dup over stderr");
-			if (workerfd_stderr != dev_null_w && isatty(workerfd_stderr) && fchmod(STDERR_FILENO, 0777) < 0)
+			if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0 && errno != EINVAL)
 				nwarn("Failed to chmod stderr");
 		}
 		/* If LISTEN_PID env is set, we need to set the LISTEN_PID
