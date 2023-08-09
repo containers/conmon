@@ -2,7 +2,7 @@
 #define PARENT_PIPE_FD_H
 
 
-void write_sync_fd(int fd, int res, const char *message);
+void write_or_close_sync_fd(int *fd, int res, const char *message);
 int get_pipe_fd_from_env(const char *envname);
 extern int sync_pipe_fd;
 

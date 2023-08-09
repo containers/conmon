@@ -26,7 +26,8 @@ int get_pipe_fd_from_env(const char *envname)
 	return pipe_fd;
 }
 
-void write_sync_fd(int fd, int res, const char *message)
+// Write a message to the sync pipe, or close the file descriptor if it's a broken pipe.
+void write_or_close_sync_fd(int *fd, int res, const char *message)
 {
 	const char *res_key;
 	if (opt_api_version >= 1)
@@ -38,7 +39,7 @@ void write_sync_fd(int fd, int res, const char *message)
 
 	ssize_t len;
 
-	if (fd == -1)
+	if (*fd == -1)
 		return;
 
 	_cleanup_free_ char *json = NULL;
@@ -50,7 +51,12 @@ void write_sync_fd(int fd, int res, const char *message)
 	}
 
 	len = strlen(json);
-	if (write_all(fd, json, len) != len) {
+	if (write_all(*fd, json, len) != len) {
+		if (errno == EPIPE) {
+			close(*fd);
+			*fd = -1;
+			return;
+		}
 		pexit("Unable to send container stderr message to parent");
 	}
 }
