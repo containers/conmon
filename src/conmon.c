@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
 
 		if (opt_attach) {
 			ndebug("sending attach message to parent");
-			write_sync_fd(attach_pipe_fd, 0, NULL);
+			write_or_close_sync_fd(&attach_pipe_fd, 0, NULL);
 			ndebug("sent attach message to parent");
 		}
 	}
@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
 				if (opt_exec && container_status > 0) {
 					to_report = -1 * container_status;
 				}
-				write_sync_fd(sync_pipe_fd, to_report, buf);
+				write_or_close_sync_fd(&sync_pipe_fd, to_report, buf);
 			}
 		}
 		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 	 * Thus, if we are legacy and we are exec, skip this write.
 	 */
 	if ((opt_api_version >= 1 || !opt_exec) && sync_pipe_fd >= 0)
-		write_sync_fd(sync_pipe_fd, container_pid, NULL);
+		write_or_close_sync_fd(&sync_pipe_fd, container_pid, NULL);
 
 #ifdef __linux__
 	setup_oom_handling(container_pid);
@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 
 	/* Send the command exec exit code back to the parent */
 	if (opt_exec && sync_pipe_fd >= 0)
-		write_sync_fd(sync_pipe_fd, exit_status, exit_message);
+		write_or_close_sync_fd(&sync_pipe_fd, exit_status, exit_message);
 
 	if (attach_symlink_dir_path != NULL && unlink(attach_symlink_dir_path) == -1 && errno != ENOENT)
 		pexit("Failed to remove symlink for attach socket directory");
