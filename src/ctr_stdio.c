@@ -129,6 +129,13 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 			*eof = true;
 		return false;
 	} else if (num_read < 0) {
+		/* Ignore EIO if fd is a tty, since this can happen when the tty is closed
+		   while we are reading from it. */
+		if (errno == EIO && isatty(fd)) {
+			if (eof)
+				*eof = true;
+			return false;
+		}
 		nwarnf("stdio_input read failed %s", strerror(errno));
 		return false;
 	} else {
