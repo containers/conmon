@@ -148,6 +148,9 @@ static_binary_task:
       - name: "Static ppc64le binary"
         env:
             TARGET: default-ppc64le.nix
+      - name: "Static riscv64 binary"
+        env:
+            TARGET: default-riscv64.nix
 
     build_script: |
         set -ex
