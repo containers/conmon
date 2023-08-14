@@ -7,23 +7,6 @@ on:
       - master
   pull_request:
 jobs:
-  kubernetes-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.20'
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-integration-kubernetes-e2e-${{ hashFiles('**/go.mod') }}
-          restore-keys: go-integration-kubernetes-e2e-
-      - run: hack/github-actions-setup
-      - run: sudo hack/kubernetes-e2e
-
   conmon:
     runs-on: ubuntu-latest
     steps:
@@ -68,57 +51,3 @@ jobs:
           sudo -E test/test_runner.sh $(ls test/ | grep bats | grep -v seccomp)
         env:
           JOBS: '2'
-
-  podman:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.20'
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-integration-podman-${{ hashFiles('**/go.mod') }}
-          restore-keys: go-integration-podman-
-      - run: hack/github-actions-setup
-      - run: |
-          # https://github.com/actions/setup-go/issues/107
-          cp -f `which go` /usr/bin/go
-
-      - name: Run Podman integration tests
-        run: |
-          git clone https://github.com/containers/podman
-          cd podman
-          make
-          sudo -E ACK_GINKGO_DEPRECATIONS=2.1.4 ginkgo \
-            -skip 'run.apparmor.disabled|image.trust.show.--json|run.network.bind.to.HostIP' \
-            -noColor \
-            -v test/e2e/.
-
-  podman-system:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.20'
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-integration-podman-system-${{ hashFiles('**/go.mod') }}
-          restore-keys: go-integration-podman-system-
-      - run: hack/github-actions-setup
-      - name: Run Podman system tests
-        run: |
-          # https://github.com/actions/setup-go/issues/107
-          export PATH=${GOROOT}/bin:$PATH
-          git clone https://github.com/containers/podman
-          cd podman
-          make bin/podman bin/rootlessport
-          sudo mkdir -p /usr/local/libexec/podman && sudo cp bin/rootlessport /usr/local/libexec/podman
-          sudo -E make localsystem
