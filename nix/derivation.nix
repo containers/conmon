@@ -17,7 +17,7 @@ with pkgs; stdenv.mkDerivation rec {
     glibc
     glibc.static
     libseccomp
-    pcre
+    pcre2
   ];
   prePatch = ''
     export CFLAGS='-static -pthread'
