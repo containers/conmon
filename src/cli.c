@@ -121,7 +121,7 @@ int initialize_cli(int argc, char *argv[])
 
 	GError *error = NULL;
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
-		g_print("conmon: option parsing failed: %s\n", error->message);
+		g_printerr("conmon: option parsing failed: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
