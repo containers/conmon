@@ -47,10 +47,7 @@ else
   libdl = cc.find_library('dl')
 endif
 
-sd_journal = dependency('libsystemd-journal', required : false)
-if not sd_journal.found()
-	sd_journal = dependency('libsystemd', required : false)
-endif
+sd_journal = dependency('libsystemd', required : false)
 if sd_journal.found()
 	add_project_arguments('-DUSE_JOURNALD=1', language : 'c')
 endif
