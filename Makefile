@@ -38,10 +38,7 @@ override CFLAGS += $(shell $(PKG_CONFIG) --cflags glib-2.0) -DVERSION=\"$(VERSIO
 # "pkg-config --exists" will error if the package doesn't exist. Make can only compare
 # output of commands, so the echo commands are to allow pkg-config to error out, make to catch it,
 # and allow the compilation to complete.
-ifeq ($(shell $(PKG_CONFIG) --exists libsystemd-journal && echo "0"), 0)
-	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd-journal)
-	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd-journal) -D USE_JOURNALD=1
-else ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0"), 0)
+ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd)
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=1
 endif
