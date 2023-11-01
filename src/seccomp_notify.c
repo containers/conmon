@@ -7,7 +7,6 @@
 
 #include <errno.h>
 #include <sys/ioctl.h>
-#include <dlfcn.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
 #include <signal.h>
@@ -19,6 +18,7 @@
 
 #ifdef USE_SECCOMP
 
+#include <dlfcn.h>
 #include <sys/sysmacros.h>
 #include <linux/seccomp.h>
 #include <seccomp.h>
