@@ -5,7 +5,9 @@
 #include <string.h>
 #include <unistd.h>
 
-void attempt_oom_adjust(int oom_score, int *old_value)
+int old_oom_score = 0;
+
+static void write_oom_adjust(int oom_score, int *old_value)
 {
 #ifdef __linux__
 	char fmt_oom_score[16];
@@ -29,4 +31,14 @@ void attempt_oom_adjust(int oom_score, int *old_value)
 	(void)oom_score;
 	(void)old_value;
 #endif
+}
+
+void attempt_oom_adjust(int oom_score)
+{
+	write_oom_adjust(oom_score, &old_oom_score);
+}
+
+void reset_oom_adjust()
+{
+	write_oom_adjust(old_oom_score, NULL);
 }

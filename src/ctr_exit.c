@@ -7,6 +7,7 @@
 #include "globals.h"
 #include "ctr_logging.h"
 #include "close_fds.h"
+#include "oom.h"
 
 #include <errno.h>
 #include <glib.h>
@@ -200,6 +201,8 @@ void do_exit_command()
 		ndebugf("Sleeping for %d seconds before executing exit command", opt_exit_delay);
 		sleep(opt_exit_delay);
 	}
+
+	reset_oom_adjust();
 
 	execv(opt_exit_command, args);
 
