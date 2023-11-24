@@ -191,9 +191,6 @@ static void parse_log_path(char *log_config)
 	}
 
 	if (!strcmp(driver, "passthrough")) {
-		if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO) || isatty(STDERR_FILENO))
-			nexitf("cannot use a tty with passthrough logging mode to prevent attacks via TIOCSTI");
-
 		use_logging_passthrough = TRUE;
 		return;
 	}
