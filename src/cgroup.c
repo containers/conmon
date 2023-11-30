@@ -323,12 +323,12 @@ static int write_oom_files()
 	ninfo("OOM received");
 	if (opt_persist_path) {
 		_cleanup_free_ char *ctr_oom_file_path = g_build_filename(opt_persist_path, "oom", NULL);
-		_cleanup_close_ int ctr_oom_fd = open(ctr_oom_file_path, O_CREAT, 0666);
+		_cleanup_close_ int ctr_oom_fd = open(ctr_oom_file_path, O_CREAT | O_CLOEXEC, 0666);
 		if (ctr_oom_fd < 0) {
 			nwarn("Failed to write oom file");
 		}
 	}
-	_cleanup_close_ int oom_fd = open("oom", O_CREAT, 0666);
+	_cleanup_close_ int oom_fd = open("oom", O_CREAT | O_CLOEXEC, 0666);
 	if (oom_fd < 0) {
 		nwarn("Failed to write oom file");
 	}

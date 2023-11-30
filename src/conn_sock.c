@@ -179,7 +179,7 @@ static char *setup_socket(int *fd, const char *path)
 		if (dname == NULL)
 			pexitf("Cannot get dirname for %s", csname);
 
-		sfd = open(dname, O_CREAT | O_PATH, 0600);
+		sfd = open(dname, O_CREAT | O_PATH | O_CLOEXEC, 0600);
 		if (sfd < 0)
 			pexit("Failed to create file for console-socket");
 
@@ -271,7 +271,7 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	 * the corresponding entry in `/proc/self/fd` to act as the path to base_path, then we use the socket_relative_name
 	 * to actually refer to the file where the socket will be created below.
 	 */
-	_cleanup_close_ int parent_dir_fd = open(parent_dir, O_PATH);
+	_cleanup_close_ int parent_dir_fd = open(parent_dir, O_PATH | O_CLOEXEC);
 	if (parent_dir_fd < 0)
 		pexitf("failed to open socket path parent dir %s", parent_dir);
 
