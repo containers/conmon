@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include "oom.h"
 #include "utils.h"
 
@@ -11,7 +13,7 @@ static void write_oom_adjust(int oom_score, int *old_value)
 {
 #ifdef __linux__
 	char fmt_oom_score[16];
-	int oom_score_fd = open("/proc/self/oom_score_adj", O_RDWR);
+	int oom_score_fd = open("/proc/self/oom_score_adj", O_RDWR | O_CLOEXEC);
 	if (oom_score_fd < 0) {
 		ndebugf("failed to open /proc/self/oom_score_adj: %s\n", strerror(errno));
 		return;
