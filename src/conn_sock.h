@@ -36,7 +36,7 @@ struct remote_sock_s {
 	gboolean writable;
 	size_t remaining;
 	size_t off;
-	char buf[CONN_SOCK_BUF_SIZE];
+	char buf[CONN_SOCK_BUF_SIZE + 1]; // Extra byte allows null-termination
 };
 
 struct local_sock_s {

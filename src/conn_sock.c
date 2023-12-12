@@ -416,9 +416,9 @@ static gboolean read_remote_sock(struct remote_sock_s *sock)
 	}
 
 	if (SOCK_IS_STREAM(sock->sock_type)) {
-		num_read = read(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE - 1);
+		num_read = read(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE);
 	} else {
-		num_read = recvfrom(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE - 1, 0, NULL, NULL);
+		num_read = recvfrom(sock->fd, sock->buf, CONN_SOCK_BUF_SIZE, 0, NULL, NULL);
 	}
 
 	if (num_read < 0)
