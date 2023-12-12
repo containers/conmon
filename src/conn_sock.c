@@ -432,17 +432,52 @@ static gboolean read_remote_sock(struct remote_sock_s *sock)
 	sock->off = 0;
 
 	if (SOCK_IS_NOTIFY(sock->sock_type)) {
-		/* Do what OCI runtime does - only pass READY=1 */
+		/* We pass a limited amount of safe messages here, as some existing or
+		   future ones could be security sensitive */
+		const char *passon_line[] = {
+			"READY=1", "RELOADING=1", "STOPPING=1", "WATCHDOG=1", "WATCHDOG=trigger",
+		};
+		const char *passon_prefix[] = {
+			"STATUS=",
+			"ERRNO=",
+			"BUSERROR=",
+			"MONOTONIC_USEC=",
+		};
+		char **lines;
+
 		sock->buf[num_read] = '\0';
-		if (strstr(sock->buf, "READY=1")) {
-			strncpy(sock->buf, "READY=1", 8);
-			sock->remaining = 7;
-		} else if (strstr(sock->buf, "WATCHDOG=1")) {
-			strncpy(sock->buf, "WATCHDOG=1", 11);
-			sock->remaining = 10;
-		} else {
-			sock->remaining = 0;
+		lines = g_strsplit_set(sock->buf, "\n\r", -1);
+		sock->remaining = 0;
+
+		for (size_t i = 0; lines[i] != NULL; i++) {
+			const char *line = lines[i];
+			gboolean pass_line = FALSE;
+
+			for (size_t j = 0; j < G_N_ELEMENTS(passon_line); j++) {
+				if (strcmp(line, passon_line[j]) == 0) {
+					pass_line = TRUE;
+					break;
+				}
+			}
+
+			for (size_t j = 0; !pass_line && j < G_N_ELEMENTS(passon_prefix); j++) {
+				if (g_str_has_prefix(line, passon_prefix[j])) {
+					pass_line = TRUE;
+					break;
+				}
+			}
+
+			/* This will always fit in sock->buf as we only pass through exact
+			   bytes from an existing sock->buf */
+			if (pass_line) {
+				if (sock->remaining > 0)
+					sock->buf[sock->remaining++] = '\n';
+
+				memcpy(sock->buf + sock->remaining, line, strlen(line));
+				sock->remaining += strlen(line);
+			}
 		}
+		g_strfreev(lines);
 	}
 
 	if (sock->remaining)
