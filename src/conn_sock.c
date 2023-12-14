@@ -263,7 +263,7 @@ static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t 
 	int socket_fd = -1;
 
 	/* get the parent_dir of the socket. We'll use this to get the location of the socket. */
-	char *parent_dir = socket_parent_dir(use_full_attach_path, max_socket_path_len());
+	_cleanup_free_ char *parent_dir = socket_parent_dir(use_full_attach_path, max_socket_path_len());
 
 	/*
 	 * To be able to access the location of the attach socket, without first creating the attach socket
