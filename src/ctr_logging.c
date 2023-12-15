@@ -3,6 +3,7 @@
 #include "cli.h"
 #include "config.h"
 #include <string.h>
+#include <sys/stat.h>
 
 // if the systemd development files were found, we can log to systemd
 #ifdef USE_JOURNALD
@@ -40,6 +41,8 @@ static int64_t log_global_size_max = -1;
 /* k8s log file parameters */
 static int k8s_log_fd = -1;
 static char *k8s_log_path = NULL;
+static int64_t k8s_bytes_written;
+static int64_t k8s_total_bytes_written;
 
 /* journald log file parameters */
 // short ID length
@@ -113,6 +116,15 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 		k8s_log_fd = open(k8s_log_path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
 		if (k8s_log_fd < 0)
 			pexit("Failed to open log file");
+
+		struct stat statbuf;
+		if (fstat(k8s_log_fd, &statbuf) == 0) {
+			k8s_bytes_written = statbuf.st_size;
+		} else {
+			nwarnf("Could not stat log file %s, assuming 0 size", k8s_log_path);
+			k8s_bytes_written = 0;
+		}
+		k8s_total_bytes_written = k8s_bytes_written;
 
 		if (!use_journald_logging && tag)
 			nexit("k8s-file doesn't support --log-tag");
@@ -336,9 +348,7 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 {
 	writev_buffer_t bufv = {0};
-	static int64_t bytes_written = 0;
 	int64_t bytes_to_be_written = 0;
-	static int64_t total_bytes_written = 0;
 
 	/*
 	 * Use the same timestamp for every line of the log in this buffer.
@@ -363,7 +373,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		}
 
 		/* If the caller specified a global max, enforce it before writing */
-		if (log_global_size_max > 0 && total_bytes_written >= log_global_size_max)
+		if (log_global_size_max > 0 && k8s_total_bytes_written >= log_global_size_max)
 			break;
 
 		/*
@@ -371,9 +381,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		 * log size. We also reset the state so that the new file is started with
 		 * a timestamp.
 		 */
-		if ((log_size_max > 0) && (bytes_written + bytes_to_be_written) > log_size_max) {
-			bytes_written = 0;
-
+		if ((log_size_max > 0) && (k8s_bytes_written + bytes_to_be_written) > log_size_max) {
 			if (writev_buffer_flush(k8s_log_fd, &bufv) < 0) {
 				nwarn("failed to flush buffer to log");
 				/*
@@ -418,8 +426,8 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 			}
 		}
 
-		bytes_written += bytes_to_be_written;
-		total_bytes_written += bytes_to_be_written;
+		k8s_bytes_written += bytes_to_be_written;
+		k8s_total_bytes_written += bytes_to_be_written;
 	next:
 		/* Update the head of the buffer remaining to output. */
 		buf += line_len;
@@ -605,6 +613,9 @@ static void reopen_k8s_file(void)
 
 	/* Close the current k8s_log_fd */
 	close(k8s_log_fd);
+
+	/* Open with O_TRUNC: reset bytes written */
+	k8s_bytes_written = 0;
 
 	/* Open the log path file again */
 	k8s_log_fd = open(k8s_log_path_tmp, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0600);
