@@ -314,7 +314,7 @@ char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 {
 	/* if we're to use the full path, ignore the socket path and only use the bundle_path */
 	if (use_full_attach_path)
-		return opt_bundle_path;
+		return strdup(opt_bundle_path);
 
 	char *base_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
 
