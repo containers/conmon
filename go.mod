@@ -10,7 +10,7 @@ require (
 	github.com/onsi/gomega v1.27.10
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230317050512-e931285f4b69
 	github.com/pkg/errors v0.9.1
-	golang.org/x/sys v0.11.0
+	golang.org/x/sys v0.13.0
 )
 
 require (
@@ -35,8 +35,8 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
-	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.12.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
