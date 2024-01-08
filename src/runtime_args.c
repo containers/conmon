@@ -28,8 +28,6 @@ GPtrArray *configure_runtime_args(const char *const csname)
 	/* Set the exec arguments. */
 	if (opt_exec) {
 		add_argv(runtime_argv, "exec", "--pid-file", opt_container_pid_file, "--process", opt_exec_process_spec, "--detach", NULL);
-		if (opt_terminal)
-			add_argv(runtime_argv, "--tty", NULL);
 	} else {
 		char *command;
 		if (opt_restore_path)
