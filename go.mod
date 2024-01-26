@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.30.0
-	github.com/opencontainers/runtime-tools v0.9.1-0.20230317050512-e931285f4b69
+	github.com/opencontainers/runtime-tools v0.9.1-0.20230914150019-408c51e934dc
 	github.com/pkg/errors v0.9.1
 	golang.org/x/sys v0.13.0
 )
