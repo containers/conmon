@@ -1,26 +1,50 @@
+---
 # See the documentation for more information:
 # https://packit.dev/docs/configuration/
 
-upstream_package_name: conmon
-downstream_package_name: conmon
+specfile_path: rpm/conmon.spec
+upstream_tag_template: v{version}
 
 jobs:
   - job: copr_build
-    # build in new Copr projects
-    # workaround for https://github.com/packit/packit-service/issues/1854
-    identifier: rawhide
-    # Run on every PR
     trigger: pull_request
-    # Disable i386 as it's no longer supported.
-    # Disable ppc64le and s390x as they take too long on copr.
+    notifications:
+      failure_comment:
+        message: "Ephemeral COPR build failed. @containers/packit-build please check."
+    enable_net: true
     targets:
-      - fedora-rawhide-aarch64
-      - fedora-rawhide-x86_64
-      - fedora-38-aarch64
-      - fedora-38-x86_64
-      - fedora-37-aarch64
-      - fedora-37-x86_64
-    actions:
-      # Rawhide spec file should also build for the released versions of Fedora.
-      post-upstream-clone:
-        - "curl -O https://src.fedoraproject.org/rpms/conmon/raw/rawhide/f/conmon.spec"
+      - fedora-all-aarch64
+      - fedora-all-x86_64
+      - fedora-eln-aarch64
+      - fedora-eln-x86_64
+      - epel-9-aarch64
+      - epel-9-x86_64
+      - epel-8-aarch64
+      - epel-8-x86_64
+
+  # Run on commit to main branch
+  - job: copr_build
+    trigger: commit
+    notifications:
+      failure_comment:
+        message: "podman-next COPR build failed. @containers/packit-build please check."
+    branch: main
+    owner: rhcontainerbot
+    project: podman-next
+    enable_net: true
+
+  - job: propose_downstream
+    trigger: release
+    update_release: false
+    dist_git_branches:
+      - fedora-all
+
+  - job: koji_build
+    trigger: commit
+    dist_git_branches:
+      - fedora-all
+
+  - job: bodhi_update
+    trigger: commit
+    dist_git_branches:
+      - fedora-branched # rawhide updates are created automatically
