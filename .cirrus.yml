@@ -151,6 +151,9 @@ static_binary_task:
       - name: "Static riscv64 binary"
         env:
             TARGET: default-riscv64.nix
+      - name: "Static s390x binary"
+        env:
+            TARGET: default-s390x.nix
 
     build_script: |
         set -ex
