@@ -9,6 +9,7 @@ with pkgs; stdenv.mkDerivation rec {
   nativeBuildInputs = with buildPackages; [
     bash
     gitMinimal
+    systemd
     pkg-config
     which
   ];
