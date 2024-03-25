@@ -1,6 +1,6 @@
 module github.com/containers/conmon
 
-go 1.18
+go 1.19
 
 require (
 	github.com/containers/podman/v4 v4.5.0
