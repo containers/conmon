@@ -1,23 +1,22 @@
-{ pkgs }:
+{ stdenv
+, pkgs
+}:
 with pkgs; stdenv.mkDerivation rec {
   name = "conmon";
   src = ./..;
-  vendorSha256 = null;
+  vendorHash = null;
   doCheck = false;
   enableParallelBuilding = true;
   outputs = [ "out" ];
   nativeBuildInputs = with buildPackages; [
-    bash
     gitMinimal
     pkg-config
-    which
   ];
-  buildInputs = [
-    glib
-    glibc
+  buildInputs = lib.optionals (!stdenv.hostPlatform.isMusl) [
     glibc.static
+  ] ++ [
+    pkgsStatic.glib
     libseccomp
-    pcre2
   ];
   prePatch = ''
     export CFLAGS='-static -pthread'
