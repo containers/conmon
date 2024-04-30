@@ -19,7 +19,7 @@ Epoch: 3
 %else
 Epoch: 2
 %endif
-Version: 2.1.10
+Version: 2.1.12
 License: Apache-2.0
 Release: %autorelease
 Summary: OCI container runtime monitor
