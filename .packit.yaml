@@ -2,13 +2,24 @@
 # See the documentation for more information:
 # https://packit.dev/docs/configuration/
 
-specfile_path: rpm/conmon.spec
+downstream_package_name: conmon
 upstream_tag_template: v{version}
+
+packages:
+  conmon-fedora:
+    pkg_tool: fedpkg
+    specfile_path: rpm/conmon.spec
+  conmon-centos:
+    pkg_tool: centpkg
+    specfile_path: rpm/conmon.spec
+  conmon-rhel:
+    specfile_path: rpm/conmon.spec
 
 jobs:
   - job: copr_build
     trigger: pull_request
-    notifications:
+    packages: [conmon-fedora]
+    notifications: &copr_build_failure_notification
       failure_comment:
         message: "Ephemeral COPR build failed. @containers/packit-build please check."
     enable_net: true
@@ -17,10 +28,26 @@ jobs:
       - fedora-all-x86_64
       - fedora-eln-aarch64
       - fedora-eln-x86_64
+
+  - job: copr_build
+    trigger: pull_request
+    packages: [conmon-centos]
+    notifications: *copr_build_failure_notification
+    enable_net: true
+    targets:
+      - centos-stream-10-aarch64
+      - centos-stream-10-x86_64
+      - centos-stream-9-aarch64
+      - centos-stream-9-x86_64
+
+  - job: copr_build
+    trigger: pull_request
+    packages: [conmon-rhel]
+    notifications: *copr_build_failure_notification
+    enable_net: true
+    targets:
       - epel-9-aarch64
       - epel-9-x86_64
-      - epel-8-aarch64
-      - epel-8-x86_64
 
   # Run on commit to main branch
   - job: copr_build
@@ -33,11 +60,21 @@ jobs:
     project: podman-next
     enable_net: true
 
+  # Downstream sync for Fedora
   - job: propose_downstream
     trigger: release
+    packages: [conmon-fedora]
     update_release: false
     dist_git_branches:
       - fedora-all
+
+  # Downstream sync for CentOS Stream
+  - job: propose_downstream
+    trigger: release
+    packages: [conmon-centos]
+    update_release: false
+    dist_git_branches:
+      - c10s
 
   - job: koji_build
     trigger: commit
