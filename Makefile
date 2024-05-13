@@ -92,7 +92,10 @@ vendor:
 	GO111MODULE=on $(GO) mod verify
 
 .PHONY: docs
+ifeq ($(GOMD2MAN),)
 docs: install.tools
+endif
+docs:
 	$(MAKE) -C docs
 
 .PHONY: clean
