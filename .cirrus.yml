@@ -24,7 +24,7 @@ env:
     PRIOR_FEDORA_NAME: "fedora-38"
 
     # VM Image built in containers/automation_images
-    IMAGE_SUFFIX: "c20240102t155643z-f39f38d13"
+    IMAGE_SUFFIX: "c20240513t140131z-f40f39d13"
     FEDORA_CACHE_IMAGE_NAME: "fedora-${IMAGE_SUFFIX}"
 
     # Container FQIN's
