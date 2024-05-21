@@ -17,12 +17,6 @@ env:
     # Spoof self as travis, as cirrus has the same test issues as travis does
     TRAVIS: "true"
 
-    ####
-    #### Cache-image names to test with (double-quotes around names are critical)
-    ####
-    FEDORA_NAME: "fedora-39ß"
-    PRIOR_FEDORA_NAME: "fedora-38"
-
     # VM Image built in containers/automation_images
     IMAGE_SUFFIX: "c20240513t140131z-f40f39d13"
     FEDORA_CACHE_IMAGE_NAME: "fedora-${IMAGE_SUFFIX}"
@@ -61,10 +55,10 @@ fedora_packaging_task:
         memory: 4
 
     matrix:
-        - name: "Packaging for ${FEDORA_NAME}"
+        - name: "Packaging for Fedora"
           container:
             image: "${FEDORA_CONTAINER_FQIN}"
-        - name: "Packaging for ${PRIOR_FEDORA_NAME}"
+        - name: "Packaging for Fedora N-1"
           container:
             image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
 
