@@ -10,6 +10,7 @@ with pkgs; stdenv.mkDerivation rec {
   outputs = [ "out" ];
   nativeBuildInputs = with buildPackages; [
     gitMinimal
+    systemd
     pkg-config
   ];
   buildInputs = lib.optionals (!stdenv.hostPlatform.isMusl) [
