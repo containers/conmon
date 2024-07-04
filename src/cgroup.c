@@ -33,7 +33,7 @@ static void setup_oom_handling_cgroup_v2(int pid);
 static void setup_oom_handling_cgroup_v1(int pid);
 static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
 static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
-static int write_oom_files();
+static int create_oom_file();
 
 void setup_oom_handling(int pid)
 {
@@ -261,7 +261,7 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 
 	/* we catch the two other cases here, both of which are OOM kill events */
 	ninfo("OOM event received");
-	write_oom_files();
+	create_oom_file();
 
 	return G_SOURCE_CONTINUE;
 }
@@ -306,7 +306,7 @@ gboolean check_cgroup2_oom()
 			continue;
 
 		if (counter != last_counter) {
-			if (write_oom_files() == 0)
+			if (create_oom_file() == 0)
 				last_counter = counter;
 		}
 		return G_SOURCE_CONTINUE;
@@ -314,25 +314,27 @@ gboolean check_cgroup2_oom()
 	return G_SOURCE_REMOVE;
 }
 
-/* write the appropriate files to tell the caller there was an oom event
- * this can be used for v1 and v2 OOMS
+/* create the appropriate file to tell the caller there was an oom event
+ * this can be used for v1 and v2 OOMs
  * returns 0 on success, negative value on failure
  */
-static int write_oom_files()
+static int create_oom_file()
 {
 	ninfo("OOM received");
+
+	_cleanup_free_ char *persist_oom_path = NULL;
+	const char *path = "oom";
+
 	if (opt_persist_path) {
-		_cleanup_free_ char *ctr_oom_file_path = g_build_filename(opt_persist_path, "oom", NULL);
-		_cleanup_close_ int ctr_oom_fd = open(ctr_oom_file_path, O_CREAT | O_CLOEXEC, 0666);
-		if (ctr_oom_fd < 0) {
-			nwarn("Failed to write oom file");
-		}
+		path = persist_oom_path = g_build_filename(opt_persist_path, "oom", NULL);
 	}
-	_cleanup_close_ int oom_fd = open("oom", O_CREAT | O_CLOEXEC, 0666);
-	if (oom_fd < 0) {
+
+	_cleanup_close_ int ctr_oom_fd = open(path, O_CREAT | O_CLOEXEC, 0666);
+	if (ctr_oom_fd < 0) {
 		nwarn("Failed to write oom file");
 	}
-	return oom_fd >= 0 ? 0 : -1;
+
+	return ctr_oom_fd >= 0 ? 0 : -1;
 }
 
 #endif
