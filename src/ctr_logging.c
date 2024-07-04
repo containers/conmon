@@ -606,11 +606,6 @@ static void reopen_k8s_file(void)
 
 	_cleanup_free_ char *k8s_log_path_tmp = g_strdup_printf("%s.tmp", k8s_log_path);
 
-	/* Sync the logs to disk */
-	if (!opt_no_sync_log && fsync(k8s_log_fd) < 0) {
-		pwarn("Failed to sync log file on reopen");
-	}
-
 	/* Close the current k8s_log_fd */
 	close(k8s_log_fd);
 
