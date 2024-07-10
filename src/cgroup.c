@@ -33,7 +33,8 @@ static void setup_oom_handling_cgroup_v2(int pid);
 static void setup_oom_handling_cgroup_v1(int pid);
 static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
 static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
-static int write_oom_files();
+static int create_oom_files();
+static int create_oom_file(const char *base_path);
 
 void setup_oom_handling(int pid)
 {
@@ -261,7 +262,7 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 
 	/* we catch the two other cases here, both of which are OOM kill events */
 	ninfo("OOM event received");
-	write_oom_files();
+	create_oom_files();
 
 	return G_SOURCE_CONTINUE;
 }
@@ -306,7 +307,7 @@ gboolean check_cgroup2_oom()
 			continue;
 
 		if (counter != last_counter) {
-			if (write_oom_files() == 0)
+			if (create_oom_files() == 0)
 				last_counter = counter;
 		}
 		return G_SOURCE_CONTINUE;
@@ -314,25 +315,31 @@ gboolean check_cgroup2_oom()
 	return G_SOURCE_REMOVE;
 }
 
-/* write the appropriate files to tell the caller there was an oom event
- * this can be used for v1 and v2 OOMS
+/* create the appropriate files to tell the caller there was an oom event
+ * this can be used for v1 and v2 OOMs
  * returns 0 on success, negative value on failure
  */
-static int write_oom_files()
+static int create_oom_files()
 {
 	ninfo("OOM received");
-	if (opt_persist_path) {
-		_cleanup_free_ char *ctr_oom_file_path = g_build_filename(opt_persist_path, "oom", NULL);
-		_cleanup_close_ int ctr_oom_fd = open(ctr_oom_file_path, O_CREAT | O_CLOEXEC, 0666);
-		if (ctr_oom_fd < 0) {
-			nwarn("Failed to write oom file");
-		}
+	int r = 0;
+	r |= create_oom_file(opt_persist_path);
+	r |= create_oom_file(opt_bundle_path);
+	return r;
+}
+
+static int create_oom_file(const char *base_path)
+{
+	if (base_path == NULL || base_path[0] == '\0')
+		return 0;
+
+	_cleanup_free_ char *ctr_oom_file_path = g_build_filename(base_path, "oom", NULL);
+	_cleanup_close_ int ctr_oom_fd = open(ctr_oom_file_path, O_CREAT | O_CLOEXEC, 0666);
+	if (ctr_oom_fd < 0) {
+		nwarnf("Failed to write oom file to the %s path", base_path);
+		return -1;
 	}
-	_cleanup_close_ int oom_fd = open("oom", O_CREAT | O_CLOEXEC, 0666);
-	if (oom_fd < 0) {
-		nwarn("Failed to write oom file");
-	}
-	return oom_fd >= 0 ? 0 : -1;
+	return 0;
 }
 
 #endif
