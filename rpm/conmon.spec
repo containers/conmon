@@ -57,7 +57,7 @@ sed -i 's/install.crio: bin\/conmon/install.crio:/' Makefile
 %endif
 
 %install
-%{__make} PREFIX=%{buildroot}%{_prefix} install.bin install.crio
+%{__make} PREFIX=%{buildroot}%{_prefix} install.bin
 
 %if %{with docs}
 %{__make} PREFIX=%{buildroot}%{_prefix} -C docs install
@@ -70,8 +70,6 @@ sed -i 's/install.crio: bin\/conmon/install.crio:/' Makefile
 %license LICENSE
 %doc README.md
 %{_bindir}/%{name}
-%{_libexecdir}/crio/%{name}
-%dir %{_libexecdir}/crio
 
 %if %{with docs}
 %{_mandir}/man8/%{name}.8.gz
