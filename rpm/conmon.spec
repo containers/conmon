@@ -76,9 +76,4 @@ sed -i 's/install.crio: bin\/conmon/install.crio:/' Makefile
 %endif
 
 %changelog
-%if %{defined autochangelog}
 %autochangelog
-%else
-* Fri Jan 26 2024 RH Container Bot <rhcontainerbot@fedoraproject.org>
-- Placeholder changelog for envs that are not autochangelog-ready
-%endif
