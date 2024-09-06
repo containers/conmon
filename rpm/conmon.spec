@@ -47,7 +47,6 @@ Requires: libseccomp
 %prep
 %autosetup -Sgit %{name}-%{version}
 sed -i 's/install.bin: bin\/conmon/install.bin:/' Makefile
-sed -i 's/install.crio: bin\/conmon/install.crio:/' Makefile
 
 %build
 %{__make} DEBUGFLAG="-g" bin/conmon
