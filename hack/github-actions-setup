@@ -2,8 +2,8 @@
 set -euo pipefail
 
 declare -A VERSIONS=(
+    ["crun"]=1.15
     ["cni-plugins"]=v1.3.0
-    ["runc"]=v1.1.7
     ["bats"]=v1.9.0
 )
 
@@ -13,9 +13,9 @@ main() {
 
     install_packages
     install_conmon
+    install_crun
     install_bats
     install_critools
-    install_runc
     install_cni_plugins
     install_testdeps
     setup_etc_subid
@@ -103,19 +103,13 @@ install_cni_plugins() {
     ls -lah "$CNI_DIR"
 }
 
-install_runc() {
-    URL=https://github.com/opencontainers/runc/releases/download/"${VERSIONS["runc"]}"
-    BINARY=/usr/sbin/runc
-    sudo wget -O "$BINARY" "$URL"/runc.amd64
+install_crun() {
+	URL=https://github.com/containers/crun/releases/download/"${VERSIONS["crun"]}"
+	BINARY=/usr/bin/crun
+    sudo wget -O "$BINARY" "$URL"/crun-"${VERSIONS["crun"]}"-linux-amd64
     sudo chmod +x "$BINARY"
 
-    # Verify the SHA256
-    SUMFILE=runc.sha256sum
-    wget "$URL"/$SUMFILE
-    grep -qw "$(sha256sum "$BINARY" | awk '{ print $1 }')" $SUMFILE
-    rm $SUMFILE
-
-    runc --version
+    crun --version
 }
 
 install_testdeps() {
