@@ -3,7 +3,8 @@
 }:
 with pkgs; stdenv.mkDerivation rec {
   name = "conmon";
-  src = ./..;
+  # Use Pure to avoid exuding the .git directory
+  src = nix-gitignore.gitignoreSourcePure [ ../.gitignore ] ./..;
   vendorHash = null;
   doCheck = false;
   enableParallelBuilding = true;
