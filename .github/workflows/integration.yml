@@ -21,7 +21,7 @@ jobs:
             ~/.cache/go-build
           key: go-integration-conmon-${{ hashFiles('**/go.mod') }}
           restore-keys: go-integration-conmon-
-      - run: hack/github-actions-setup
+      - run: sudo hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
           sudo make vendor
@@ -42,12 +42,12 @@ jobs:
             ~/.cache/go-build
           key: go-integration-cri-o-${{ hashFiles('**/go.mod') }}
           restore-keys: go-integration-cri-o-
-      - run: hack/github-actions-setup
+      - run: sudo hack/github-actions-setup
       - name: Run CRI-O integration tests
         run: |
-          cd $(go env GOPATH)/src/github.com/cri-o/cri-o
-          make all test-binaries
+          CRIO_DIR=$(sudo go env GOPATH)/src/github.com/cri-o/cri-o
+          sudo -D "$CRIO_DIR" make all test-binaries
           # skip seccomp tests because they have permission denied issues in a container and accept signed image as they don't use conmon
-          sudo -E test/test_runner.sh $(ls test/ | grep bats | grep -E -v seccomp\|image\|policy)
+          sudo -D "$CRIO_DIR" -E $(CRIO_DIR)/test/test_runner.sh $(ls $(CRIO_DIR)/test/ | grep bats | grep -E -v seccomp\|image\|policy)
         env:
           JOBS: '2'
