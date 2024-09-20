@@ -9,8 +9,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containers/podman/v4/libpod/define"
 	"github.com/pkg/errors"
+)
+
+// These errors are adapted from github.com/containers/podman:libpod/define
+// And copied to reduce the vendor surface area of this library
+var (
+	// ErrInternal indicates an internal library error
+	ErrInternal = fmt.Errorf("internal error")
+	// ErrOCIRuntime indicates a generic error from the OCI runtime
+	ErrOCIRuntime = fmt.Errorf("OCI runtime error")
+	// ErrOCIRuntimePermissionDenied indicates the OCI runtime attempted to invoke a command that returned
+	// a permission denied error
+	ErrOCIRuntimePermissionDenied = fmt.Errorf("OCI permission denied")
+	// ErrOCIRuntimeNotFound indicates the OCI runtime attempted to invoke a command
+	// that was not found
+	ErrOCIRuntimeNotFound = fmt.Errorf("OCI runtime attempted to invoke a command that was not found")
 )
 
 func (ci *ConmonInstance) configurePipeEnv() error {
@@ -84,11 +98,11 @@ func readConmonPipeData(pipe *os.File) (int, error) {
 			if ss.si.Message != "" {
 				return ss.si.Data, getOCIRuntimeError(ss.si.Message)
 			}
-			return ss.si.Data, errors.Wrapf(define.ErrInternal, "conmon invocation failed")
+			return ss.si.Data, errors.Wrapf(ErrInternal, "conmon invocation failed")
 		}
 		data = ss.si.Data
 	case <-time.After(1 * time.Minute):
-		return -1, errors.Wrapf(define.ErrInternal, "conmon invocation timeout")
+		return -1, errors.Wrapf(ErrInternal, "conmon invocation timeout")
 	}
 	return data, nil
 }
@@ -103,16 +117,16 @@ func getOCIRuntimeError(runtimeMsg string) error {
 		if includeFullOutput {
 			errStr = runtimeMsg
 		}
-		return errors.Wrapf(define.ErrOCIRuntimePermissionDenied, "%s", strings.Trim(errStr, "\n"))
+		return errors.Wrapf(ErrOCIRuntimePermissionDenied, "%s", strings.Trim(errStr, "\n"))
 	}
 	if match := regexp.MustCompile("(?i).*executable file not found in.*|.*no such file or directory.*").FindString(runtimeMsg); match != "" {
 		errStr := match
 		if includeFullOutput {
 			errStr = runtimeMsg
 		}
-		return errors.Wrapf(define.ErrOCIRuntimeNotFound, "%s", strings.Trim(errStr, "\n"))
+		return errors.Wrapf(ErrOCIRuntimeNotFound, "%s", strings.Trim(errStr, "\n"))
 	}
-	return errors.Wrapf(define.ErrOCIRuntime, "%s", strings.Trim(runtimeMsg, "\n"))
+	return errors.Wrapf(ErrOCIRuntime, "%s", strings.Trim(runtimeMsg, "\n"))
 }
 
 // writeConmonPipeData writes data to a pipe. The actual content does not matter
