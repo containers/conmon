@@ -3,7 +3,8 @@ set -euo pipefail
 
 declare -A VERSIONS=(
     ["cni-plugins"]=v1.3.0
-    ["runc"]=v1.1.7
+    ["runc"]=v1.1.14
+    ["crun"]=1.17
     ["bats"]=v1.9.0
 )
 
@@ -16,6 +17,7 @@ main() {
     install_bats
     install_critools
     install_runc
+    install_crun
     install_cni_plugins
     install_testdeps
     setup_etc_subid
@@ -116,6 +118,16 @@ install_runc() {
     rm $SUMFILE
 
     runc --version
+}
+
+install_crun() {
+	URL=https://github.com/containers/crun/releases/download/"${VERSIONS["crun"]}"/crun-"${VERSIONS["crun"]}"-linux-amd64
+
+    BINARY=/usr/bin/crun
+    sudo wget -O "$BINARY" "$URL"
+    sudo chmod +x "$BINARY"
+
+    crun --version
 }
 
 install_testdeps() {
