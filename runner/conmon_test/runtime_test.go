@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/containers/conmon/runner/conmon"
 	"github.com/containers/storage/pkg/stringid"
@@ -41,7 +42,9 @@ var _ = Describe("runc", func() {
 
 		tmpPidFile = filepath.Join(tmpDir, "pidfile")
 
-		Expect(os.Link(busyboxDest, filepath.Join(tmpRootfs, "busybox"))).To(BeNil())
+		busyboxPath := filepath.Join(tmpRootfs, "busybox")
+		Expect(os.Link(busyboxDest, busyboxPath)).To(BeNil())
+		Expect(os.Chmod(busyboxPath, 0777)).To(BeNil())
 
 		// finally, create config.json
 		_, err = generateRuntimeConfig(tmpDir, tmpRootfs)
@@ -70,6 +73,8 @@ var _ = Describe("runc", func() {
 		Expect(stderr).To(BeEmpty())
 
 		Expect(runRuntimeCommand("start", ctrID)).To(BeNil())
+		// Make sure we write the file before checking if it was written
+		time.Sleep(100 * time.Millisecond)
 
 		Expect(getFileContents(tmpLogPath)).To(ContainSubstring("busybox"))
 		Expect(getFileContents(tmpPidFile)).To(Not(BeEmpty()))
@@ -89,7 +94,7 @@ func generateRuntimeConfig(bundlePath, rootfs string) (string, error) {
 		return "", err
 	}
 	g.SetProcessCwd("/")
-	g.SetProcessArgs([]string{"/busybox", "ls"})
+	g.SetProcessArgs([]string{"/busybox", "echo", "busybox"})
 	g.SetRootPath(rootfs)
 
 	if err := g.SaveToFile(configPath, generate.ExportOptions{}); err != nil {
