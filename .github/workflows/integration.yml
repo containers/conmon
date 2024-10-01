@@ -46,8 +46,9 @@ jobs:
       - name: Run CRI-O integration tests
         run: |
           CRIO_DIR=$(sudo go env GOPATH)/src/github.com/cri-o/cri-o
-          sudo -D "$CRIO_DIR" make all test-binaries
+          sudo make -C "$CRIO_DIR" all test-binaries
           # skip seccomp tests because they have permission denied issues in a container and accept signed image as they don't use conmon
-          sudo -D "$CRIO_DIR" -E $(CRIO_DIR)/test/test_runner.sh $(ls $(CRIO_DIR)/test/ | grep bats | grep -E -v seccomp\|image\|policy)
+          sudo rm -f "$CRIO_DIR"/test/seccomp*.bats "$CRIO_DIR"/test/image.bats "$CRIO_DIR"/test/policy.bats
+          sudo sh -c "cd $CRIO_DIR; ./test/test_runner.sh"
         env:
           JOBS: '2'
