@@ -38,7 +38,7 @@ Path to the process spec for execution.
 Path to the program to execute when the container terminates its execution.
 
 **--exit-command-arg**
-Additional arguments to pass to the exit command.  Can be specified multiple time.
+Additional arguments to pass to the exit command.  Can be specified multiple times.
 
 **--exit-delay**
 Delay before invoking the exit command (in seconds).
@@ -64,7 +64,7 @@ Leave stdin open when the attached client disconnects.
 Print debug logs based on the log level.
 
 **--log-size-max**
-Maximum size of the log file.
+Maximum size of the log file (in bytes).
 
 **--log-tag**
 Additional tag to use for logging.
@@ -94,7 +94,7 @@ PID file for the conmon process.
 Path to store runtime data for the container.
 
 **--replace-listen-pid**
-Replace listen pid if set for oci-runtime pid.
+Replace listen PID if set for oci-runtime PID.
 
 **--restore**
 Restore a container from a checkpoint.
@@ -106,7 +106,7 @@ Additional arguments to pass to the runtime. Can be specified multiple times.
 Additional options to pass to the restore or exec command. Can be specified multiple times.
 
 **-s**, **--systemd-cgroup**
-Enable systemd cgroup manager, rather then use the cgroupfs directly.
+Enable systemd cgroup manager, rather than use the cgroupfs directly.
 
 **--socket-dir-path**
 Location of container attach sockets.
