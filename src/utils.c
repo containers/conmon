@@ -49,17 +49,10 @@ void set_conmon_logs(char *level_name, char *cid_, gboolean syslog_, char *tag)
 	nexitf("No such log level %s", level_name);
 }
 
-#ifdef __FreeBSD__
 static bool retryable_error(int err)
 {
-	return err == EINTR || err == EAGAIN;
+	return err == EINTR || err == EAGAIN || err == ENOBUFS;
 }
-#else
-static bool retryable_error(int err)
-{
-	return err == EINTR;
-}
-#endif
 
 static void get_signal_descriptor_mask(sigset_t *set)
 {
