@@ -12,7 +12,7 @@ packages:
   conmon-centos:
     pkg_tool: centpkg
     specfile_path: rpm/conmon.spec
-  conmon-rhel:
+  conmon-eln:
     specfile_path: rpm/conmon.spec
 
 jobs:
@@ -26,6 +26,13 @@ jobs:
     targets:
       - fedora-all-aarch64
       - fedora-all-x86_64
+
+  - job: copr_build
+    trigger: pull_request
+    packages: [conmon-eln]
+    notifications: *copr_build_failure_notification
+    enable_net: true
+    targets:
       - fedora-eln-aarch64
       - fedora-eln-x86_64
 
@@ -39,15 +46,6 @@ jobs:
       - centos-stream-10-x86_64
       - centos-stream-9-aarch64
       - centos-stream-9-x86_64
-
-  - job: copr_build
-    trigger: pull_request
-    packages: [conmon-rhel]
-    notifications: *copr_build_failure_notification
-    enable_net: true
-    targets:
-      - epel-9-aarch64
-      - epel-9-x86_64
 
   # Run on commit to main branch
   - job: copr_build
@@ -75,6 +73,7 @@ jobs:
     update_release: false
     dist_git_branches:
       - c10s
+      - c9s
 
   - job: koji_build
     trigger: commit
