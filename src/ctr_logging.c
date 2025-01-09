@@ -113,7 +113,7 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 	}
 	if (use_k8s_logging) {
 		/* Open the log path file. */
-		k8s_log_fd = open(k8s_log_path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
+		k8s_log_fd = open(k8s_log_path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0640);
 		if (k8s_log_fd < 0)
 			pexit("Failed to open log file");
 
@@ -613,7 +613,7 @@ static void reopen_k8s_file(void)
 	k8s_bytes_written = 0;
 
 	/* Open the log path file again */
-	k8s_log_fd = open(k8s_log_path_tmp, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0600);
+	k8s_log_fd = open(k8s_log_path_tmp, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0640);
 	if (k8s_log_fd < 0)
 		pexitf("Failed to open log file %s", k8s_log_path);
 
