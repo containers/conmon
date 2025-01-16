@@ -87,7 +87,7 @@ static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen);
 static ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *data, ssize_t len);
 static ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const void *data, ssize_t len);
 static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf);
-static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
+static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
 static void reopen_k8s_file(void);
 
 
@@ -356,9 +356,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 	 * fast.
 	 */
 	char tsbuf[TSBUFLEN];
-	if (set_k8s_timestamp(tsbuf, sizeof tsbuf, stdpipe_name(pipe)))
-		/* TODO: We should handle failures much more cleanly than this. */
-		return -1;
+	set_k8s_timestamp(tsbuf, sizeof tsbuf, stdpipe_name(pipe));
 
 	ptrdiff_t line_len = 0;
 	while (buflen > 0) {
@@ -542,46 +540,57 @@ static const char *stdpipe_name(stdpipe_t pipe)
 	}
 }
 
-
-static int set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
+/* Generate timestamp string to buf. */
+static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 {
 	static int tzset_called = 0;
-	int err = -1;
 
-	struct timespec ts;
+	/* Initialize timestamp variables with sensible defaults. */
+	struct timespec ts = {0};
+	struct tm current_tm = {0};
+	char off_sign = '+';
+	int off = 0;
+
+	/* Attempt to get the current time. */
 	if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
-		/* If CLOCK_REALTIME is not supported, we set nano seconds to 0 */
-		if (errno == EINVAL) {
-			ts.tv_nsec = 0;
-		} else {
-			return err;
+		if (errno != EINVAL) {
+			ts.tv_nsec = 0; /* If other errors, fallback to nanoseconds = 0. */
 		}
 	}
 
+	/* Ensure tzset is called only once. */
 	if (!tzset_called) {
 		tzset();
 		tzset_called = 1;
 	}
 
-	struct tm current_tm;
-	if (localtime_r(&ts.tv_sec, &current_tm) == NULL)
-		return err;
+	/* Get the local time or fallback to defaults. */
+	if (localtime_r(&ts.tv_sec, &current_tm) == NULL) {
+		current_tm.tm_year = 70; /* 1970 (default epoch year) */
+		current_tm.tm_mon = 0;	 /* January */
+		current_tm.tm_mday = 1;	 /* 1st day of the month */
+		current_tm.tm_hour = 0;	 /* midnight */
+		current_tm.tm_min = 0;
+		current_tm.tm_sec = 0;
+		current_tm.tm_gmtoff = 0; /* UTC offset */
+	}
 
-
-	char off_sign = '+';
-	int off = (int)current_tm.tm_gmtoff;
-	if (current_tm.tm_gmtoff < 0) {
+	/* Calculate timezone offset. */
+	off = (int)current_tm.tm_gmtoff;
+	if (off < 0) {
 		off_sign = '-';
 		off = -off;
 	}
 
+	/* Format the timestamp into the buffer. */
 	int len = snprintf(buf, buflen, "%d-%02d-%02dT%02d:%02d:%02d.%09ld%c%02d:%02d %s ", current_tm.tm_year + 1900,
 			   current_tm.tm_mon + 1, current_tm.tm_mday, current_tm.tm_hour, current_tm.tm_min, current_tm.tm_sec, ts.tv_nsec,
 			   off_sign, off / 3600, (off % 3600) / 60, pipename);
 
-	if (len < buflen)
-		err = 0;
-	return err;
+	/* Ensure null termination if snprintf output exceeds buffer length. */
+	if (len >= buflen && buflen > 0) {
+		buf[buflen - 1] = '\0';
+	}
 }
 
 /* Force closing any open FD. */
