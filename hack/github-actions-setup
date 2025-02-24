@@ -45,9 +45,18 @@ remove_packages() {
 }
 
 install_packages() {
+    . /etc/os-release
+    CRIU_REPO="https://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu_$VERSION_ID"
+
+    curl -fSsL $CRIU_REPO/Release.key | sudo apt-key add -
+    echo "deb $CRIU_REPO/ /" | sudo tee /etc/apt/sources.list.d/criu.list
+
     sudo apt update
     sudo apt install -y \
+        autoconf \
+        automake \
         conntrack \
+        criu \
         libaio-dev \
         libapparmor-dev \
         libbtrfs-dev \
@@ -55,13 +64,17 @@ install_packages() {
         libdevmapper-dev \
         libfuse-dev \
         libgpgme11-dev \
+        libglib2.0-dev \
         libnet1-dev \
         libnl-3-dev \
         libprotobuf-c-dev \
         libprotobuf-dev \
         libseccomp-dev \
         libsystemd-dev \
+        libtool \
         libudev-dev \
+        libyajl-dev \
+        sed \
         socat \
         uuid-dev
 }
