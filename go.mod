@@ -23,7 +23,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.1.0-rc.3 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
-	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.16.1 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
