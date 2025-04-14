@@ -183,8 +183,8 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 			}
 			container_labels = g_alloca((sizeof(char *)) * container_labels_count);
 			container_labels_lengths = g_alloca((sizeof(int *)) * container_labels_count);
-			for (int i = 0; i < container_labels_count; i++) {
-				char *pair = strtok(log_labels, ",");
+			char *pair = strtok(log_labels, ",");
+			for (int i = 0; i < container_labels_count && pair != NULL; i++, pair = strtok(NULL, ",")) {
 				container_labels[i] = pair;
 				container_labels_lengths[i] = strlen(pair);
 			}
