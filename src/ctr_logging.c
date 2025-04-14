@@ -105,7 +105,8 @@ gboolean logging_is_passthrough(void)
  * (currently just k8s log file), it will also open the log_fd for that specific
  * log file.
  */
-void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t log_global_size_max_, char *cuuid_, char *name_, char *tag, char *log_labels)
+void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t log_global_size_max_, char *cuuid_, char *name_, char *tag,
+			   char *log_labels)
 {
 	log_size_max = log_size_max_;
 	log_global_size_max = log_global_size_max_;
@@ -172,22 +173,22 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 			syslog_identifier = g_strdup_printf("SYSLOG_IDENTIFIER=%s", tag);
 			syslog_identifier_len = strlen(syslog_identifier);
 		}
-    if (log_labels) {
-      // parse labels in the format "KEY=VALUE,KEY_2=VALUE_2,..."
-      container_labels_count = 1;
-      const char *ptr = log_labels;
-      while ((ptr = strchr(ptr, ',')) != NULL) {
-        container_labels_count++;
-        ptr++;
-      }
-      container_labels = g_alloca((sizeof(char*)) * container_labels_count);
-      container_labels_lengths = g_alloca((sizeof(int*)) * container_labels_count);
-      for (int i = 0; i < container_labels_count; i++) {
-        char *pair = strtok(log_labels, ",");
-        container_labels[i] = pair;
-        container_labels_lengths[i] = strlen(pair);
-      }
-    }
+		if (log_labels) {
+			// parse labels in the format "KEY=VALUE,KEY_2=VALUE_2,..."
+			container_labels_count = 1;
+			const char *ptr = log_labels;
+			while ((ptr = strchr(ptr, ',')) != NULL) {
+				container_labels_count++;
+				ptr++;
+			}
+			container_labels = g_alloca((sizeof(char *)) * container_labels_count);
+			container_labels_lengths = g_alloca((sizeof(int *)) * container_labels_count);
+			for (int i = 0; i < container_labels_count; i++) {
+				char *pair = strtok(log_labels, ",");
+				container_labels[i] = pair;
+				container_labels_lengths[i] = strlen(pair);
+			}
+		}
 	}
 }
 
@@ -344,12 +345,12 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 		/* per docker journald logging format, CONTAINER_PARTIAL_MESSAGE is set to true if it's partial, but otherwise not set. */
 		if (partial && writev_buffer_append_segment_no_flush(&bufv, "CONTAINER_PARTIAL_MESSAGE=true", PARTIAL_MESSAGE_EQ_LEN) < 0)
 			return -1;
-    if (container_labels) {
-      for (int i = 0; i < container_labels_count; i++) {
-        if(writev_buffer_append_segment_no_flush(&bufv, container_labels[i], container_labels_lengths[i]) < 0)
-          return -1;
-      }
-    }
+		if (container_labels) {
+			for (int i = 0; i < container_labels_count; i++) {
+				if (writev_buffer_append_segment_no_flush(&bufv, container_labels[i], container_labels_lengths[i]) < 0)
+					return -1;
+			}
+		}
 
 		int err = sd_journal_sendv(bufv.iov, bufv.iovcnt);
 		if (err < 0) {
