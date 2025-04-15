@@ -129,6 +129,10 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 			*eof = true;
 		return false;
 	} else if (num_read < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			// Non-blocking mode - no data available, return gracefully
+			return true;
+		}
 		/* Ignore EIO if fd is a tty, since this can happen when the tty is closed
 		   while we are reading from it. */
 		if (errno == EIO && isatty(fd)) {
@@ -144,7 +148,7 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 
 		bool written = write_to_logs(pipe, buf, num_read);
 		if (!written)
-			return written;
+			return false;
 
 		real_buf[0] = pipe;
 		write_back_to_remote_consoles(real_buf, num_read + 1);
