@@ -1,6 +1,8 @@
 module github.com/containers/conmon
 
-go 1.18
+go 1.23.0
+
+toolchain go1.23.8
 
 require (
 	github.com/containers/storage v1.48.0
@@ -9,7 +11,7 @@ require (
 	github.com/onsi/gomega v1.31.1
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230914150019-408c51e934dc
 	github.com/pkg/errors v0.9.1
-	golang.org/x/sys v0.20.0
+	golang.org/x/sys v0.32.0
 )
 
 require (
