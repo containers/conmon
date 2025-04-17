@@ -181,9 +181,11 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 				container_labels_count++;
 				ptr++;
 			}
+			// NOTE: No need for deallocation. To live for the entire lifetime of the program
 			container_labels = g_alloca((sizeof(char *)) * container_labels_count);
 			container_labels_lengths = g_alloca((sizeof(int *)) * container_labels_count);
-			char *pair = strtok(log_labels, ",");
+			char *_log_labels = g_strdup(log_labels);
+			char *pair = strtok(_log_labels, ",");
 			for (int i = 0; i < container_labels_count && pair != NULL; i++, pair = strtok(NULL, ",")) {
 				container_labels[i] = pair;
 				container_labels_lengths[i] = strlen(pair);
