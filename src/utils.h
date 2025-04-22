@@ -67,13 +67,6 @@ extern gboolean use_syslog;
 		exit(EXIT_FAILURE); \
 	} while (0)
 
-#define pwarn(s) \
-	do { \
-		fprintf(stderr, "[conmon:w]: %s %s\n", s, strerror(errno)); \
-		if (use_syslog) \
-			syslog(LOG_INFO, "conmon %.20s <pwarn>: %s %s\n", log_cid, s, strerror(errno)); \
-	} while (0)
-
 #define nexit(s) \
 	do { \
 		fprintf(stderr, "[conmon:e] %s\n", s); \

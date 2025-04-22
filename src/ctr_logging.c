@@ -638,5 +638,5 @@ void sync_logs(void)
 	/* Sync the logs to disk */
 	if (k8s_log_fd > 0)
 		if (fsync(k8s_log_fd) < 0)
-			pwarn("Failed to sync log file before exit");
+			nwarnf("Failed to sync log file before exit: %m");
 }
