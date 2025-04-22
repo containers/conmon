@@ -558,13 +558,17 @@ static void sock_try_write_to_local_sock(struct remote_sock_s *sock)
 
 	if (local_sock->is_stream) {
 		w = write(*(local_sock->fd), sock->buf + sock->off, sock->remaining);
+		if (w < 0) {
+			pwarnf("Failed to write to fd %s", local_sock->label);
+		}
 	} else {
 		w = sendto(*(local_sock->fd), sock->buf + sock->off, sock->remaining, MSG_DONTWAIT | MSG_NOSIGNAL,
 			   (struct sockaddr *)local_sock->addr, sizeof(*(local_sock->addr)));
+		if (w < 0) {
+			pwarnf("Failed to write to socket %s", local_sock->label);
+		}
 	}
-	if (w < 0) {
-		nwarnf("Failed to write %s", local_sock->label);
-	} else {
+	if (w > 0) {
 		sock->off += w;
 		sock->remaining -= w;
 	}
