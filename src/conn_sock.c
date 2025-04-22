@@ -563,7 +563,7 @@ static void sock_try_write_to_local_sock(struct remote_sock_s *sock)
 			   (struct sockaddr *)local_sock->addr, sizeof(*(local_sock->addr)));
 	}
 	if (w < 0) {
-		nwarnf("Failed to write %s", local_sock->label);
+		nwarnf("Failed to %s %s: %m", (local_sock->is_stream) ? "write" : "sendto", local_sock->label);
 	} else {
 		sock->off += w;
 		sock->remaining -= w;
