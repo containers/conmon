@@ -79,6 +79,7 @@ gboolean seccomp_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_
 	if (listener.fd < 0) {
 		pexit("Failed to receive socket listener file descriptor");
 	}
+	free(listener.name);
 
 	_cleanup_free_ char *oci_config_path = g_strdup_printf("%s/config.json", opt_bundle_path);
 	if (oci_config_path == NULL) {
