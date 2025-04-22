@@ -15,18 +15,18 @@ static void write_oom_adjust(int oom_score, int *old_value)
 	char fmt_oom_score[16];
 	int oom_score_fd = open("/proc/self/oom_score_adj", O_RDWR | O_CLOEXEC);
 	if (oom_score_fd < 0) {
-		ndebugf("failed to open /proc/self/oom_score_adj: %s", strerror(errno));
+		ndebugf("failed to open /proc/self/oom_score_adj: %m");
 		return;
 	}
 	if (old_value) {
 		if (read(oom_score_fd, fmt_oom_score, sizeof(fmt_oom_score)) < 0) {
-			ndebugf("failed to read from /proc/self/oom_score_adj: %s", strerror(errno));
+			ndebugf("failed to read from /proc/self/oom_score_adj: %m");
 		}
 		*old_value = atoi(fmt_oom_score);
 	}
 	sprintf(fmt_oom_score, "%d", oom_score);
 	if (write(oom_score_fd, fmt_oom_score, strlen(fmt_oom_score)) < 0) {
-		ndebugf("failed to write to /proc/self/oom_score_adj: %s", strerror(errno));
+		ndebugf("failed to write to /proc/self/oom_score_adj: %m");
 	}
 	close(oom_score_fd);
 #else
