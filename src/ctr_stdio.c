@@ -140,7 +140,7 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 				*eof = true;
 			return false;
 		}
-		nwarnf("stdio_input read failed %s", strerror(errno));
+		nwarnf("stdio_input read failed: %m");
 		return false;
 	} else {
 		// Always null terminate the buffer, just in case.

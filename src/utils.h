@@ -37,41 +37,34 @@ extern gboolean use_syslog;
 
 #define _pexit(s) \
 	do { \
-		fprintf(stderr, "[conmon:e]: %s %s\n", s, strerror(errno)); \
+		fprintf(stderr, "[conmon:e]: %s %m\n", s); \
 		if (use_syslog) \
-			syslog(LOG_ERR, "conmon %.20s <error>: %s %s\n", log_cid, s, strerror(errno)); \
+			syslog(LOG_ERR, "conmon %.20s <error>: %s %m\n", log_cid, s); \
 		_exit(EXIT_FAILURE); \
 	} while (0)
 
 #define _pexitf(fmt, ...) \
 	do { \
-		fprintf(stderr, "[conmon:e]: " fmt " %s\n", ##__VA_ARGS__, strerror(errno)); \
+		fprintf(stderr, "[conmon:e]: " fmt " %m\n", ##__VA_ARGS__); \
 		if (use_syslog) \
-			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %s\n", log_cid, ##__VA_ARGS__, strerror(errno)); \
+			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %m\n", log_cid, ##__VA_ARGS__); \
 		_exit(EXIT_FAILURE); \
 	} while (0)
 
 #define pexit(s) \
 	do { \
-		fprintf(stderr, "[conmon:e]: %s %s\n", s, strerror(errno)); \
+		fprintf(stderr, "[conmon:e]: %s %m\n", s); \
 		if (use_syslog) \
-			syslog(LOG_ERR, "conmon %.20s <error>: %s %s\n", log_cid, s, strerror(errno)); \
+			syslog(LOG_ERR, "conmon %.20s <error>: %s %m\n", log_cid, s); \
 		exit(EXIT_FAILURE); \
 	} while (0)
 
 #define pexitf(fmt, ...) \
 	do { \
-		fprintf(stderr, "[conmon:e]: " fmt " %s\n", ##__VA_ARGS__, strerror(errno)); \
+		fprintf(stderr, "[conmon:e]: " fmt " %m\n", ##__VA_ARGS__); \
 		if (use_syslog) \
-			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %s\n", log_cid, ##__VA_ARGS__, strerror(errno)); \
+			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %m\n", log_cid, ##__VA_ARGS__); \
 		exit(EXIT_FAILURE); \
-	} while (0)
-
-#define pwarn(s) \
-	do { \
-		fprintf(stderr, "[conmon:w]: %s %s\n", s, strerror(errno)); \
-		if (use_syslog) \
-			syslog(LOG_INFO, "conmon %.20s <pwarn>: %s %s\n", log_cid, s, strerror(errno)); \
 	} while (0)
 
 #define nexit(s) \

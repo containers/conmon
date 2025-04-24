@@ -231,7 +231,7 @@ static void resize_winsz(int height, int width)
 
 	int ret = ioctl(mainfd_stdout, TIOCSWINSZ, &ws);
 	if (ret == -1)
-		pwarn("Failed to set process pty terminal size");
+		nwarnf("Failed to set process pty terminal size: %m");
 }
 
 

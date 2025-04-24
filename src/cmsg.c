@@ -36,19 +36,14 @@
 #define ECOMM EINVAL
 #endif
 
-#define error(s) \
+#define errorf(fmt, ...) \
 	do { \
-		fprintf(stderr, "conmon: %s %s\n", s, strerror(errno)); \
+		fprintf(stderr, "conmon: " fmt "\n", ##__VA_ARGS__); \
 		errno = ECOMM; \
 		goto err; /* return value */ \
 	} while (0)
 
-#define errorf(fmt, ...) \
-	do { \
-		fprintf(stderr, "conmon: " fmt ": %s\n", ##__VA_ARGS__, strerror(errno)); \
-		errno = ECOMM; \
-		goto err; /* return value */ \
-	} while (0)
+#define error(s) errorf("%s", s)
 
 /*
  * Sends a file descriptor along the sockfd provided. Returns the return
