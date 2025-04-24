@@ -83,6 +83,22 @@ extern gboolean use_syslog;
 		exit(EXIT_FAILURE); \
 	} while (0)
 
+#define pwarn(s) \
+	do { \
+		fprintf(stderr, "[conmon:w]: %s %s\n", s, strerror(errno)); \
+		if (use_syslog) \
+			syslog(LOG_INFO, "conmon %.20s <pwarn>: %s %s\n", log_cid, s, strerror(errno)); \
+	} while (0)
+
+#define pwarnf(fmt, ...) \
+	if (log_level >= WARN_LEVEL) { \
+		do { \
+			fprintf(stderr, "[conmon:w]: " fmt " %s\n", ##__VA_ARGS__, strerror(errno)); \
+			if (use_syslog) \
+				syslog(LOG_INFO, "conmon %.20s <nwarn>: " fmt ": %s\n", log_cid, ##__VA_ARGS__, strerror(errno)); \
+		} while (0); \
+	}
+
 #define nwarn(s) \
 	if (log_level >= WARN_LEVEL) { \
 		do { \
