@@ -25,7 +25,6 @@ var (
 	ctrID          = "abcdefghijklm"
 	validPath      = "/tmp"
 	invalidPath    = "/not/a/path"
-	skopeoPath     = "/usr/bin/skopeo"
 )
 
 func TestConmon(t *testing.T) {
