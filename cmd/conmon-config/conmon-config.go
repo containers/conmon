@@ -32,7 +32,7 @@ func main() {
 		config.WinResizeEvent,
 		config.ReopenLogsEvent,
 		config.TimedOutMessage)),
-		0644); err != nil {
+		0o644); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -35,13 +35,13 @@ var _ = Describe("runc", func() {
 
 		// create the rootfs of the "container"
 		tmpRootfs = filepath.Join(tmpDir, "rootfs")
-		Expect(os.MkdirAll(tmpRootfs, 0755)).To(BeNil())
+		Expect(os.MkdirAll(tmpRootfs, 0o755)).To(BeNil())
 
 		tmpPidFile = filepath.Join(tmpDir, "pidfile")
 
 		busyboxPath := filepath.Join(tmpRootfs, "busybox")
 		Expect(os.Link(busyboxDest, busyboxPath)).To(BeNil())
-		Expect(os.Chmod(busyboxPath, 0777)).To(BeNil())
+		Expect(os.Chmod(busyboxPath, 0o777)).To(BeNil())
 
 		// finally, create config.json
 		_, err := generateRuntimeConfig(tmpDir, tmpRootfs)
