@@ -2,7 +2,6 @@ package conmon_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -26,9 +25,7 @@ var _ = Describe("runc", func() {
 		Expect(cacheBusyBox()).To(BeNil())
 
 		// create tmpDir
-		d, err := ioutil.TempDir(os.TempDir(), "conmon-")
-		Expect(err).To(BeNil())
-		tmpDir = d
+		tmpDir = GinkgoT().TempDir()
 
 		// generate logging path
 		tmpLogPath = filepath.Join(tmpDir, "log")
@@ -47,11 +44,10 @@ var _ = Describe("runc", func() {
 		Expect(os.Chmod(busyboxPath, 0777)).To(BeNil())
 
 		// finally, create config.json
-		_, err = generateRuntimeConfig(tmpDir, tmpRootfs)
+		_, err := generateRuntimeConfig(tmpDir, tmpRootfs)
 		Expect(err).To(BeNil())
 	})
 	AfterEach(func() {
-		Expect(os.RemoveAll(tmpDir)).To(BeNil())
 		Expect(runRuntimeCommand("delete", "-f", ctrID)).To(BeNil())
 	})
 	It("simple runtime test", func() {

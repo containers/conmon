@@ -1,7 +1,6 @@
 package conmon_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -15,13 +14,8 @@ var _ = Describe("conmon ctr logs", func() {
 	var tmpLogPath string
 	const invalidLogDriver = "invalid"
 	BeforeEach(func() {
-		d, err := ioutil.TempDir(os.TempDir(), "conmon-")
-		Expect(err).To(BeNil())
-		tmpDir = d
+		tmpDir = GinkgoT().TempDir()
 		tmpLogPath = filepath.Join(tmpDir, "log")
-	})
-	AfterEach(func() {
-		Expect(os.RemoveAll(tmpDir)).To(BeNil())
 	})
 	It("no log driver should fail", func() {
 		_, stderr := getConmonOutputGivenLogOpts()
