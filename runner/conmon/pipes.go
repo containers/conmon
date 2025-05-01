@@ -128,14 +128,6 @@ func getOCIRuntimeError(runtimeMsg string) error {
 	return fmt.Errorf("%s: %w", strings.Trim(runtimeMsg, "\n"), ErrOCIRuntime)
 }
 
-// writeConmonPipeData writes data to a pipe. The actual content does not matter
-// as it is used as a signal for conmon to stop blocking on a read
-func writeConmonPipeData(pipe *os.File) error {
-	someData := []byte{0}
-	_, err := pipe.Write(someData)
-	return err
-}
-
 func (ci *ConmonInstance) closePipesOnCleanup() {
 	ci.parentSyncPipe.Close()
 	ci.parentStartPipe.Close()
