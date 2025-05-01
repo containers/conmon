@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/containers/conmon/runner/config"
 )
@@ -23,7 +23,7 @@ func main() {
 
 #endif // CONFIG_H
 `
-	if err := ioutil.WriteFile("config.h", []byte(fmt.Sprintf(
+	if err := os.WriteFile("config.h", []byte(fmt.Sprintf(
 		output,
 		config.BufSize,
 		config.BufSize,

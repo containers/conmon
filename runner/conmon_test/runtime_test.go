@@ -82,7 +82,7 @@ var _ = Describe("runc", func() {
 })
 
 func getFileContents(filename string) string {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	Expect(err).To(BeNil())
 	return string(b)
 }

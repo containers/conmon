@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -114,7 +113,7 @@ func (ci *ConmonInstance) Pid() (int, error) {
 func readConmonPidFile(pidFile string) (int, error) {
 	// Let's try reading the Conmon pid at the same time.
 	if pidFile != "" {
-		contents, err := ioutil.ReadFile(pidFile)
+		contents, err := os.ReadFile(pidFile)
 		if err != nil {
 			return -1, err
 		}
