@@ -80,7 +80,7 @@ install_packages() {
 }
 
 install_conmon() {
-    sudo make install
+    sudo make install.bin
     conmon --version
 }
 
