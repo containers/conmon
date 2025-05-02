@@ -40,3 +40,11 @@ jobs:
           sudo sh -c "cd $CRIO_DIR; ./test/test_runner.sh"
         env:
           JOBS: '2'
+
+  all-done:
+    needs:
+      - conmon
+      - cri-o
+    runs-on: ubuntu-24.04
+    steps:
+    - run: echo "All jobs completed"
