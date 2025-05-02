@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/containers/conmon/runner/config"
 )
@@ -23,7 +23,7 @@ func main() {
 
 #endif // CONFIG_H
 `
-	if err := ioutil.WriteFile("config.h", []byte(fmt.Sprintf(
+	if err := os.WriteFile("config.h", []byte(fmt.Sprintf(
 		output,
 		config.BufSize,
 		config.BufSize,
@@ -32,7 +32,7 @@ func main() {
 		config.WinResizeEvent,
 		config.ReopenLogsEvent,
 		config.TimedOutMessage)),
-		0644); err != nil {
+		0o644); err != nil {
 		log.Fatal(err)
 	}
 }

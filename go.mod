@@ -8,7 +8,6 @@ require (
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230914150019-408c51e934dc
-	github.com/pkg/errors v0.9.1
 	golang.org/x/sys v0.20.0
 )
 

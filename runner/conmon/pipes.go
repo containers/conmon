@@ -3,13 +3,12 @@ package conmon
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // These errors are adapted from github.com/containers/podman:libpod/define
@@ -29,10 +28,10 @@ var (
 
 func (ci *ConmonInstance) configurePipeEnv() error {
 	if ci.cmd == nil {
-		return errors.Errorf("conmon instance command must be configured")
+		return errors.New("conmon instance command must be configured")
 	}
 	if ci.started {
-		return errors.Errorf("conmon instance environment cannot be configured after it's started")
+		return errors.New("conmon instance environment cannot be configured after it's started")
 	}
 	// TODO handle PreserveFDs
 	preserveFDs := 0
@@ -92,17 +91,17 @@ func readConmonPipeData(pipe *os.File) (int, error) {
 	select {
 	case ss := <-ch:
 		if ss.err != nil {
-			return -1, errors.Wrapf(ss.err, "error received on processing data from conmon pipe")
+			return -1, fmt.Errorf("error received on processing data from conmon pipe: %w", ss.err)
 		}
 		if ss.si.Data < 0 {
 			if ss.si.Message != "" {
 				return ss.si.Data, getOCIRuntimeError(ss.si.Message)
 			}
-			return ss.si.Data, errors.Wrapf(ErrInternal, "conmon invocation failed")
+			return ss.si.Data, fmt.Errorf("conmon invocation failed: %w", ErrInternal)
 		}
 		data = ss.si.Data
 	case <-time.After(1 * time.Minute):
-		return -1, errors.Wrapf(ErrInternal, "conmon invocation timeout")
+		return -1, fmt.Errorf("conmon invocation timeout: %w", ErrInternal)
 	}
 	return data, nil
 }
@@ -117,24 +116,16 @@ func getOCIRuntimeError(runtimeMsg string) error {
 		if includeFullOutput {
 			errStr = runtimeMsg
 		}
-		return errors.Wrapf(ErrOCIRuntimePermissionDenied, "%s", strings.Trim(errStr, "\n"))
+		return fmt.Errorf("%s: %w", strings.Trim(errStr, "\n"), ErrOCIRuntimePermissionDenied)
 	}
 	if match := regexp.MustCompile("(?i).*executable file not found in.*|.*no such file or directory.*").FindString(runtimeMsg); match != "" {
 		errStr := match
 		if includeFullOutput {
 			errStr = runtimeMsg
 		}
-		return errors.Wrapf(ErrOCIRuntimeNotFound, "%s", strings.Trim(errStr, "\n"))
+		return fmt.Errorf("%s: %w", strings.Trim(errStr, "\n"), ErrOCIRuntimeNotFound)
 	}
-	return errors.Wrapf(ErrOCIRuntime, "%s", strings.Trim(runtimeMsg, "\n"))
-}
-
-// writeConmonPipeData writes data to a pipe. The actual content does not matter
-// as it is used as a signal for conmon to stop blocking on a read
-func writeConmonPipeData(pipe *os.File) error {
-	someData := []byte{0}
-	_, err := pipe.Write(someData)
-	return err
+	return fmt.Errorf("%s: %w", strings.Trim(runtimeMsg, "\n"), ErrOCIRuntime)
 }
 
 func (ci *ConmonInstance) closePipesOnCleanup() {

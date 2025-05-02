@@ -1,15 +1,14 @@
 package conmon_test
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/containers/conmon/runner/conmon"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -65,10 +64,9 @@ var _ = Describe("conmon", func() {
 		var tmpLogPath string
 		var origCwd string
 		BeforeEach(func() {
-			d, err := ioutil.TempDir(os.TempDir(), "conmon-")
-			Expect(err).To(BeNil())
-			tmpDir = d
+			tmpDir = GinkgoT().TempDir()
 			tmpLogPath = filepath.Join(tmpDir, "log")
+			var err error
 			origCwd, err = os.Getwd()
 			Expect(err).To(BeNil())
 		})

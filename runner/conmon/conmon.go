@@ -1,18 +1,15 @@
 package conmon
 
 import (
+	"errors"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
-
-	"github.com/pkg/errors"
 )
 
-var (
-	ErrConmonNotStarted = errors.New("conmon instance is not started")
-)
+var ErrConmonNotStarted = errors.New("conmon instance is not started")
 
 type ConmonInstance struct {
 	args    []string
@@ -99,7 +96,7 @@ func (ci *ConmonInstance) Stderr() (io.Writer, error) {
 
 func (ci *ConmonInstance) Pid() (int, error) {
 	if ci.pidFile == "" {
-		return -1, errors.Errorf("conmon pid file not specified")
+		return -1, errors.New("conmon pid file not specified")
 	}
 	if !ci.started {
 		return -1, ErrConmonNotStarted
@@ -107,7 +104,7 @@ func (ci *ConmonInstance) Pid() (int, error) {
 
 	pid, err := readConmonPidFile(ci.pidFile)
 	if err != nil {
-		return -1, errors.Wrapf(err, "failed to find conmon pid file")
+		return -1, fmt.Errorf("failed to get conmon pid: %w", err)
 	}
 	return pid, nil
 }
@@ -116,7 +113,7 @@ func (ci *ConmonInstance) Pid() (int, error) {
 func readConmonPidFile(pidFile string) (int, error) {
 	// Let's try reading the Conmon pid at the same time.
 	if pidFile != "" {
-		contents, err := ioutil.ReadFile(pidFile)
+		contents, err := os.ReadFile(pidFile)
 		if err != nil {
 			return -1, err
 		}

@@ -25,7 +25,6 @@ var (
 	ctrID          = "abcdefghijklm"
 	validPath      = "/tmp"
 	invalidPath    = "/not/a/path"
-	skopeoPath     = "/usr/bin/skopeo"
 )
 
 func TestConmon(t *testing.T) {
@@ -132,13 +131,13 @@ func cacheBusyBox() error {
 	if _, err := os.Stat(busyboxDest); err == nil {
 		return nil
 	}
-	if err := os.MkdirAll(busyboxDestDir, 0755); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(busyboxDestDir, 0o755); err != nil && !os.IsExist(err) {
 		return err
 	}
 	if err := downloadFile(busyboxSource, busyboxDest); err != nil {
 		return err
 	}
-	if err := os.Chmod(busyboxDest, 0777); err != nil {
+	if err := os.Chmod(busyboxDest, 0o777); err != nil {
 		return err
 	}
 	return nil
