@@ -121,9 +121,8 @@ install.podman: bin/conmon
 
 .PHONY: fmt
 fmt:
-	find . '(' -name '*.h' -o -name '*.c' ! -path './vendor/*' ')' -exec clang-format -i {} \+
-	find . -name '*.go' ! -path './vendor/*' -exec gofmt -s -w {} \+
-	git diff --exit-code
+	git ls-files -z \*.c \*.h | xargs -0 clang-format -i
+	gofmt -s -w .
 
 
 .PHONY: dbuild
