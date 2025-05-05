@@ -87,14 +87,10 @@ bin:
 
 .PHONY: vendor
 vendor:
-	GO111MODULE=on $(GO) mod tidy
-	GO111MODULE=on $(GO) mod vendor
-	GO111MODULE=on $(GO) mod verify
+	$(GO) mod tidy
+	$(GO) mod verify
 
 .PHONY: docs
-ifeq ($(GOMD2MAN),)
-docs: install.tools
-endif
 docs:
 	$(MAKE) -C docs
 
@@ -123,14 +119,10 @@ install.podman: bin/conmon
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(LIBEXECDIR)/podman
 	install ${SELINUXOPT} -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/podman/conmon
 
-install.tools:
-	$(MAKE) -C tools
-
 .PHONY: fmt
 fmt:
-	find . '(' -name '*.h' -o -name '*.c' ! -path './vendor/*' ! -path './tools/vendor/*' ')' -exec clang-format -i {} \+
-	find . -name '*.go' ! -path './vendor/*' ! -path './tools/vendor/*' -exec gofmt -s -w {} \+
-	git diff --exit-code
+	git ls-files -z \*.c \*.h | xargs -0 clang-format -i
+	gofmt -s -w .
 
 
 .PHONY: dbuild

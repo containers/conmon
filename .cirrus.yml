@@ -87,7 +87,7 @@ config_task:
         - dnf install -y make glib2-devel git gcc golang
         - cd $CIRRUS_WORKING_DIR
         - make config
-        - ./hack/tree_status.sh
+        - git diff --exit-code
 
 
 # Verify code was fmt'ed properly
@@ -102,7 +102,7 @@ fmt_task:
         - dnf install -y clang clang-tools-extra golang
         - cd $CIRRUS_WORKING_DIR
         - make fmt
-        - ./hack/tree_status.sh
+        - git diff --exit-code
 
 
 # Build the static binary
