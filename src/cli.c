@@ -49,6 +49,7 @@ int opt_exit_delay = 0;
 gboolean opt_replace_listen_pid = FALSE;
 char *opt_log_level = NULL;
 char *opt_log_tag = NULL;
+char *opt_log_labels = NULL;
 gboolean opt_sync = FALSE;
 gboolean opt_no_sync_log = FALSE;
 char *opt_sdnotify_socket = NULL;
@@ -78,6 +79,7 @@ GOptionEntry opt_entries[] = {
 	{"log-size-max", 0, 0, G_OPTION_ARG_INT64, &opt_log_size_max, "Maximum size of log file", NULL},
 	{"log-global-size-max", 0, 0, G_OPTION_ARG_INT64, &opt_log_global_size_max, "Maximum size of all log files", NULL},
 	{"log-tag", 0, 0, G_OPTION_ARG_STRING, &opt_log_tag, "Additional tag to use for logging", NULL},
+	{"log-labels", 0, 0, G_OPTION_ARG_STRING, &opt_log_labels, "Additional labels to include in logs", NULL},
 	{"name", 'n', 0, G_OPTION_ARG_STRING, &opt_name, "Container name", NULL},
 	{"no-new-keyring", 0, 0, G_OPTION_ARG_NONE, &opt_no_new_keyring, "Do not create a new session keyring for the container", NULL},
 	{"no-pivot", 0, 0, G_OPTION_ARG_NONE, &opt_no_pivot, "Do not use pivot_root", NULL},
@@ -194,5 +196,5 @@ void process_cli()
 	if (opt_container_pid_file == NULL)
 		opt_container_pid_file = g_strdup_printf("%s/pidfile-%s", cwd, opt_cid);
 
-	configure_log_drivers(opt_log_path, opt_log_size_max, opt_log_global_size_max, opt_cid, opt_name, opt_log_tag);
+	configure_log_drivers(opt_log_path, opt_log_size_max, opt_log_global_size_max, opt_cid, opt_name, opt_log_tag, opt_log_labels);
 }
