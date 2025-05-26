@@ -69,6 +69,10 @@ Maximum size of the log file (in bytes).
 **--log-tag**
 Additional tag to use for logging.
 
+**--log-label**
+Additional label to use for logging.  The accepted format is LABEL=VALUE.  Can be specified multiple times.
+Note that LABEL must contain only uppercase letters, numbers and underscore character.
+
 **-n**, **--name**
 Container name.
 
