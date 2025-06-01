@@ -2,6 +2,7 @@
 #include "ctr_logging.h"
 #include "cli.h"
 #include "config.h"
+#include <ctype.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -70,6 +71,7 @@ static char *container_id_full = NULL;
 static char *container_id = NULL;
 static char *container_name = NULL;
 static char *container_tag = NULL;
+static gchar **container_labels = NULL;
 static size_t container_tag_len;
 static char *syslog_identifier = NULL;
 static size_t syslog_identifier_len;
@@ -96,13 +98,43 @@ gboolean logging_is_passthrough(void)
 	return use_logging_passthrough;
 }
 
+static int count_chars_in_string(const char *str, char ch)
+{
+	int count = 0;
+
+	while (str) {
+		str = strchr(str, ch);
+		if (str == NULL)
+			break;
+		count++;
+		str++;
+	}
+
+	return count;
+}
+
+static int is_valid_label_name(const char *str)
+{
+	while (*str) {
+		if (*str == '=') {
+			return 1;
+		}
+		if (!isupper(*str) && !isdigit(*str) && *str != '_') {
+			return 0;
+		}
+		str++;
+	}
+	return 1;
+}
+
 /*
  * configures container log specific information, such as the drivers the user
  * called with and the max log size for log file types. For the log file types
  * (currently just k8s log file), it will also open the log_fd for that specific
  * log file.
  */
-void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t log_global_size_max_, char *cuuid_, char *name_, char *tag)
+void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t log_global_size_max_, char *cuuid_, char *name_, char *tag,
+			   gchar **log_labels)
 {
 	log_size_max = log_size_max_;
 	log_global_size_max = log_global_size_max_;
@@ -126,8 +158,14 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 		}
 		k8s_total_bytes_written = k8s_bytes_written;
 
-		if (!use_journald_logging && tag)
-			nexit("k8s-file doesn't support --log-tag");
+		if (!use_journald_logging) {
+			if (!tag) {
+				nexit("k8s-file doesn't support --log-tag");
+			}
+			if (!log_labels) {
+				nexit("k8s-file doesn't support --log-label");
+			}
+		}
 	}
 
 	if (use_journald_logging) {
@@ -168,6 +206,24 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 			g_free(syslog_identifier);
 			syslog_identifier = g_strdup_printf("SYSLOG_IDENTIFIER=%s", tag);
 			syslog_identifier_len = strlen(syslog_identifier);
+		}
+		if (log_labels) {
+			container_labels = log_labels;
+
+			/* Ensure that valid LABEL=VALUE pairs have been passed */
+			for (char **ptr = log_labels; *ptr; ptr++) {
+				if (**ptr == '=') {
+					nexitf("Container labels must be in format LABEL=VALUE (no LABEL present in '%s')", *ptr);
+				}
+				if (count_chars_in_string(*ptr, '=') != 1) {
+					nexitf("Container labels must be in format LABEL=VALUE (none or more than one '=' present in '%s')",
+					       *ptr);
+				}
+				if (!is_valid_label_name(*ptr)) {
+					nexitf("Container label names must contain only uppercase letters, numbers and underscore (in '%s')",
+					       *ptr);
+				}
+			}
 		}
 	}
 }
@@ -325,6 +381,12 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 		/* per docker journald logging format, CONTAINER_PARTIAL_MESSAGE is set to true if it's partial, but otherwise not set. */
 		if (partial && writev_buffer_append_segment_no_flush(&bufv, "CONTAINER_PARTIAL_MESSAGE=true", PARTIAL_MESSAGE_EQ_LEN) < 0)
 			return -1;
+		if (container_labels) {
+			for (gchar **label = container_labels; *label; ++label) {
+				if (writev_buffer_append_segment_no_flush(&bufv, *label, strlen(*label)) < 0)
+					return -1;
+			}
+		}
 
 		int err = sd_journal_sendv(bufv.iov, bufv.iovcnt);
 		if (err < 0) {
