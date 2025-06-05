@@ -1,0 +1,44 @@
+prepare:
+    - when: distro == centos-stream or distro == rhel
+      how: shell
+      script: |
+        dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-$(rpm --eval '%{?rhel}').noarch.rpm
+        dnf -y config-manager --set-enabled epel
+      order: 10
+    - when: initiator == packit
+      how: shell
+      script: |
+        COPR_REPO_FILE="/etc/yum.repos.d/*podman-next*.repo"
+        if compgen -G $COPR_REPO_FILE > /dev/null; then
+            sed -i -n '/^priority=/!p;$apriority=1' $COPR_REPO_FILE
+        fi
+        dnf -y upgrade --allowerasing
+      order: 20
+
+provision:
+    how: artemis
+    hardware:
+        memory: ">= 16 GB"
+        cpu:
+            cores: ">= 4"
+            threads: ">=8"
+        disk:
+            - size: ">= 512 GB"
+
+discover:
+    how: fmf
+    url: https://github.com/containers/podman
+    ref: "main"
+
+execute:
+    how: tmt
+
+/system/local-root:
+    summary: Run podman system rootful tests
+    discover+:
+        filter: 'tag:local & tag:root'
+
+/system/local-rootless:
+    summary: Run podman system rootless tests
+    discover+:
+        filter: 'tag:local & tag:rootless'
