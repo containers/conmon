@@ -159,10 +159,10 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 		k8s_total_bytes_written = k8s_bytes_written;
 
 		if (!use_journald_logging) {
-			if (!tag) {
+			if (tag) {
 				nexit("k8s-file doesn't support --log-tag");
 			}
-			if (!log_labels) {
+			if (log_labels) {
 				nexit("k8s-file doesn't support --log-label");
 			}
 		}
