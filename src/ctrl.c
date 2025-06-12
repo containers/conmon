@@ -187,7 +187,7 @@ static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char
 	char *newline = strchrnul(beg, '\n');
 	/* Process each message which ends with a line */
 	while (*newline != '\0') {
-		if (!line_process_func(ctlbuf))
+		if (!line_process_func(beg))
 			return G_SOURCE_CONTINUE;
 
 		beg = newline + 1;
