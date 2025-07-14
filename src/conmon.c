@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
 			pexit("Failed to fork the create command");
 		} else if (main_pid != 0) {
 			if (opt_conmon_pid_file) {
-				char content[12];
-				sprintf(content, "%i", main_pid);
+				char content[16];
+				snprintf(content, sizeof(content), "%i", main_pid);
 
 				if (!g_file_set_contents(opt_conmon_pid_file, content, strlen(content), &err)) {
 					_pexitf("Failed to write conmon pidfile: %s", err->message);
