@@ -103,6 +103,7 @@ struct file_t recvfd(int sockfd)
 	struct iovec iov[1] = {{0}};
 	struct cmsghdr *cmsg;
 	struct file_t file = {0};
+	void *new_name;
 	int *fdptr;
 	int olderrno;
 
@@ -112,7 +113,6 @@ struct file_t recvfd(int sockfd)
 	} u;
 
 	/* Allocate a buffer. */
-	/* TODO: Make this dynamic with MSG_PEEK. */
 	file.name = malloc(TAG_BUFFER);
 	if (!file.name)
 		error("recvfd: failed to allocate file.tag buffer");
@@ -123,7 +123,7 @@ struct file_t recvfd(int sockfd)
 	 * See unix(7) and other well-hidden documentation.
 	 */
 	iov[0].iov_base = file.name;
-	iov[0].iov_len = TAG_BUFFER;
+	iov[0].iov_len = TAG_BUFFER - 1;
 
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
@@ -135,6 +135,12 @@ struct file_t recvfd(int sockfd)
 	ssize_t ret = recvmsg(sockfd, &msg, 0);
 	if (ret < 0)
 		goto err;
+	file.name[ret] = '\0';
+
+	/* Shrink the buffer to what is effectively used.  */
+	new_name = realloc(file.name, ret + 1);
+	if (new_name)
+		file.name = new_name;
 
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (!cmsg)
