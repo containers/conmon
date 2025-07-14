@@ -137,6 +137,7 @@ static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
 
 	addr.sun_family = AF_UNIX;
 	strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+	addr.sun_path[sizeof(addr.sun_path) - 1] = '\0';
 	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
 	if (bindat(dir_fd, sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
 		pexit("Failed to bind to console-socket");
@@ -239,6 +240,7 @@ void setup_notify_socket(char *socket_path)
 		}
 		local_notify_host_addr.sun_family = AF_UNIX;
 		strncpy(local_notify_host_addr.sun_path, socket_path, sizeof(local_notify_host_addr.sun_path) - 1);
+		local_notify_host_addr.sun_path[sizeof(local_notify_host_addr.sun_path) - 1] = '\0';
 	}
 
 	/* No _cleanup_free_ here so we don't get a warning about unused variables
