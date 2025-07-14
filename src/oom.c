@@ -24,7 +24,7 @@ static void write_oom_adjust(int oom_score, int *old_value)
 		}
 		*old_value = atoi(fmt_oom_score);
 	}
-	sprintf(fmt_oom_score, "%d", oom_score);
+	snprintf(fmt_oom_score, sizeof(fmt_oom_score), "%d", oom_score);
 	if (write(oom_score_fd, fmt_oom_score, strlen(fmt_oom_score)) < 0) {
 		ndebugf("failed to write to /proc/self/oom_score_adj: %m");
 	}
