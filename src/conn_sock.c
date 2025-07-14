@@ -101,7 +101,7 @@ static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
 	if (dir_fd == -1) {
 		strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
 	} else {
-		snprintf(addr.sun_path, sizeof(addr.sun_path) - 1, "/proc/self/fd/%d/%s", dir_fd, path);
+		snprintf(addr.sun_path, sizeof(addr.sun_path), "/proc/self/fd/%d/%s", dir_fd, path);
 	}
 	ndebugf("addr{sun_family=AF_UNIX, sun_path=%s}", addr.sun_path);
 
