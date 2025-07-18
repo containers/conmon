@@ -444,12 +444,13 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		if ((log_size_max > 0) && (k8s_bytes_written + bytes_to_be_written) > log_size_max) {
 			if (writev_buffer_flush(k8s_log_fd, &bufv) < 0) {
 				nwarn("failed to flush buffer to log");
-				/*
-				 * We are going to reopen the file anyway, in case of
-				 * errors discard all we have in the buffer.
-				 */
-				bufv.iovcnt = 0;
 			}
+			/*
+			 * Always reset the buffer after rotation to ensure clean state
+			 * with the new file descriptor. Any unflushed data is lost, but
+			 * this prevents corruption of subsequent log entries.
+			 */
+			bufv.iovcnt = 0;
 			reopen_k8s_file();
 		}
 
@@ -520,35 +521,28 @@ static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen)
 static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf)
 {
 	size_t count = 0;
-	int iovcnt = buf->iovcnt;
-	struct iovec *iov = buf->iov;
 
-	while (iovcnt > 0) {
-		ssize_t res;
-		do {
-			res = writev(fd, iov, iovcnt);
-		} while (res == -1 && errno == EINTR);
+	for (int i = 0; i < buf->iovcnt; i++) {
+		const char *ptr = buf->iov[i].iov_base;
+		size_t remaining = buf->iov[i].iov_len;
 
-		if (res <= 0)
-			return -1;
-
-		count += res;
-
-		while (res > 0) {
-			size_t from_this = MIN((size_t)res, iov->iov_len);
-			iov->iov_len -= from_this;
-			iov->iov_base += from_this;
-			res -= from_this;
-
-			if (iov->iov_len == 0) {
-				iov++;
-				iovcnt--;
+		while (remaining > 0) {
+			ssize_t written = write(fd, ptr, remaining);
+			if (written < 0) {
+				if (errno == EINTR)
+					continue;
+				return -1;
 			}
+			if (written == 0)
+				return -1;
+
+			ptr += written;
+			remaining -= written;
+			count += written;
 		}
 	}
 
 	buf->iovcnt = 0;
-
 	return count;
 }
 
