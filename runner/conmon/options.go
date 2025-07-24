@@ -97,6 +97,12 @@ func WithLogLevel(level string) ConmonOption {
 	}
 }
 
+func WithLogSizeMax(sizeMax int64) ConmonOption {
+	return func(ci *ConmonInstance) error {
+		return ci.addArgs("--log-size-max", fmt.Sprintf("%d", sizeMax))
+	}
+}
+
 func WithSocketPath(path string) ConmonOption {
 	return func(ci *ConmonInstance) error {
 		// TODO verify path is right
