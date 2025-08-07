@@ -18,7 +18,7 @@ env:
     TRAVIS: "true"
 
     # VM Image built in containers/automation_images
-    IMAGE_SUFFIX: "c20240513t140131z-f40f39d13"
+    IMAGE_SUFFIX: "c20250721t181111z-f42f41d13"
     FEDORA_CACHE_IMAGE_NAME: "fedora-${IMAGE_SUFFIX}"
 
     # Container FQIN's
@@ -68,7 +68,7 @@ fedora_packaging_task:
         - make
         - make -f .rpmbuild/Makefile
         - rpmbuild --rebuild conmon-*.src.rpm
-        - dnf erase -y conmon
+        - dnf remove -y conmon
         - dnf -y install ~/rpmbuild/RPMS/x86_64/conmon*.x86_64.rpm
         - ls -l /usr/bin/conmon
 
