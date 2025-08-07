@@ -46,6 +46,25 @@ static void check_child_processes(GHashTable *pid_to_handler, GHashTable *cache)
 			continue;
 
 		if (pid < 0 && errno == ECHILD) {
+			/* Before quitting, check if container_pid is still alive.
+			 * In some systemd configurations, the container process may not be
+			 * a direct child, so we won't receive SIGCHLD when it exits.
+			 * Use kill(pid, 0) to check if the process still exists. */
+			if (container_pid > 0) {
+				if (kill(container_pid, 0) == 0) {
+					/* Container process is still alive but not our child.
+					 * Don't quit the main loop yet. */
+					ninfof("Container process %d is still alive but not a direct child", container_pid);
+					return;
+				} else if (errno == ESRCH) {
+					/* Container process has exited */
+					ninfof("Container process %d has exited (detected via kill probe)", container_pid);
+					/* Simulate container exit callback */
+					container_status = 0; /* We can't get the real exit status */
+					container_pid = -1;
+					/* Fall through to quit the main loop */
+				}
+			}
 			g_main_loop_quit(main_loop);
 			return;
 		}
