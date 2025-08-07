@@ -60,7 +60,7 @@ func getConmonOutputGivenOptions(options ...conmon.ConmonOption) (string, string
 
 	alljournalout, err := getConmonJournalOutput(pid, -1)
 	Expect(err).To(BeNil())
-	fmt.Fprintf(GinkgoWriter, alljournalout+"\n")
+	fmt.Fprintln(GinkgoWriter, alljournalout)
 
 	return stdout.String(), stderr.String() + journalerr
 }
@@ -184,7 +184,7 @@ func runRuntimeCommand(args ...string) error {
 	cmd.Run()
 	stdoutString := stdout.String()
 	if stdoutString != "" {
-		fmt.Fprintf(GinkgoWriter, stdoutString+"\n")
+		fmt.Fprintln(GinkgoWriter, stdoutString)
 	}
 	return nil
 }

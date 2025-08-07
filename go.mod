@@ -1,6 +1,6 @@
 module github.com/containers/conmon
 
-go 1.19
+go 1.23
 
 require (
 	github.com/containers/storage v1.48.0
