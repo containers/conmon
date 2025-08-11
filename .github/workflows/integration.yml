@@ -11,11 +11,14 @@ jobs:
 
   conmon:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [stable, oldstable]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: ${{ matrix.go-version }}
       - run: sudo hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
@@ -24,11 +27,14 @@ jobs:
 
   cri-o:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [stable, oldstable]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: ${{ matrix.go-version }}
       - run: sudo hack/github-actions-setup
       - name: Run CRI-O integration tests
         run: |
