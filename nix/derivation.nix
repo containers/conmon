@@ -1,5 +1,6 @@
 { stdenv
 , pkgs
+, enableSystemd ? false
 }:
 with pkgs; stdenv.mkDerivation rec {
   name = "conmon";
@@ -18,11 +19,15 @@ with pkgs; stdenv.mkDerivation rec {
   ] ++ [
     pkgsStatic.glib
     libseccomp
+  ] ++ lib.optionals enableSystemd [
+    # Only include systemd for dynamic builds, not static builds
+    # Static builds will use PKG_CONFIG_PATH approach instead
   ];
   prePatch = ''
     export CFLAGS='-static -pthread'
     export LDFLAGS='-s -w -static-libgcc -static'
     export EXTRA_LDFLAGS='-s -w -linkmode external -extldflags "-static -lm"'
+    ${lib.optionalString (!enableSystemd) "export DISABLE_SYSTEMD=1"}
   '';
   buildPhase = ''
     patchShebangs .

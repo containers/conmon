@@ -38,9 +38,13 @@ override CFLAGS += $(shell $(PKG_CONFIG) --cflags glib-2.0) -DVERSION=\"$(VERSIO
 # "pkg-config --exists" will error if the package doesn't exist. Make can only compare
 # output of commands, so the echo commands are to allow pkg-config to error out, make to catch it,
 # and allow the compilation to complete.
+#
+# For static builds, systemd can be disabled with DISABLE_SYSTEMD=1
+ifneq ($(DISABLE_SYSTEMD), 1)
 ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd)
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=1
+endif
 endif
 
 ifeq ($(shell hack/seccomp-notify.sh), 0)
