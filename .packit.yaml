@@ -78,10 +78,12 @@ jobs:
 
   - job: koji_build
     trigger: commit
+    packages: [conmon-fedora]
     dist_git_branches:
       - fedora-all
 
   - job: bodhi_update
     trigger: commit
+    packages: [conmon-fedora]
     dist_git_branches:
       - fedora-branched # rawhide updates are created automatically
