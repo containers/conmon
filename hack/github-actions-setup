@@ -49,7 +49,7 @@ install_packages() {
     . /etc/os-release
     CRIU_REPO="https://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu_$VERSION_ID"
 
-    curl -fSsL $CRIU_REPO/Release.key | sudo apt-key add -
+    curl -fSsL $CRIU_REPO/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/criu.gpg
     echo "deb $CRIU_REPO/ /" | sudo tee /etc/apt/sources.list.d/criu.list
 
     sudo apt update
