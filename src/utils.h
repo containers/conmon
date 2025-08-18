@@ -6,6 +6,7 @@
 #include <syslog.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <errno.h>
 #include <glib.h>
 #include <glib-unix.h>
 #include <sys/uio.h>
@@ -35,41 +36,58 @@ extern log_level_t log_level;
 extern char *log_cid;
 extern gboolean use_syslog;
 
+
 #define _pexit(s) \
 	do { \
+		int saved_errno = errno; \
+		errno = saved_errno; \
 		fprintf(stderr, "[conmon:e]: %s %m\n", s); \
-		if (use_syslog) \
+		if (use_syslog) { \
+			errno = saved_errno; \
 			syslog(LOG_ERR, "conmon %.20s <error>: %s %m\n", log_cid, s); \
+		} \
 		_exit(EXIT_FAILURE); \
 	} while (0)
 
 #define _pexitf(fmt, ...) \
 	do { \
+		int saved_errno = errno; \
+		errno = saved_errno; \
 		fprintf(stderr, "[conmon:e]: " fmt " %m\n", ##__VA_ARGS__); \
-		if (use_syslog) \
+		if (use_syslog) { \
+			errno = saved_errno; \
 			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %m\n", log_cid, ##__VA_ARGS__); \
+		} \
 		_exit(EXIT_FAILURE); \
 	} while (0)
 
 #define pexit(s) \
 	do { \
+		int saved_errno = errno; \
+		errno = saved_errno; \
 		fprintf(stderr, "[conmon:e]: %s %m\n", s); \
-		if (use_syslog) \
+		if (use_syslog) { \
+			errno = saved_errno; \
 			syslog(LOG_ERR, "conmon %.20s <error>: %s %m\n", log_cid, s); \
+		} \
 		exit(EXIT_FAILURE); \
 	} while (0)
 
 #define pexitf(fmt, ...) \
 	do { \
+		int saved_errno = errno; \
+		errno = saved_errno; \
 		fprintf(stderr, "[conmon:e]: " fmt " %m\n", ##__VA_ARGS__); \
-		if (use_syslog) \
+		if (use_syslog) { \
+			errno = saved_errno; \
 			syslog(LOG_ERR, "conmon %.20s <error>: " fmt ": %m\n", log_cid, ##__VA_ARGS__); \
+		} \
 		exit(EXIT_FAILURE); \
 	} while (0)
 
 #define nexit(s) \
 	do { \
-		fprintf(stderr, "[conmon:e] %s\n", s); \
+		fprintf(stderr, "[conmon:e]: %s\n", s); \
 		if (use_syslog) \
 			syslog(LOG_ERR, "conmon %.20s <error>: %s\n", log_cid, s); \
 		exit(EXIT_FAILURE); \
@@ -79,25 +97,35 @@ extern gboolean use_syslog;
 	do { \
 		fprintf(stderr, "[conmon:e]: " fmt "\n", ##__VA_ARGS__); \
 		if (use_syslog) \
-			syslog(LOG_ERR, "conmon %.20s <error>: " fmt " \n", log_cid, ##__VA_ARGS__); \
+			syslog(LOG_ERR, "conmon %.20s <error>: " fmt "\n", log_cid, ##__VA_ARGS__); \
 		exit(EXIT_FAILURE); \
 	} while (0)
 
 #define pwarn(s) \
 	do { \
-		fprintf(stderr, "[conmon:w]: %s %s\n", s, strerror(errno)); \
-		if (use_syslog) \
-			syslog(LOG_INFO, "conmon %.20s <pwarn>: %s %s\n", log_cid, s, strerror(errno)); \
+		if (log_level >= WARN_LEVEL) { \
+			int saved_errno = errno; \
+			errno = saved_errno; \
+			fprintf(stderr, "[conmon:w]: %s %m\n", s); \
+			if (use_syslog) { \
+				errno = saved_errno; \
+				syslog(LOG_INFO, "conmon %.20s <pwarn>: %s %m\n", log_cid, s); \
+			} \
+		} \
 	} while (0)
 
 #define pwarnf(fmt, ...) \
-	if (log_level >= WARN_LEVEL) { \
-		do { \
-			fprintf(stderr, "[conmon:w]: " fmt " %s\n", ##__VA_ARGS__, strerror(errno)); \
-			if (use_syslog) \
-				syslog(LOG_INFO, "conmon %.20s <nwarn>: " fmt ": %s\n", log_cid, ##__VA_ARGS__, strerror(errno)); \
-		} while (0); \
-	}
+	do { \
+		if (log_level >= WARN_LEVEL) { \
+			int saved_errno = errno; \
+			errno = saved_errno; \
+			fprintf(stderr, "[conmon:w]: " fmt " %m\n", ##__VA_ARGS__); \
+			if (use_syslog) { \
+				errno = saved_errno; \
+				syslog(LOG_INFO, "conmon %.20s <pwarnf>: " fmt ": %m\n", log_cid, ##__VA_ARGS__); \
+			} \
+		} \
+	} while (0)
 
 #define nwarn(s) \
 	if (log_level >= WARN_LEVEL) { \
@@ -113,7 +141,7 @@ extern gboolean use_syslog;
 		do { \
 			fprintf(stderr, "[conmon:w]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
-				syslog(LOG_INFO, "conmon %.20s <nwarn>: " fmt " \n", log_cid, ##__VA_ARGS__); \
+				syslog(LOG_INFO, "conmon %.20s <nwarn>: " fmt "\n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
 	}
 
@@ -131,7 +159,7 @@ extern gboolean use_syslog;
 		do { \
 			fprintf(stderr, "[conmon:i]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
-				syslog(LOG_INFO, "conmon %.20s <ninfo>: " fmt " \n", log_cid, ##__VA_ARGS__); \
+				syslog(LOG_INFO, "conmon %.20s <ninfo>: " fmt "\n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
 	}
 
@@ -149,7 +177,7 @@ extern gboolean use_syslog;
 		do { \
 			fprintf(stderr, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
-				syslog(LOG_INFO, "conmon %.20s <ndebug>: " fmt " \n", log_cid, ##__VA_ARGS__); \
+				syslog(LOG_INFO, "conmon %.20s <ndebug>: " fmt "\n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
 	}
 
@@ -167,7 +195,7 @@ extern gboolean use_syslog;
 		do { \
 			fprintf(stderr, "[conmon:d]: " fmt "\n", ##__VA_ARGS__); \
 			if (use_syslog) \
-				syslog(LOG_INFO, "conmon %.20s <ntrace>: " fmt " \n", log_cid, ##__VA_ARGS__); \
+				syslog(LOG_INFO, "conmon %.20s <ntrace>: " fmt "\n", log_cid, ##__VA_ARGS__); \
 		} while (0); \
 	}
 
