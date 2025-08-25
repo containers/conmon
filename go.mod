@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/containers/storage v1.48.0
-	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230914150019-408c51e934dc
