@@ -27,13 +27,13 @@ URL: https://github.com/containers/%{name}
 # Tarball fetched from upstream
 Source0: %{url}/archive/v%{version}.tar.gz
 %if %{with docs}
-ExclusiveArch: %{golang_arches_future}
 BuildRequires: go-md2man
 %endif
 BuildRequires: gcc
 BuildRequires: git-core
 BuildRequires: glib2-devel
 BuildRequires: libseccomp-devel
+BuildRequires: pkgconfig
 BuildRequires: systemd-devel
 BuildRequires: systemd-libs
 BuildRequires: make

@@ -5,11 +5,10 @@ env:
     ####
     #### Global variables used for all tasks
     ####
-    GOPATH: "/var/tmp/go"
     CONMON_SLUG: "github.com/containers/conmon"
 
     # Overrides default location (/tmp/cirrus) for repo clone (will become $SRC)
-    CIRRUS_WORKING_DIR: "${GOPATH}/src/${CONMON_SLUG}"
+    CIRRUS_WORKING_DIR: "/var/tmp/src/${CONMON_SLUG}"
     # Required so $ENVLIB gets loaded and /bin/sh is not used
     CIRRUS_SHELL: "/bin/bash"
     # Save a little typing (path relative to $CIRRUS_WORKING_DIR)
@@ -63,7 +62,7 @@ fedora_packaging_task:
             image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
 
     script:
-        - dnf install -y rpm-build golang libseccomp-devel
+        - dnf install -y rpm-build libseccomp-devel
         - cd $CIRRUS_WORKING_DIR
         - make
         - make -f .rpmbuild/Makefile
@@ -75,8 +74,8 @@ fedora_packaging_task:
     timeout_in: '20m'
 
 
-# Verify calls to bin/config were saved
-config_task:
+# Verify build completes successfully
+build_task:
     # Runs within Cirrus's "community cluster"
     container:
         image: "${FEDORA_CONTAINER_FQIN}"
@@ -84,10 +83,10 @@ config_task:
         memory: 4
 
     script:
-        - dnf install -y make glib2-devel git gcc golang
+        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel
         - cd $CIRRUS_WORKING_DIR
-        - make config
-        - git diff --exit-code
+        - make
+        - make test
 
 
 # Verify code was fmt'ed properly
@@ -99,7 +98,7 @@ fmt_task:
         memory: 4
 
     script:
-        - dnf install -y clang clang-tools-extra golang
+        - dnf install -y clang clang-tools-extra
         - cd $CIRRUS_WORKING_DIR
         - make fmt
         - git diff --exit-code
