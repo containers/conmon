@@ -11,14 +11,12 @@ jobs:
 
   conmon:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: [stable, oldstable]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
       - run: sudo hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
@@ -35,6 +33,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
       - run: sudo hack/github-actions-setup
       - name: Run CRI-O integration tests
         run: |

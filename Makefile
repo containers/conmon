@@ -2,8 +2,6 @@ VERSION := $(shell cat VERSION)
 PREFIX ?= /usr/local
 BINDIR ?= ${PREFIX}/bin
 LIBEXECDIR ?= ${PREFIX}/libexec
-GO ?= go
-PROJECT := github.com/containers/conmon
 PKG_CONFIG ?= pkg-config
 HEADERS := $(wildcard src/*.h)
 
@@ -71,28 +69,20 @@ bin/conmon: $(OBJS) | bin
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) $(DEBUGFLAG) -o $@ -c $<
 
-config: git-vars cmd/conmon-config/conmon-config.go runner/config/config.go runner/config/config_unix.go runner/config/config_windows.go
-	$(GO) build $(LDFLAGS) -tags "$(BUILDTAGS)" -o bin/config $(PROJECT)/cmd/conmon-config
-		( cd src && $(CURDIR)/bin/config )
+# config target removed - no longer using Go build system
 
 .PHONY: test-binary
-test-binary: bin/conmon _test-files
-	CONMON_BINARY="$(MAKEFILE_PATH)bin/conmon" $(GO) test $(LDFLAGS) -tags "$(BUILDTAGS)" $(PROJECT)/runner/conmon_test/ -count=1 -v
+test-binary: bin/conmon
+	CONMON_BINARY="$(MAKEFILE_PATH)bin/conmon" test/run-tests.sh
 
 .PHONY: test
-test:_test-files
-	$(GO) test $(LDFLAGS) -tags "$(BUILDTAGS)" $(PROJECT)/runner/conmon_test/
-
-.PHONY: test-files
-_test-files: git-vars runner/conmon_test/*.go runner/conmon/*.go
+test: bin/conmon
+	CONMON_BINARY="$(MAKEFILE_PATH)bin/conmon" test/run-tests.sh
 
 bin:
 	mkdir -p bin
 
-.PHONY: vendor
-vendor:
-	$(GO) mod tidy
-	$(GO) mod verify
+# vendor target removed - no longer using Go modules
 
 .PHONY: docs
 docs:
@@ -126,7 +116,6 @@ install.podman: bin/conmon
 .PHONY: fmt
 fmt:
 	git ls-files -z \*.c \*.h | xargs -0 clang-format -i
-	gofmt -s -w .
 
 
 .PHONY: dbuild

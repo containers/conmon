@@ -12,22 +12,20 @@ permissions:
 
 jobs:
 
-  deps:
+  lint:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: install go
-      uses: actions/setup-go@v5
-      with:
-        go-version: stable
-    - name: Verify Go dependencies
+    - name: Check C code formatting
       run: |
-        make vendor
+        sudo apt-get update
+        sudo apt-get install -y clang-format
+        make fmt
         git diff --exit-code
 
   all-done:
     needs:
-      - deps
+      - lint
     runs-on: ubuntu-latest
     steps:
     - run: echo "All jobs completed"
