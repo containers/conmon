@@ -365,7 +365,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!WIFEXITED(runtime_status) || WEXITSTATUS(runtime_status) != 0) {
+	/* For exec operations, the runtime exit status reflects the exit status of the exec'd command,
+	 * so a non-zero exit status is expected behavior, not a runtime failure.
+	 * Only treat non-zero exit status as a failure for create/run operations. */
+	if (!opt_exec && (!WIFEXITED(runtime_status) || WEXITSTATUS(runtime_status) != 0)) {
 		/*
 		 * Read from container stderr for any error and send it to parent
 		 * We send -1 as pid to signal to parent that create container has failed.
@@ -375,11 +378,8 @@ int main(int argc, char *argv[])
 			buf[num_read] = '\0';
 			nwarnf("runtime stderr: %s", buf);
 			if (sync_pipe_fd > 0) {
-				int to_report = -1;
-				if (opt_exec && container_status > 0) {
-					to_report = -1 * container_status;
-				}
-				write_or_close_sync_fd(&sync_pipe_fd, to_report, buf);
+				/* Report runtime failure to parent */
+				write_or_close_sync_fd(&sync_pipe_fd, -1, buf);
 			}
 		}
 		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
@@ -488,7 +488,17 @@ int main(int argc, char *argv[])
 			kill(container_pid, SIGKILL);
 		exit_message = TIMED_OUT_MESSAGE;
 	} else {
-		exit_status = get_exit_status(container_status);
+		/* For exec operations, use the runtime exit status which contains the exit status of the exec'd command */
+		if (opt_exec) {
+			if (runtime_status == -1) {
+				nwarnf("runtime_status not properly set for exec operation, defaulting to failure");
+				exit_status = 1;
+			} else {
+				exit_status = get_exit_status(runtime_status);
+			}
+		} else {
+			exit_status = get_exit_status(container_status);
+		}
 	}
 
 	/* Close down the signalfd */
