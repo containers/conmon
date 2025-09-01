@@ -58,6 +58,17 @@ run_conmon_with_log_opts() {
     [ -f "$LOG_PATH" ]
 }
 
+@test "ctr logs: --no-container-partial-message option should pass with journald" {
+    run_conmon_with_log_opts --log-path "journald:" --no-container-partial-message
+    assert_success
+}
+
+@test "ctr logs: --no-container-partial-message should warn without journald" {
+    run_conmon_with_log_opts --log-path "$LOG_PATH" --no-container-partial-message
+    assert_success
+    assert_output_contains "no effect without journald log driver"
+}
+
 @test "ctr logs: multiple log drivers with one invalid should fail" {
     local invalid_log_driver="invalid"
     run_conmon_with_log_opts --log-path "k8s-file:$LOG_PATH" --log-path "$invalid_log_driver:$LOG_PATH"
