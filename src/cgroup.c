@@ -6,6 +6,7 @@
 #include "cli.h"
 #include "config.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <stdio.h>
@@ -269,7 +270,8 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 
 gboolean check_cgroup2_oom()
 {
-	static long int last_counter = 0;
+	static long int last_oom_counter = 0;
+	static long int last_oom_kill_counter = 0;
 
 	if (!is_cgroup_v2)
 		return G_SOURCE_REMOVE;
@@ -279,40 +281,57 @@ gboolean check_cgroup2_oom()
 	_cleanup_fclose_ FILE *fp = fopen(memory_events_file_path, "re");
 	if (fp == NULL) {
 		nwarnf("Failed to open cgroups file: %s", memory_events_file_path);
+		/* If the file doesn't exist, the cgroup was likely removed */
+		if (errno == ENOENT) {
+			ndebugf("Cgroup appears to have been removed, stopping OOM monitoring");
+			return G_SOURCE_REMOVE;
+		}
 		return G_SOURCE_CONTINUE;
 	}
 
 	_cleanup_free_ char *line = NULL;
 	size_t len = 0;
 	ssize_t read;
+	gboolean oom_detected = FALSE;
 	while ((read = getline(&line, &len, fp)) != -1) {
 		long int counter;
-		const int oom_len = 4, oom_kill_len = 9;
+		const size_t oom_len = 4, oom_kill_len = 9;
+		gboolean is_oom_kill = FALSE;
+		size_t prefix_len;
 
-		if (read >= oom_kill_len + 2 && memcmp(line, "oom_kill ", oom_kill_len) == 0)
-			len = oom_kill_len;
-		else if (read >= oom_len + 2 && memcmp(line, "oom ", oom_len) == 0)
-			len = oom_len;
-		else
+		if ((size_t)read >= oom_kill_len + 2 && memcmp(line, "oom_kill ", oom_kill_len) == 0) {
+			prefix_len = oom_kill_len;
+			is_oom_kill = TRUE;
+		} else if ((size_t)read >= oom_len + 2 && memcmp(line, "oom ", oom_len) == 0) {
+			prefix_len = oom_len;
+			is_oom_kill = FALSE;
+		} else {
 			continue;
+		}
 
-		counter = strtol(&line[len], NULL, 10);
+		char *endptr;
+		errno = 0;
+		counter = strtol(&line[prefix_len], &endptr, 10);
 
-		if (counter == LONG_MAX) {
-			nwarnf("Failed to parse: %s", &line[len]);
+		if (errno != 0 || endptr == &line[prefix_len]) {
+			nwarnf("Failed to parse: %s", &line[prefix_len]);
 			continue;
 		}
 
 		if (counter == 0)
 			continue;
 
-		if (counter != last_counter) {
-			if (create_oom_files() == 0)
-				last_counter = counter;
+		/* Check against the appropriate counter based on event type */
+		long int *last_counter = is_oom_kill ? &last_oom_kill_counter : &last_oom_counter;
+		if (counter != *last_counter) {
+			if (create_oom_files() == 0) {
+				*last_counter = counter;
+				oom_detected = TRUE;
+			}
 		}
-		return G_SOURCE_CONTINUE;
 	}
-	return G_SOURCE_REMOVE;
+
+	return oom_detected ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
 }
 
 /* create the appropriate files to tell the caller there was an oom event
