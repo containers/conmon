@@ -73,6 +73,11 @@ Additional tag to use for logging.
 Additional label to use for logging.  The accepted format is LABEL=VALUE.  Can be specified multiple times.
 Note that LABEL must contain only uppercase letters, numbers and underscore character.
 
+**--no-container-partial-message**
+Do not set CONTAINER_PARTIAL_MESSAGE=true for partial lines in journald logs. This prevents
+splitting of long log lines into multiple journal entries, which can be problematic for
+systems that parse structured logs like JSON. Only affects journald log driver.
+
 **-n**, **--name**
 Container name.
 

@@ -98,6 +98,11 @@ gboolean logging_is_passthrough(void)
 	return use_logging_passthrough;
 }
 
+gboolean logging_is_journald_enabled(void)
+{
+	return use_journald_logging;
+}
+
 static int count_chars_in_string(const char *str, char ch)
 {
 	int count = 0;
@@ -379,7 +384,8 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 			return -1;
 
 		/* per docker journald logging format, CONTAINER_PARTIAL_MESSAGE is set to true if it's partial, but otherwise not set. */
-		if (partial && writev_buffer_append_segment_no_flush(&bufv, "CONTAINER_PARTIAL_MESSAGE=true", PARTIAL_MESSAGE_EQ_LEN) < 0)
+		if (partial && !opt_no_container_partial_message
+		    && writev_buffer_append_segment_no_flush(&bufv, "CONTAINER_PARTIAL_MESSAGE=true", PARTIAL_MESSAGE_EQ_LEN) < 0)
 			return -1;
 		if (container_labels) {
 			for (gchar **label = container_labels; *label; ++label) {

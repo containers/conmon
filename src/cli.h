@@ -40,6 +40,8 @@ extern int opt_exit_delay;
 extern gboolean opt_replace_listen_pid;
 extern char *opt_log_level;
 extern char *opt_log_tag;
+extern gchar **opt_log_labels;
+extern gboolean opt_no_container_partial_message;
 extern gboolean opt_no_sync_log;
 extern gboolean opt_sync;
 extern char *opt_sdnotify_socket;

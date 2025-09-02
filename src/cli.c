@@ -50,6 +50,7 @@ gboolean opt_replace_listen_pid = FALSE;
 char *opt_log_level = NULL;
 char *opt_log_tag = NULL;
 gchar **opt_log_labels = NULL;
+gboolean opt_no_container_partial_message = FALSE;
 gboolean opt_sync = FALSE;
 gboolean opt_no_sync_log = FALSE;
 char *opt_sdnotify_socket = NULL;
@@ -81,6 +82,8 @@ GOptionEntry opt_entries[] = {
 	{"log-tag", 0, 0, G_OPTION_ARG_STRING, &opt_log_tag, "Additional tag to use for logging", NULL},
 	{"log-label", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_log_labels,
 	 "Additional label to include in logs. Can be specified multiple times", NULL},
+	{"no-container-partial-message", 0, 0, G_OPTION_ARG_NONE, &opt_no_container_partial_message,
+	 "Do not set CONTAINER_PARTIAL_MESSAGE=true for partial lines in journald logs (journald driver only)", NULL},
 	{"name", 'n', 0, G_OPTION_ARG_STRING, &opt_name, "Container name", NULL},
 	{"no-new-keyring", 0, 0, G_OPTION_ARG_NONE, &opt_no_new_keyring, "Do not create a new session keyring for the container", NULL},
 	{"no-pivot", 0, 0, G_OPTION_ARG_NONE, &opt_no_pivot, "Do not use pivot_root", NULL},
@@ -198,4 +201,9 @@ void process_cli()
 		opt_container_pid_file = g_strdup_printf("%s/pidfile-%s", cwd, opt_cid);
 
 	configure_log_drivers(opt_log_path, opt_log_size_max, opt_log_global_size_max, opt_cid, opt_name, opt_log_tag, opt_log_labels);
+
+	/* Warn if --no-container-partial-message is used without journald logging */
+	if (opt_no_container_partial_message && !logging_is_journald_enabled()) {
+		nwarnf("--no-container-partial-message has no effect without journald log driver");
+	}
 }
