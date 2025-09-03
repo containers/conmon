@@ -89,5 +89,5 @@ executable('conmon',
             'src/seccomp_notify.h'],
            dependencies : [glib, libdl, sd_journal, seccomp],
            install : true,
-           install_dir : join_paths(get_option('libexecdir'), 'podman'),
+           install_dir : get_option('bindir'),
 )
