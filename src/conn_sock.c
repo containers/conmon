@@ -100,6 +100,7 @@ static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
 	addr.sun_family = AF_UNIX;
 	if (dir_fd == -1) {
 		strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+		addr.sun_path[sizeof(addr.sun_path) - 1] = '\0';
 	} else {
 		snprintf(addr.sun_path, sizeof(addr.sun_path), "/proc/self/fd/%d/%s", dir_fd, path);
 	}

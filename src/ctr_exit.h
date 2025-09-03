@@ -2,11 +2,12 @@
 #define CTR_EXIT_H
 
 #include <sys/types.h> /* pid_t */
+#include <signal.h>    /* sig_atomic_t */
 #include <glib.h>      /* gpointer, gboolean, GHashTable, and GPid */
 
 
-extern volatile pid_t container_pid;
-extern volatile pid_t create_pid;
+extern volatile sig_atomic_t container_pid;
+extern volatile sig_atomic_t create_pid;
 
 struct pid_check_data {
 	GHashTable *pid_to_handler;

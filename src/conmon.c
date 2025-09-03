@@ -253,8 +253,6 @@ int main(int argc, char *argv[])
 			if (workerfd_stdout != dev_null_w && fchmod(STDOUT_FILENO, 0777) < 0 && errno != EINVAL)
 				nwarn("Failed to chmod stdout");
 
-			if (workerfd_stderr < 0)
-				workerfd_stderr = workerfd_stdout;
 			if (dup2(workerfd_stderr, STDERR_FILENO) < 0)
 				_pexit("Failed to dup over stderr");
 			if (workerfd_stderr != dev_null_w && fchmod(STDERR_FILENO, 0777) < 0 && errno != EINVAL)

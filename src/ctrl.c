@@ -108,8 +108,8 @@ static gboolean process_winsz_ctrl_line(char *line)
 	int height, width, ret = -1;
 	ret = sscanf(line, "%d %d\n", &height, &width);
 	ndebugf("Height: %d, Width: %d", height, width);
-	if (ret != 2) {
-		nwarn("Failed to sscanf message");
+	if (ret != 2 || height < 0 || width < 0) {
+		nwarn("Failed to parse window size message");
 		return FALSE;
 	}
 	resize_winsz(height, width);
@@ -137,8 +137,8 @@ static gboolean process_terminal_ctrl_line(char *line)
 	 */
 	int ctl_msg_type, height, width, ret = -1;
 	ret = sscanf(line, "%d %d %d\n", &ctl_msg_type, &height, &width);
-	if (ret != 3) {
-		nwarn("Failed to sscanf message");
+	if (ret != 3 || height < 0 || width < 0) {
+		nwarn("Failed to parse control message");
 		return FALSE;
 	}
 
