@@ -116,7 +116,7 @@ install.podman: bin/conmon
 .PHONY: fmt
 fmt:
 	git ls-files -z \*.c \*.h | xargs -0 clang-format -i
-
+	git ls-files -z '*.bats' | xargs -0 sed -i 's/[[:space:]]\+$$//'
 
 .PHONY: dbuild
 dbuild:
