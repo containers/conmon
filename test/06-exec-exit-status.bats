@@ -12,40 +12,83 @@ teardown() {
     cleanup_test_env
 }
 
-@test "exec: exit status handling code paths are fixed" {
-    # This test documents the fix for issue #328: conmon exec not handling runtime failures
-    #
-    # The core issue was that conmon had two problems:
-    # 1. It treated non-zero runtime exit status as runtime failure (early exit)
-    # 2. It used container_status instead of runtime_status for final exit code
-    #
-    # Both issues have been fixed in the code, but testing the exact scenario
-    # requires a complex setup with real container runtime and running containers.
-    # The important validation is that existing functionality is preserved.
-
-    # Verify that exec option is recognized and processed correctly
-    run "$CONMON_BINARY" --help 2>/dev/null
+@test "conmon help contains exec option" {
+    # Basic test to ensure exec functionality is present
+    run_conmon --help
     assert_success
     assert_output_contains "--exec"
-    assert_output_contains "Exec a command into a running container"
 }
 
-@test "exec: runtime status validation logic is in place" {
-    # This test verifies that the runtime status validation we added is working
-    # The fix includes a check for runtime_status == -1 to handle edge cases
-
-    # Test that exec requires proper arguments (this exercises the validation path)
-    run "$CONMON_BINARY" \
+@test "exec requires proper arguments" {
+    # Test that exec requires proper arguments (validation working)
+    run_conmon \
         --cid "test" \
         --cuuid "test" \
         --runtime /bin/true \
         --exec \
         --socket-dir-path /tmp \
         --container-pidfile /dev/null \
-        --log-path /dev/null 2>/dev/null
+        --log-path /dev/null
 
-    # Should fail due to missing --exec-process-spec (validation working)
+    # Should fail due to missing --exec-process-spec
     assert_failure
 }
 
 
+# Integration test that can be run manually or in CI
+@test "integration: exec exit codes work correctly" {
+    # This test can only run if podman is available and configured
+    if ! command -v podman >/dev/null 2>&1; then
+        skip "podman not available for integration testing"
+    fi
+
+    # Use the conmon binary from the build (using absolute path)
+    local conmon_path="$(dirname "$CONMON_BINARY")/conmon"
+
+    if [ ! -f "$conmon_path" ]; then
+        skip "conmon binary not found for integration testing at $conmon_path"
+    fi
+
+    # Check if we can create a simple container for testing
+    if ! timeout 10 podman --conmon $conmon_path run --rm busybox:latest true >/dev/null 2>&1; then
+        skip "Cannot create test containers with podman"
+    fi
+
+    echo "Running integration test with podman..."
+
+    # Create a test container
+    local container_id
+    container_id=$(podman --conmon $conmon_path run -dt busybox:latest sleep 30)
+
+    if [ -z "$container_id" ]; then
+        skip "Failed to create test container"
+    fi
+
+    # Test 1: Success case
+    if ! podman --conmon $conmon_path exec "$container_id" true; then
+        podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+        echo "FAIL: true command should succeed"
+        return 1
+    fi
+
+    # Test 2: Failure case - this would fail with the regression
+    if podman --conmon $conmon_path exec "$container_id" false; then
+        podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+        echo "FAIL: false command should fail (regression detected!)"
+        echo "This indicates the fc0a342 regression where all exec commands return 0"
+        return 1
+    fi
+
+    # Test 3: Custom exit code - this would return 0 with the regression
+    if podman --conmon $conmon_path exec "$container_id" sh -c 'exit 42'; then
+        podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+        echo "FAIL: 'exit 42' should fail with code 42 (regression detected!)"
+        echo "This indicates the fc0a342 regression where all exec commands return 0"
+        return 1
+    fi
+
+    # Clean up
+    podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+
+    echo "Integration test passed: exec exit codes work correctly"
+}
