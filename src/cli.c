@@ -6,8 +6,10 @@
 
 #include <glib.h>
 #include <glib-unix.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #ifdef __linux__
 #include <linux/limits.h>
 #endif
@@ -122,6 +124,21 @@ GOptionEntry opt_entries[] = {
 
 int initialize_cli(int argc, char *argv[])
 {
+	/* Ensure UTF-8 locale is available for proper multibyte character handling */
+	char *current_locale = setlocale(LC_CTYPE, NULL);
+	if (current_locale == NULL || strcmp(current_locale, "C") == 0 || strcmp(current_locale, "POSIX") == 0) {
+		/* Current locale is C/POSIX, try to set a UTF-8 locale */
+		if (setlocale(LC_CTYPE, "C.UTF-8") == NULL && setlocale(LC_CTYPE, "en_US.UTF-8") == NULL
+		    && setlocale(LC_CTYPE, "UTF-8") == NULL) {
+			/* Check if we can read from environment */
+			if (setlocale(LC_CTYPE, "") == NULL) {
+				/* Last resort - keep C locale but warn about potential encoding issues */
+				g_printerr(
+					"conmon: warning: UTF-8 locale not available, multibyte characters in arguments may cause errors\n");
+			}
+		}
+	}
+
 	GOptionContext *context = g_option_context_new("- conmon utility");
 	g_option_context_add_main_entries(context, opt_entries, "conmon");
 
