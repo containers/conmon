@@ -4,7 +4,6 @@
 #include <glib.h> /* gboolean and GMainLoop */
 
 /* Global state */
-// TODO FIXME not static
 extern int runtime_status;
 extern int container_status;
 

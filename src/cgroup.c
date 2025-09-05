@@ -185,6 +185,9 @@ static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED g
 	ssize_t num_read = read(fd, &events, events_size);
 	if (num_read < 0) {
 		nwarn("Failed to read oom event from eventfd in v2");
+		/* On non-recoverable errors, remove the source */
+		if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
+			return G_SOURCE_REMOVE;
 		return G_SOURCE_CONTINUE;
 	}
 
@@ -234,6 +237,9 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 	ssize_t num_read = read(fd, &event_count, sizeof(uint64_t));
 	if (num_read < 0) {
 		nwarn("Failed to read oom event from eventfd");
+		/* On non-recoverable errors, remove the source */
+		if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
+			return G_SOURCE_REMOVE;
 		return G_SOURCE_CONTINUE;
 	}
 
@@ -275,6 +281,11 @@ gboolean check_cgroup2_oom()
 
 	if (!is_cgroup_v2)
 		return G_SOURCE_REMOVE;
+
+	if (!cgroup2_path) {
+		nwarn("cgroup2_path not initialized");
+		return G_SOURCE_REMOVE;
+	}
 
 	_cleanup_free_ char *memory_events_file_path = g_build_filename(cgroup2_path, "memory.events", NULL);
 

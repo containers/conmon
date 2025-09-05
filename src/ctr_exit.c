@@ -16,8 +16,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-volatile pid_t container_pid = -1;
-volatile pid_t create_pid = -1;
+volatile sig_atomic_t container_pid = -1;
+volatile sig_atomic_t create_pid = -1;
 
 void on_sig_exit(int signal)
 {
@@ -206,9 +206,7 @@ void do_exit_command()
 		for (; opt_exit_args[n_args]; n_args++)
 			;
 
-	gchar **args = malloc(sizeof(gchar *) * (n_args + 2));
-	if (args == NULL)
-		_exit(EXIT_FAILURE);
+	gchar **args = g_malloc(sizeof(gchar *) * (n_args + 2));
 
 	args[0] = opt_exit_command;
 	if (opt_exit_args)
@@ -249,5 +247,5 @@ void cleanup_socket_dir_symlink()
 
 void handle_signal(G_GNUC_UNUSED const int signum)
 {
-	exit(EXIT_FAILURE);
+	_exit(EXIT_FAILURE);
 }

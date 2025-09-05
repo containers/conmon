@@ -196,7 +196,6 @@ void process_cli()
 	}
 
 	// we should always override the container pid file if it's empty
-	// TODO FIXME I removed default_pid_file here. shouldn't opt_container_pid_file be cleaned up?
 	if (opt_container_pid_file == NULL)
 		opt_container_pid_file = g_strdup_printf("%s/pidfile-%s", cwd, opt_cid);
 
