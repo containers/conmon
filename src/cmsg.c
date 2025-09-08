@@ -133,8 +133,16 @@ struct file_t recvfd(int sockfd)
 	msg.msg_controllen = sizeof(u.buf);
 
 	ssize_t ret = recvmsg(sockfd, &msg, 0);
-	if (ret < 0)
+	if (ret < 0) {
+		/* Add specific error information for debugging console fd issues */
+		fprintf(stderr, "recvfd: recvmsg failed: %m (sockfd=%d)\n", sockfd);
 		goto err;
+	}
+	if (ret >= TAG_BUFFER) {
+		fprintf(stderr, "recvfd: received data too large: %zd >= %d\n", ret, TAG_BUFFER);
+		errno = EMSGSIZE;
+		goto err;
+	}
 	file.name[ret] = '\0';
 
 	/* Shrink the buffer to what is effectively used.  */
