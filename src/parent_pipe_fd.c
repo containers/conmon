@@ -43,10 +43,21 @@ void write_or_close_sync_fd(int *fd, int res, const char *message)
 		return;
 
 	_cleanup_free_ char *json = NULL;
-	if (message) {
+	if (message && strlen(message) > 0) {
 		_cleanup_free_ char *escaped_message = escape_json_string(message);
-		json = g_strdup_printf("{\"%s\": %d, \"message\": \"%s\"}\n", res_key, res, escaped_message);
+		if (escaped_message == NULL) {
+			/* Fallback to JSON without message if escaping fails */
+			json = g_strdup_printf("{\"%s\": %d}\n", res_key, res);
+		} else {
+			json = g_strdup_printf("{\"%s\": %d, \"message\": \"%s\"}\n", res_key, res, escaped_message);
+		}
 	} else {
+		json = g_strdup_printf("{\"%s\": %d}\n", res_key, res);
+	}
+
+	/* Ensure we have valid JSON before attempting to write */
+	if (json == NULL) {
+		/* Fallback to minimal valid JSON */
 		json = g_strdup_printf("{\"%s\": %d}\n", res_key, res);
 	}
 
@@ -63,21 +74,49 @@ void write_or_close_sync_fd(int *fd, int res, const char *message)
 
 static char *escape_json_string(const char *str)
 {
+	if (str == NULL) {
+		return NULL;
+	}
+
+	size_t str_len = strlen(str);
+	if (str_len == 0) {
+		return g_strdup("");
+	}
+
 	const char *p = str;
-	GString *escaped = g_string_sized_new(strlen(str));
+	GString *escaped = g_string_sized_new(str_len * 2); /* Pre-allocate extra space for escaping */
+
+	if (escaped == NULL) {
+		return NULL;
+	}
 
 	while (*p != 0) {
-		char c = *p++;
+		unsigned char c = (unsigned char)*p++;
+
+		/* Handle standard JSON escape sequences */
 		if (c == '\\' || c == '"') {
 			g_string_append_c(escaped, '\\');
 			g_string_append_c(escaped, c);
+		} else if (c == '/') {
+			g_string_append_printf(escaped, "\\/");
 		} else if (c == '\n') {
 			g_string_append_printf(escaped, "\\n");
+		} else if (c == '\r') {
+			g_string_append_printf(escaped, "\\r");
 		} else if (c == '\t') {
 			g_string_append_printf(escaped, "\\t");
-		} else if ((c > 0 && c < 0x1f) || c == 0x7f) {
-			g_string_append_printf(escaped, "\\u00%02x", (guint)c);
+		} else if (c == '\b') {
+			g_string_append_printf(escaped, "\\b");
+		} else if (c == '\f') {
+			g_string_append_printf(escaped, "\\f");
+		} else if (c < 0x20 || c == 0x7f) {
+			/* Escape control characters */
+			g_string_append_printf(escaped, "\\u00%02x", c);
+		} else if (c >= 0x80) {
+			/* For non-ASCII characters, pass through as-is for UTF-8 compatibility */
+			g_string_append_c(escaped, c);
 		} else {
+			/* Regular ASCII characters */
 			g_string_append_c(escaped, c);
 		}
 	}
