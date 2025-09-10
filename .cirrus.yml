@@ -89,6 +89,19 @@ build_task:
         - make
         - make test
 
+# Test coverage
+coverage_task:
+    # Runs within Cirrus's "community cluster"
+    container:
+        image: "${FEDORA_CONTAINER_FQIN}"
+        cpu: 1
+        memory: 4
+
+    script:
+        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel gcovr
+        - cd $CIRRUS_WORKING_DIR
+        - make test-coverage
+
 
 # Verify code was fmt'ed properly
 fmt_task:
