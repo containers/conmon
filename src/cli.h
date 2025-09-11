@@ -50,6 +50,12 @@ extern char *opt_seccomp_notify_plugins;
 extern gboolean opt_log_rotate;
 extern int opt_log_max_files;
 extern gchar **opt_log_allowlist_dirs;
+extern char *opt_healthcheck_cmd;
+extern gchar **opt_healthcheck_args;
+extern int opt_healthcheck_interval;
+extern int opt_healthcheck_timeout;
+extern int opt_healthcheck_retries;
+extern int opt_healthcheck_start_period;
 extern GOptionEntry opt_entries[];
 extern gboolean opt_full_attach_path;
 
