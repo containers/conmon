@@ -67,7 +67,7 @@ static char *process_cgroup_subsystem_path(int pid, bool cgroup2, const char *su
 	size_t len = 0;
 	char *ptr, *path;
 	while ((read = getline(&line, &len, fp)) != -1) {
-		_cleanup_strv_ char **subsystems = NULL;
+		_cleanup_(strv_cleanup) char **subsystems = NULL;
 		ptr = strchr(line, ':');
 		if (ptr == NULL) {
 			nwarnf("Error parsing cgroup, ':' not found: %s", line);
