@@ -63,6 +63,14 @@ Leave stdin open when the attached client disconnects.
 **--log-level**
 Print debug logs based on the log level.
 
+**--log-max-files**
+Maximum number of log backup files to keep when log rotation is enabled. Default is 5.
+
+**--log-rotate**
+Enable log rotation instead of log truncation. When enabled, log files are rotated
+with numbered suffixes (.1, .2, etc.) instead of being truncated when they reach
+the maximum size.
+
 **--log-size-max**
 Maximum size of the log file (in bytes).
 
