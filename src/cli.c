@@ -8,6 +8,9 @@
 #include <glib-unix.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <limits.h>
 #ifdef __linux__
 #include <linux/limits.h>
 #endif
@@ -57,6 +60,9 @@ char *opt_sdnotify_socket = NULL;
 gboolean opt_full_attach_path = FALSE;
 char *opt_seccomp_notify_socket = NULL;
 char *opt_seccomp_notify_plugins = NULL;
+gchar **opt_timer_command = NULL;
+gchar **opt_timer_command_argument = NULL;
+GPtrArray *timer_command_entries = NULL;
 GOptionEntry opt_entries[] = {
 	{"api-version", 0, 0, G_OPTION_ARG_NONE, &opt_api_version, "Conmon API version to use", NULL},
 	{"bundle", 'b', 0, G_OPTION_ARG_STRING, &opt_bundle_path, "Location of the OCI Bundle path", NULL},
@@ -117,6 +123,10 @@ GOptionEntry opt_entries[] = {
 	 "Path to the socket where the seccomp notification fd is received", NULL},
 	{"seccomp-notify-plugins", 0, 0, G_OPTION_ARG_STRING, &opt_seccomp_notify_plugins,
 	 "Plugins to use for managing the seccomp notifications", NULL},
+	{"timer-command", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_timer_command,
+	 "Execute COMMAND every SECONDS. Format: ID:SECONDS:COMMAND. Can be specified multiple times", NULL},
+	{"timer-command-argument", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_timer_command_argument,
+	 "Add an argument to timer-command with ID. Format: ID:ARGUMENT. Can be specified multiple times", NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 
@@ -204,5 +214,114 @@ void process_cli()
 	/* Warn if --no-container-partial-message is used without journald logging */
 	if (opt_no_container_partial_message && !logging_is_journald_enabled()) {
 		nwarnf("--no-container-partial-message has no effect without journald log driver");
+	}
+
+	/* Parse timer-command entries with ID-based arguments */
+	if (opt_timer_command || opt_timer_command_argument) {
+		timer_command_entries = g_ptr_array_new_with_free_func(g_free);
+
+		/* Parse timer-command commands first */
+		if (opt_timer_command) {
+			for (int i = 0; opt_timer_command[i] != NULL; i++) {
+				char *entry = g_strdup(opt_timer_command[i]);
+				char *first_colon = strchr(entry, ':');
+				if (!first_colon) {
+					nexitf("Invalid timer-command format '%s'. Expected ID:SECONDS:COMMAND", opt_timer_command[i]);
+				}
+
+				*first_colon = '\0';
+				char *second_colon = strchr(first_colon + 1, ':');
+				if (!second_colon) {
+					nexitf("Invalid timer-command format '%s'. Expected ID:SECONDS:COMMAND", opt_timer_command[i]);
+				}
+
+				*second_colon = '\0';
+
+				char *id_str = entry;
+				char *interval_str = first_colon + 1;
+				char *command = second_colon + 1;
+
+				/* Parse ID */
+				char *endptr;
+				errno = 0;
+				long id_long = strtol(id_str, &endptr, 10);
+				if (errno != 0 || endptr == id_str || *endptr != '\0' || id_long < 0 || id_long > INT_MAX) {
+					nexitf("Invalid timer-command ID '%s' in '%s'", id_str, opt_timer_command[i]);
+				}
+				int id = (int)id_long;
+
+				/* Require incremental IDs starting from 0 */
+				int expected_id = i;
+				if (id != expected_id) {
+					nexitf("Timer-command IDs must be incremental starting from 0. Expected %d, got %d", expected_id,
+					       id);
+				}
+
+				/* Parse interval */
+				errno = 0;
+				long interval_long = strtol(interval_str, &endptr, 10);
+				if (errno != 0 || endptr == interval_str || *endptr != '\0' || interval_long <= 0
+				    || interval_long > INT_MAX) {
+					nexitf("Invalid timer-command interval '%s' in '%s'", interval_str, opt_timer_command[i]);
+				}
+				int interval = (int)interval_long;
+
+				if (*command == '\0') {
+					nexitf("Empty timer-command command in '%s'", opt_timer_command[i]);
+				}
+
+				timer_command_entry_t *cc_entry = g_malloc(sizeof(timer_command_entry_t));
+				cc_entry->id = id;
+				cc_entry->interval = interval;
+				cc_entry->args = g_malloc(sizeof(gchar *) * 2);
+				cc_entry->args[0] = g_strdup(command);
+				cc_entry->args[1] = NULL;
+
+				g_ptr_array_add(timer_command_entries, cc_entry);
+
+				ndebugf("Added timer-command: ID=%d, %d seconds, command: %s", id, interval, command);
+				g_free(entry);
+			}
+		}
+
+		if (opt_timer_command_argument) {
+			for (int i = 0; opt_timer_command_argument[i] != NULL; i++) {
+				char *entry = g_strdup(opt_timer_command_argument[i]);
+				char *colon = strchr(entry, ':');
+				if (!colon) {
+					nexitf("Invalid timer-command-argument format '%s'. Expected ID:ARGUMENT",
+					       opt_timer_command_argument[i]);
+				}
+
+				*colon = '\0';
+				char *id_str = entry;
+				char *argument = colon + 1;
+
+				/* Parse ID */
+				char *endptr;
+				errno = 0;
+				long id_long = strtol(id_str, &endptr, 10);
+				if (errno != 0 || endptr == id_str || *endptr != '\0' || id_long < 0 || id_long > INT_MAX) {
+					nexitf("Invalid timer-command ID '%s' in argument '%s'", id_str, opt_timer_command_argument[i]);
+				}
+				int id = (int)id_long;
+
+				if (id < 0 || id >= (int)timer_command_entries->len) {
+					nexitf("Timer-command ID %d not found for argument '%s'", id, argument);
+				}
+				timer_command_entry_t *target_entry = g_ptr_array_index(timer_command_entries, id);
+
+				int arg_count = 0;
+				while (target_entry->args[arg_count])
+					arg_count++;
+
+				target_entry->args = g_realloc(target_entry->args, sizeof(gchar *) * (arg_count + 2));
+				target_entry->args[arg_count] = g_strdup(argument);
+				target_entry->args[arg_count + 1] = NULL;
+
+				ndebugf("Added argument '%s' to timer-command ID %d", argument, id);
+				g_free(entry);
+			}
+		}
 	}
 }

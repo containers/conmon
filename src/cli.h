@@ -3,6 +3,7 @@
 
 #include <glib.h>   /* gboolean and GOptionEntry */
 #include <stdint.h> /* int64_t */
+#include <time.h>   /* time_t */
 
 extern gboolean opt_version;
 extern gboolean opt_terminal;
@@ -49,6 +50,16 @@ extern char *opt_seccomp_notify_socket;
 extern char *opt_seccomp_notify_plugins;
 extern GOptionEntry opt_entries[];
 extern gboolean opt_full_attach_path;
+extern gchar **opt_timer_command;
+extern gchar **opt_timer_command_argument;
+
+typedef struct {
+	int id;
+	int interval;
+	gchar **args;
+} timer_command_entry_t;
+
+extern GPtrArray *timer_command_entries;
 
 int initialize_cli(int argc, char *argv[]);
 void process_cli();

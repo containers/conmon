@@ -34,6 +34,17 @@ static void disconnect_std_streams(int dev_null_r, int dev_null_w)
 		pexit("Failed to dup over stderr");
 }
 
+
+static gboolean timer_command_timer_cb(gpointer user_data)
+{
+	timer_command_entry_t *entry = (timer_command_entry_t *)user_data;
+
+	ndebugf("Executing timer-command: %s", entry->args[0]);
+	execute_command_detached(entry->args, 0);
+
+	return G_SOURCE_CONTINUE; // Keep repeating
+}
+
 #define DEFAULT_UMASK 0022
 
 int main(int argc, char *argv[])
@@ -421,6 +432,15 @@ int main(int argc, char *argv[])
 
 	if (opt_timeout > 0) {
 		g_timeout_add_seconds(opt_timeout, timeout_cb, NULL);
+	}
+
+	/* Add individual timers for each timer-command entry */
+	if (timer_command_entries && timer_command_entries->len > 0) {
+		for (guint i = 0; i < timer_command_entries->len; i++) {
+			timer_command_entry_t *entry = g_ptr_array_index(timer_command_entries, i);
+			g_timeout_add_seconds(entry->interval, timer_command_timer_cb, entry);
+			ndebugf("Timer-command timer set up: %d seconds, command: %s", entry->interval, entry->args[0]);
+		}
 	}
 
 	if (data.exit_status_cache) {

@@ -142,6 +142,15 @@ Specify the Container UUID to use.
 **--version**
 Print the version and exit.
 
+**--timer-command**
+Execute COMMAND every SECONDS. Format: ID:SECONDS:COMMAND. Can be specified multiple times.
+
+**--timer-command-argument**
+Add an argument to timer-command with ID. Format: ID:ARGUMENT. Can be specified multiple times.
+
+This option allows adding command-line arguments to a specific timer-command by ID.
+Arguments are added in the order they are specified.
+
 ## SEE ALSO
 podman(1), buildah(1), cri-o(1), crun(8), runc(8)
 

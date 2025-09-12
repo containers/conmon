@@ -22,6 +22,8 @@ gboolean timeout_cb(G_GNUC_UNUSED gpointer user_data);
 int get_exit_status(int status);
 void runtime_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer user_data);
 void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer user_data);
+void execute_command_detached(gchar **args, int delay);
+void execute_command(gchar **args, int delay, gboolean do_wait);
 void do_exit_command();
 void reap_children();
 void cleanup_socket_dir_symlink();

@@ -10,10 +10,12 @@
 #include "oom.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <glib.h>
 #include <glib-unix.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 volatile sig_atomic_t container_pid = -1;
@@ -152,52 +154,104 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 	g_main_loop_quit(main_loop);
 }
 
-void do_exit_command()
+/*
+ * Execute a command with double fork to completely detach the process.
+ * Used for timer-command commands that should run independently of conmon.
+ * args[0] must be the command path and args must be NULL-terminated.
+ */
+void execute_command_detached(gchar **args, int delay)
 {
-	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
-		_pexit("Failed to reset signal for SIGCHLD");
+	pid_t first_fork = fork();
+	if (first_fork < 0) {
+		nwarnf("Failed to fork for command: %s", args[0]);
+		return;
 	}
 
-	/*
-	 * Close everything except stdin, stdout and stderr.
-	 */
+	if (first_fork) {
+		int status;
+		waitpid(first_fork, &status, 0);
+		return;
+	}
+
+	pid_t second_fork = fork();
+	if (second_fork < 0) {
+		_exit(1);
+	} else if (second_fork == 0) {
+		close_all_fds_ge_than(3);
+
+		int null_fd = open("/dev/null", O_RDWR);
+		if (null_fd >= 0) {
+			dup2(null_fd, STDIN_FILENO);
+			dup2(null_fd, STDOUT_FILENO);
+			dup2(null_fd, STDERR_FILENO);
+			if (null_fd > 2) {
+				close(null_fd);
+			}
+		}
+
+		setsid();
+
+		execute_command(args, delay, false);
+		_exit(EXIT_FAILURE);
+	} else {
+		_exit(0);
+	}
+}
+
+/*
+ * Execute a command with single fork.
+ * If do_wait is true, wait for completion (used by exit commands).
+ * If do_wait is false, don't wait (used by detached commands after double fork).
+ * args[0] must be the command path and args must be NULL-terminated.
+ */
+void execute_command(gchar **args, int delay, gboolean do_wait)
+{
 	close_all_fds_ge_than(3);
 
-	/*
-	 * We don't want the exit command to be reaped by the parent conmon
-	 * as that would prevent double-fork from doing its job.
-	 * Unfortunately, that also means that any new subchildren from
-	 * still running processes could also get lost
-	 */
 	if (set_subreaper(false) != 0) {
 		nwarn("Failed to disable self subreaper attribute - might wait for indirect children a long time");
 	}
 
-	pid_t exit_pid = fork();
-	if (exit_pid < 0) {
+	pid_t child_pid = fork();
+	if (child_pid < 0) {
 		_pexit("Failed to fork");
 	}
 
-	if (exit_pid) {
+	if (child_pid) {
+		if (!do_wait) {
+			return;
+		}
 		int ret, exit_status = 0;
 
-		/*
-		 * Make sure to cleanup any zombie process that the container runtime
-		 * could have left around.
-		 */
 		do {
 			int tmp;
 
 			exit_status = 0;
 			ret = waitpid(-1, &tmp, 0);
-			if (ret == exit_pid)
+			if (ret == child_pid)
 				exit_status = get_exit_status(tmp);
 		} while ((ret < 0 && errno == EINTR) || ret > 0);
 
 		if (exit_status)
 			_exit(exit_status);
-
 		return;
+	}
+	if (delay > 0) {
+		ndebugf("Sleeping for %d seconds before executing command", delay);
+		sleep(delay);
+	}
+
+	reset_oom_adjust();
+
+	execv(args[0], args);
+
+	_exit(EXIT_FAILURE);
+}
+
+void do_exit_command()
+{
+	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
+		_pexit("Failed to reset signal for SIGCHLD");
 	}
 
 	/* Count the additional args, if any.  */
@@ -214,18 +268,9 @@ void do_exit_command()
 			args[n_args + 1] = opt_exit_args[n_args];
 	args[n_args + 1] = NULL;
 
-	if (opt_exit_delay) {
-		ndebugf("Sleeping for %d seconds before executing exit command", opt_exit_delay);
-		sleep(opt_exit_delay);
-	}
-
-	reset_oom_adjust();
-
-	execv(opt_exit_command, args);
-
-	/* Should not happen, but better be safe. */
-	_exit(EXIT_FAILURE);
+	execute_command(args, opt_exit_delay, true);
 }
+
 
 void reap_children()
 {
