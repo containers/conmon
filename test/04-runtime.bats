@@ -12,146 +12,92 @@ teardown() {
     cleanup_test_env
 }
 
-@test "runtime: simple runtime test" {
-    # Run conmon which will create and manage the container
-    # Using a timeout to prevent hanging
+# Helper function to wait until "runc state $cid" returns expected status.
+wait_for_runtime_status() {
+    local cid=$1
+    local expected_status=$2
+    local how_long=5
+
+    t1=$(expr $SECONDS + $how_long)
+    while [ $SECONDS -lt $t1 ]; do
+        run_runtime state "$cid"
+        echo "$output"
+        if expr "$output" : ".*status\": \"$expected_status"; then
+            return
+        fi
+        sleep 0.5
+    done
+
+    die "timed out waiting for '$expected_status' from $cid"
+}
+
+# Helper function to run conmon with basic options
+run_conmon_with_default_args() {
+    local extra_args=("$@")
     timeout 30s "$CONMON_BINARY" \
         --cid "$CTR_ID" \
         --cuuid "$CTR_ID" \
         --runtime "$RUNTIME_BINARY" \
-        --log-path "k8s-file:$LOG_PATH" \
         --bundle "$BUNDLE_PATH" \
         --socket-dir-path "$SOCKET_PATH" \
-        --log-level debug \
+        --log-level trace \
         --container-pidfile "$PID_FILE" \
-        --conmon-pidfile "$CONMON_PID_FILE" &
+        --conmon-pidfile "$CONMON_PID_FILE" "${extra_args[@]}"
 
-    local conmon_pid=$!
-
-    # Give conmon time to start up and run the container
-    sleep 2
-
-    # Check if conmon is still running or completed
-    if kill -0 $conmon_pid 2>/dev/null; then
-        # Kill conmon if it's still running
-        kill $conmon_pid 2>/dev/null || true
-        wait $conmon_pid 2>/dev/null || true
-    fi
-
-    # Check that log file was created
-    [ -f "$LOG_PATH" ]
+    # Wait until the container is created
+    wait_for_runtime_status "$CTR_ID" created
 
     # Check that conmon pidfile was created
     [ -f "$CONMON_PID_FILE" ]
+
+    # Start the container and wait until it is stopped.
+    run_runtime start "$CTR_ID"
+    wait_for_runtime_status "$CTR_ID" stopped
+}
+
+@test "runtime: simple runtime test" {
+    run_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
+
+    # Check that log file was created
+    [ -f "$LOG_PATH" ]
+    run cat "$LOG_PATH"
+    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the log"
 }
 
 @test "runtime: container execution with different log drivers" {
     # Test with journald log driver
-    timeout 30s "$CONMON_BINARY" \
-        --cid "$CTR_ID" \
-        --cuuid "$CTR_ID" \
-        --runtime "$RUNTIME_BINARY" \
-        --log-path "journald:" \
-        --bundle "$BUNDLE_PATH" \
-        --socket-dir-path "$SOCKET_PATH" \
-        --container-pidfile "$PID_FILE" \
-        --conmon-pidfile "$CONMON_PID_FILE" &
+    run_conmon_with_default_args --log-path "journald:"
 
-    local conmon_pid=$!
-    sleep 2
-
-    if kill -0 $conmon_pid 2>/dev/null; then
-        kill $conmon_pid 2>/dev/null || true
-        wait $conmon_pid 2>/dev/null || true
-    fi
-
-    # Check that conmon pidfile was created
-    [ -f "$CONMON_PID_FILE" ]
+    run journalctl --user CONTAINER_ID_FULL="$CTR_ID"
+    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the journald"
 }
 
 @test "runtime: container execution with multiple log drivers" {
     # Test with both k8s-file and journald log drivers
-    timeout 30s "$CONMON_BINARY" \
-        --cid "$CTR_ID" \
-        --cuuid "$CTR_ID" \
-        --runtime "$RUNTIME_BINARY" \
-        --log-path "k8s-file:$LOG_PATH" \
-        --log-path "journald:" \
-        --bundle "$BUNDLE_PATH" \
-        --socket-dir-path "$SOCKET_PATH" \
-        --container-pidfile "$PID_FILE" \
-        --conmon-pidfile "$CONMON_PID_FILE" &
-
-    local conmon_pid=$!
-    sleep 2
-
-    if kill -0 $conmon_pid 2>/dev/null; then
-        kill $conmon_pid 2>/dev/null || true
-        wait $conmon_pid 2>/dev/null || true
-    fi
+    run_conmon_with_default_args --log-path "k8s-file:$LOG_PATH" --log-path "journald:"
 
     # Check that log file was created
     [ -f "$LOG_PATH" ]
 
-    # Check that conmon pidfile was created
-    [ -f "$CONMON_PID_FILE" ]
+    run cat "$LOG_PATH"
+    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the log"
+
+    run journalctl --user CONTAINER_ID_FULL="$CTR_ID"
+    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the journald"
 }
 
 @test "runtime: container with log size limit" {
     # Test container execution with log rotation
-    local log_size_max=1024
+    # This effectively keeps just the last line at max.
+    local log_size_max=10
 
-    timeout 30s "$CONMON_BINARY" \
-        --cid "$CTR_ID" \
-        --cuuid "$CTR_ID" \
-        --runtime "$RUNTIME_BINARY" \
-        --log-path "k8s-file:$LOG_PATH" \
-        --log-size-max "$log_size_max" \
-        --bundle "$BUNDLE_PATH" \
-        --socket-dir-path "$SOCKET_PATH" \
-        --container-pidfile "$PID_FILE" \
-        --conmon-pidfile "$CONMON_PID_FILE" &
-
-    local conmon_pid=$!
-    sleep 2
-
-    if kill -0 $conmon_pid 2>/dev/null; then
-        kill $conmon_pid 2>/dev/null || true
-        wait $conmon_pid 2>/dev/null || true
-    fi
+    run_conmon_with_default_args --log-path "k8s-file:$LOG_PATH" --log-size-max "$log_size_max"
 
     # Check that log file was created
     [ -f "$LOG_PATH" ]
 
-    # Check that conmon pidfile was created
-    [ -f "$CONMON_PID_FILE" ]
-}
-
-@test "runtime: container cleanup on completion" {
-    # Create and run a container, then verify cleanup
-    timeout 30s "$CONMON_BINARY" \
-        --cid "$CTR_ID" \
-        --cuuid "$CTR_ID" \
-        --runtime "$RUNTIME_BINARY" \
-        --log-path "k8s-file:$LOG_PATH" \
-        --bundle "$BUNDLE_PATH" \
-        --socket-dir-path "$SOCKET_PATH" \
-        --container-pidfile "$PID_FILE" \
-        --conmon-pidfile "$CONMON_PID_FILE" &
-
-    local conmon_pid=$!
-    sleep 2
-
-    if kill -0 $conmon_pid 2>/dev/null; then
-        kill $conmon_pid 2>/dev/null || true
-        wait $conmon_pid 2>/dev/null || true
-    fi
-
-    # Check that log file was created
-    [ -f "$LOG_PATH" ]
-
-    # Check that conmon pidfile was created
-    [ -f "$CONMON_PID_FILE" ]
+    run cat "$LOG_PATH"
+    assert "${output}" !~ "hello from busybox 11"  "'hello from busybox 11' not in the logs"
 }
 
 @test "runtime: invalid runtime binary should fail" {
