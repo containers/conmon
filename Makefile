@@ -76,8 +76,23 @@ test-binary: bin/conmon
 	CONMON_BINARY="$(MAKEFILE_PATH)bin/conmon" test/run-tests.sh
 
 .PHONY: test
-test: bin/conmon
-	CONMON_BINARY="$(MAKEFILE_PATH)bin/conmon" test/run-tests.sh
+test: test-binary
+
+.PHONY: test-coverage
+test-coverage: DEBUGFLAG += --coverage
+test-coverage: clean test-binary
+	@echo "=== Coverage Summary ==="
+	@if command -v gcovr >/dev/null 2>&1; then \
+		gcovr -r . --txt-metric=branch || true; \
+	else \
+		echo "WARNING: gcovr not found in PATH, falling back to gcov."; \
+		for file in src/*.c; do \
+			gcov "$$file" 2>/dev/null \
+			| grep -E '(^File|^Lines executed)' \
+			| paste - - \
+			| sed "s|File 'src/\([^.]*\)\.c'.*Lines executed:\([0-9.]*%\).*|\1.c: \2|"; \
+		done | grep -E '\.c: [0-9]' | sort; \
+	fi
 
 bin:
 	mkdir -p bin
@@ -90,7 +105,7 @@ docs:
 
 .PHONY: clean
 clean:
-	rm -rf bin/ src/*.o
+	rm -rf bin/ src/*.o src/*.gcno src/*.gcda *.gcov
 	$(MAKE) -C docs clean
 
 .PHONY: install install.bin install.crio install.podman podman crio
