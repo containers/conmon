@@ -92,10 +92,11 @@ build_task:
 # Test coverage
 coverage_task:
     # Runs within Cirrus's "community cluster"
-    container:
-        image: "${FEDORA_CONTAINER_FQIN}"
+    gce_instance:
+        image_name: "${FEDORA_CACHE_IMAGE_NAME}"
         cpu: 1
         memory: 4
+        disk: 200
 
     script:
         - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel gcovr
