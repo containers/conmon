@@ -95,10 +95,62 @@ cleanup_tmpdir() {
     fi
 }
 
+# Generate process.json
+generate_process_spec() {
+    local command="$1"
+    if [[ -z "$command" ]]; then
+        command="for i in \$(/busybox seq 1 100); do /busybox echo \\\"hello from busybox \$i\\\"; done"
+    fi
+    if [[ -z "$BUNDLE_PATH" || ! -e "$BUNDLE_PATH" ]]; then
+        die "The BUNDLE_PATH directory does not exist. Ensure 'generate_process_spec'" \
+        " is called after the 'setup_test_env'"
+    fi
+    local config_path="$BUNDLE_PATH/process.json"
+
+    cat > "$config_path" << EOF
+{
+    "terminal": false,
+    "user": {
+        "uid": 0,
+        "gid": 0
+    },
+    "args": [
+        "/busybox",
+        "sh",
+        "-c",
+        "$command"
+    ],
+    "env": [
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    ],
+    "cwd": "/",
+    "capabilities": {
+        "bounding": [],
+        "effective": [],
+        "inheritable": [],
+        "permitted": [],
+        "ambient": []
+    },
+    "rlimits": [
+        {
+            "type": "RLIMIT_NOFILE",
+            "hard": 1024,
+            "soft": 1024
+        }
+    ],
+    "noNewPrivileges": true
+}
+EOF
+}
+
 # Generate OCI runtime configuration
 generate_runtime_config() {
     local bundle_path="$1"
     local rootfs="$2"
+    local command="$3"
+    if [[ -z "$command" ]]; then
+        command="for i in \$(/busybox seq 1 100); do /busybox echo \\\"hello from busybox \$i\\\"; done"
+    fi
     local config_path="$bundle_path/config.json"
 
     # Make rootfs path relative to bundle
@@ -123,7 +175,7 @@ generate_runtime_config() {
             "/busybox",
             "sh",
             "-c",
-            "for i in \$(/busybox seq 1 100); do /busybox echo \"hello from busybox \$i\"; done"
+            "$command"
         ],
         "env": [
             "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -242,10 +294,12 @@ setup_test_env() {
     export BUNDLE_PATH="$TEST_TMPDIR"
     export ROOTFS="$TEST_TMPDIR/rootfs"
     export SOCKET_PATH="$TEST_TMPDIR"
+    export ATTACH_PATH="$TEST_TMPDIR/attach"
 }
 
 # Setup full container environment with busybox
 setup_container_env() {
+    local command="$1"
     setup_test_env
 
     # Cache busybox binary for container tests
@@ -269,7 +323,7 @@ setup_container_env() {
     echo "root:x:0:" > "$ROOTFS/etc/group"
 
     # Generate OCI runtime configuration
-    generate_runtime_config "$BUNDLE_PATH" "$ROOTFS"
+    generate_runtime_config "$BUNDLE_PATH" "$ROOTFS" "$command"
 }
 
 # Cleanup test environment
@@ -315,9 +369,76 @@ assert_stderr_contains() {
     fi
 }
 
+# Helper function to wait until "runc state $cid" returns expected status.
+wait_for_runtime_status() {
+    local cid=$1
+    local expected_status=$2
+    local how_long=5
+
+    t1=$(expr $SECONDS + $how_long)
+    while [ $SECONDS -lt $t1 ]; do
+        run_runtime state "$cid"
+        echo "$output"
+        if expr "$output" : ".*status\": \"$expected_status"; then
+            return
+        fi
+        sleep 0.5
+    done
+
+    die "timed out waiting for '$expected_status' from $cid"
+}
+
+# Helper function to start conmon with default arguments.
+# Additional conmon arguments can be passed to this function.
+start_conmon_with_default_args() {
+    local extra_args=("$@")
+    timeout 10s "$CONMON_BINARY" \
+        --cid "$CTR_ID" \
+        --cuuid "$CTR_ID" \
+        --runtime "$RUNTIME_BINARY" \
+        --bundle "$BUNDLE_PATH" \
+        --socket-dir-path "$SOCKET_PATH" \
+        --log-level trace \
+        --container-pidfile "$PID_FILE" \
+        --syslog \
+        --conmon-pidfile "$CONMON_PID_FILE" "${extra_args[@]}"
+
+    # Wait until the container is created
+    wait_for_runtime_status "$CTR_ID" created
+
+    # Check that conmon pidfile was created
+    [ -f "$CONMON_PID_FILE" ]
+
+    # Start the container and wait until it really starts.
+    run_runtime start "$CTR_ID"
+}
+
+# Helper function to run conmon with default arguments and wait until it is stopped.
+# Additional conmon arguments can be passed to this function.
+run_conmon_with_default_args() {
+    start_conmon_with_default_args "$@"
+    wait_for_runtime_status "$CTR_ID" stopped
+}
+
+# Helper function ensuring the file does not exist.
+assert_file_not_exists() {
+    FILE=$1
+    if [ -e "$FILE" ]; then
+        die "$(date): File $FILE exists."
+    fi
+}
+
+# Helper function ensuring the file does exist.
+assert_file_exists() {
+    FILE=$1
+    if [ ! -e "$FILE" ]; then
+        die "$(date): File $FILE does not exist."
+    fi
+}
+
 # bail-now is how we terminate a test upon assertion failure.
 # By default, and the vast majority of the time, it just triggers
-# immediate test termination; but see defer-assertion-failures, below.
+# immediate test termination;
 function bail-now() {
     # "false" does not apply to "bail now"! It means "nonzero exit",
     # which BATS interprets as "yes, bail immediately".
