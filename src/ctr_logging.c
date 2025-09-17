@@ -91,6 +91,7 @@ static ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const
 static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf);
 static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
 static void reopen_k8s_file(void);
+static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority, const char **message_start);
 
 
 gboolean logging_is_passthrough(void)
@@ -308,6 +309,49 @@ bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
 }
 
 
+/*
+ * parse_priority_prefix checks if the buffer starts with a systemd priority prefix
+ * in the format <N> where N is a digit 0-7. If found, it extracts the priority
+ * and returns a pointer to the message content after the prefix.
+ *
+ * Returns:
+ *  1 if priority prefix was found and parsed
+ *  0 if no valid priority prefix was found
+ * -1 on error (invalid parameters)
+ */
+static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority, const char **message_start)
+{
+	if (!buf || !priority || !message_start) {
+		return -1;
+	}
+
+	/* Need at least 3 characters for <N> pattern */
+	if (buflen < 3) {
+		return 0;
+	}
+
+	/* Check for minimum pattern: <N> where N is 0-7 */
+	if (buf[0] != '<') {
+		return 0;
+	}
+
+	/* Check if second character is a valid priority digit (0-7) */
+	if (buf[1] < '0' || buf[1] > '7') {
+		return 0;
+	}
+
+	/* Check for closing bracket */
+	if (buf[2] != '>') {
+		return 0;
+	}
+
+	/* Extract the priority */
+	*priority = buf[1] - '0';
+	*message_start = buf + 3;
+
+	return 1;
+}
+
 /* write to systemd journal. If the pipe is stdout, write with notice priority,
  * otherwise, write with error priority. Partial lines (that don't end in a newline) are buffered
  * between invocations. A 0 buflen argument forces a buffered partial line to be flushed.
@@ -322,13 +366,13 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 	char *partial_buf;
 	size_t *partial_buf_len;
 
-	/* Since we know the priority values for the journal (6 being log info and 3 being log err
-	 * we can set it statically here. This will also save on runtime, at the expense of needing
-	 * to be changed if this convention is changed.
+	/* Default priority values: 6 (info) for stdout, 3 (err) for stderr
+	 * These may be overridden by systemd priority prefixes in the message.
 	 */
-	const char *message_priority = "PRIORITY=6";
+	int default_priority = (pipe == STDERR_PIPE) ? 3 : 6;
+	char priority_str[PRIORITY_EQ_LEN + 2]; /* "PRIORITY=" + digit + null terminator */
+
 	if (pipe == STDERR_PIPE) {
-		message_priority = "PRIORITY=3";
 		partial_buf = stderr_partial_buf;
 		partial_buf_len = &stderr_partial_buf_len;
 	} else {
@@ -352,14 +396,37 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 			return 0;
 		}
 
-		ssize_t msg_len = line_len + MESSAGE_EQ_LEN + *partial_buf_len;
-		partial_buf[*partial_buf_len] = '\0';
+		/* Check for systemd priority prefix in the message */
+		int parsed_priority = default_priority;
+		const char *actual_message_start = NULL;
+		ssize_t actual_message_len = line_len;
+
+		/* Try to parse priority prefix from the complete message */
+		if (*partial_buf_len == 0 && line_len > 0) {
+			/* Only check for priority prefix at the start of a new line */
+			int parse_result = parse_priority_prefix(buf, line_len, &parsed_priority, &actual_message_start);
+			if (parse_result == 1) {
+				/* Priority prefix found, adjust message content */
+				actual_message_len = line_len - (actual_message_start - buf);
+			} else {
+				/* No priority prefix, use full message */
+				actual_message_start = buf;
+			}
+		} else {
+			/* Use full message when dealing with partial buffers */
+			actual_message_start = buf;
+		}
+
+		ssize_t msg_len = actual_message_len + MESSAGE_EQ_LEN + *partial_buf_len;
 
 		_cleanup_free_ char *message = g_malloc(msg_len);
 
 		memcpy(message, "MESSAGE=", MESSAGE_EQ_LEN);
 		memcpy(message + MESSAGE_EQ_LEN, partial_buf, *partial_buf_len);
-		memcpy(message + MESSAGE_EQ_LEN + *partial_buf_len, buf, line_len);
+		memcpy(message + MESSAGE_EQ_LEN + *partial_buf_len, actual_message_start, actual_message_len);
+
+		/* Format the priority string */
+		snprintf(priority_str, sizeof(priority_str), "PRIORITY=%d", parsed_priority);
 
 		if (writev_buffer_append_segment_no_flush(&bufv, message, msg_len) < 0)
 			return -1;
@@ -367,7 +434,7 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 		if (writev_buffer_append_segment_no_flush(&bufv, container_id_full, cuuid_len + CID_FULL_EQ_LEN) < 0)
 			return -1;
 
-		if (writev_buffer_append_segment_no_flush(&bufv, message_priority, PRIORITY_EQ_LEN) < 0)
+		if (writev_buffer_append_segment_no_flush(&bufv, priority_str, strlen(priority_str)) < 0)
 			return -1;
 
 		if (writev_buffer_append_segment_no_flush(&bufv, container_id, TRUNC_ID_LEN + CID_EQ_LEN) < 0)
