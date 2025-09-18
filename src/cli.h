@@ -47,6 +47,9 @@ extern gboolean opt_sync;
 extern char *opt_sdnotify_socket;
 extern char *opt_seccomp_notify_socket;
 extern char *opt_seccomp_notify_plugins;
+extern gboolean opt_log_rotate;
+extern int opt_log_max_files;
+extern gchar **opt_log_allowlist_dirs;
 extern GOptionEntry opt_entries[];
 extern gboolean opt_full_attach_path;
 

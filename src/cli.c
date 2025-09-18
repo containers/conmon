@@ -11,6 +11,7 @@
 #ifdef __linux__
 #include <linux/limits.h>
 #endif
+#include <limits.h>
 
 gboolean opt_version = FALSE;
 gboolean opt_terminal = FALSE;
@@ -57,6 +58,9 @@ char *opt_sdnotify_socket = NULL;
 gboolean opt_full_attach_path = FALSE;
 char *opt_seccomp_notify_socket = NULL;
 char *opt_seccomp_notify_plugins = NULL;
+gboolean opt_log_rotate = FALSE;
+int opt_log_max_files = 1;
+gchar **opt_log_allowlist_dirs = NULL;
 GOptionEntry opt_entries[] = {
 	{"api-version", 0, 0, G_OPTION_ARG_NONE, &opt_api_version, "Conmon API version to use", NULL},
 	{"bundle", 'b', 0, G_OPTION_ARG_STRING, &opt_bundle_path, "Location of the OCI Bundle path", NULL},
@@ -117,6 +121,10 @@ GOptionEntry opt_entries[] = {
 	 "Path to the socket where the seccomp notification fd is received", NULL},
 	{"seccomp-notify-plugins", 0, 0, G_OPTION_ARG_STRING, &opt_seccomp_notify_plugins,
 	 "Plugins to use for managing the seccomp notifications", NULL},
+	{"log-rotate", 0, 0, G_OPTION_ARG_NONE, &opt_log_rotate, "Enable log rotation instead of truncation when log-size-max is reached",
+	 NULL},
+	{"log-max-files", 0, 0, G_OPTION_ARG_INT, &opt_log_max_files, "Number of backup log files to keep (default: 1)", NULL},
+	{"log-allowlist-dir", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_log_allowlist_dirs, "Allowed log directory", NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 
@@ -137,6 +145,21 @@ int initialize_cli(int argc, char *argv[])
 	if (opt_version) {
 		g_print("conmon version " VERSION "\ncommit: " GIT_COMMIT "\n");
 		exit(EXIT_SUCCESS);
+	}
+
+	/* Validate log rotation parameters */
+	if (opt_log_max_files < 0) {
+		fprintf(stderr, "conmon: log-max-files must be non-negative, got %d\n", opt_log_max_files);
+		exit(EXIT_FAILURE);
+	}
+	if (opt_log_max_files > INT_MAX) {
+		fprintf(stderr, "conmon: log-max-files cannot exceed %d, got %d\n", INT_MAX, opt_log_max_files);
+		exit(EXIT_FAILURE);
+	}
+	/* When log rotation is enabled, ensure at least 1 backup file is configured */
+	if (opt_log_rotate && opt_log_max_files == 0) {
+		fprintf(stderr, "conmon: log-max-files must be at least 1 when log-rotate is enabled, got %d\n", opt_log_max_files);
+		exit(EXIT_FAILURE);
 	}
 
 	if (opt_cid == NULL) {
