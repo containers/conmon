@@ -20,6 +20,7 @@
 #include "close_fds.h"
 #include "seccomp_notify.h"
 #include "runtime_args.h"
+#include "healthcheck.h"
 
 #include <sys/stat.h>
 #include <locale.h>
@@ -46,13 +47,17 @@ int main(int argc, char *argv[])
 	_cleanup_close_ int dev_null_r_cleanup = -1;
 	_cleanup_close_ int dev_null_w_cleanup = -1;
 	_cleanup_close_ int dummyfd = -1;
-
 	int initialize_ec = initialize_cli(argc, argv);
 	if (initialize_ec >= 0) {
 		exit(initialize_ec);
 	}
 
 	process_cli();
+
+	/* Initialize healthcheck subsystem - always initialize for automatic discovery */
+	if (!healthcheck_init()) {
+		pexit("Failed to initialize healthcheck subsystem");
+	}
 
 	attempt_oom_adjust(-1000);
 
@@ -396,7 +401,6 @@ int main(int argc, char *argv[])
 	}
 
 	container_pid = atoi(contents);
-	ndebugf("container PID: %d", container_pid);
 
 	g_hash_table_insert(pid_to_handler, (pid_t *)&container_pid, container_exit_cb);
 
@@ -407,6 +411,38 @@ int main(int argc, char *argv[])
 	 */
 	if ((opt_api_version >= 1 || !opt_exec) && sync_pipe_fd >= 0)
 		write_or_close_sync_fd(&sync_pipe_fd, container_pid, NULL);
+
+	/* Configure healthcheck - automatic discovery from OCI config.json */
+	/* Only start healthcheck timers if explicitly enabled via CLI flag */
+	if (opt_bundle_path != NULL && opt_enable_healthcheck) {
+		healthcheck_config_t config;
+		memset(&config, 0, sizeof(config));
+
+		if (healthcheck_discover_from_oci_config(opt_bundle_path, &config)) {
+			healthcheck_timer_t *timer = healthcheck_timer_new(opt_cid, &config);
+			if (timer != NULL) {
+				if (healthcheck_timer_start(timer)) {
+					if (active_healthcheck_timers != NULL) {
+						hash_table_put(active_healthcheck_timers, opt_cid, timer);
+						ninfof("Started healthcheck for container %s", opt_cid);
+					} else {
+						nwarnf("Active healthcheck timers table is NULL");
+						healthcheck_timer_free(timer);
+					}
+				} else {
+					nwarnf("Failed to start healthcheck for container %s", opt_cid);
+					healthcheck_timer_free(timer);
+				}
+			} else {
+				nwarnf("Failed to create healthcheck timer for container %s", opt_cid);
+			}
+		} else {
+			nwarnf("Failed to discover healthcheck config from OCI bundle");
+		}
+
+		/* Always free the config, regardless of success or failure */
+		healthcheck_config_free(&config);
+	}
 
 #ifdef __linux__
 	setup_oom_handling(container_pid);
@@ -494,6 +530,9 @@ int main(int argc, char *argv[])
 	/* Close down the signalfd */
 	g_source_remove(signal_fd_tag);
 	close(signal_fd);
+
+	/* Cleanup healthcheck timers */
+	healthcheck_cleanup();
 
 	/*
 	 * Podman injects some fd's into the conmon process so that exposed ports are kept busy while

@@ -62,7 +62,7 @@ fedora_packaging_task:
             image: "${PRIOR_FEDORA_CONTAINER_FQIN}"
 
     script:
-        - dnf install -y rpm-build libseccomp-devel
+        - dnf install -y rpm-build libseccomp-devel json-c-devel
         - cd $CIRRUS_WORKING_DIR
         - make
         - make -f .rpmbuild/Makefile
@@ -84,7 +84,7 @@ build_task:
         disk: 200
 
     script:
-        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel
+        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel json-c-devel
         - cd $CIRRUS_WORKING_DIR
         - make
         - make test

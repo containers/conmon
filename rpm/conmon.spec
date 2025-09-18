@@ -29,6 +29,7 @@ Source0: %{url}/archive/v%{version}.tar.gz
 %if %{with docs}
 BuildRequires: go-md2man
 %endif
+BuildRequires: json-c-devel
 BuildRequires: gcc
 BuildRequires: git-core
 BuildRequires: glib2-devel

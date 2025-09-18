@@ -66,6 +66,7 @@ install_packages() {
         libfuse-dev \
         libgpgme11-dev \
         libglib2.0-dev \
+	libjson-c-dev \
         libnet1-dev \
         libnl-3-dev \
         libprotobuf-c-dev \

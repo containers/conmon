@@ -47,6 +47,7 @@ extern gboolean opt_sync;
 extern char *opt_sdnotify_socket;
 extern char *opt_seccomp_notify_socket;
 extern char *opt_seccomp_notify_plugins;
+extern gboolean opt_enable_healthcheck;
 extern GOptionEntry opt_entries[];
 extern gboolean opt_full_attach_path;
 

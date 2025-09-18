@@ -57,6 +57,7 @@ char *opt_sdnotify_socket = NULL;
 gboolean opt_full_attach_path = FALSE;
 char *opt_seccomp_notify_socket = NULL;
 char *opt_seccomp_notify_plugins = NULL;
+gboolean opt_enable_healthcheck = FALSE;
 GOptionEntry opt_entries[] = {
 	{"api-version", 0, 0, G_OPTION_ARG_NONE, &opt_api_version, "Conmon API version to use", NULL},
 	{"bundle", 'b', 0, G_OPTION_ARG_STRING, &opt_bundle_path, "Location of the OCI Bundle path", NULL},
@@ -117,6 +118,8 @@ GOptionEntry opt_entries[] = {
 	 "Path to the socket where the seccomp notification fd is received", NULL},
 	{"seccomp-notify-plugins", 0, 0, G_OPTION_ARG_STRING, &opt_seccomp_notify_plugins,
 	 "Plugins to use for managing the seccomp notifications", NULL},
+	{"enable-healthcheck", 0, 0, G_OPTION_ARG_NONE, &opt_enable_healthcheck,
+	 "Enable healthcheck functionality (for non-systemd environments)", NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 
