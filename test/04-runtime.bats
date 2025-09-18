@@ -12,49 +12,6 @@ teardown() {
     cleanup_test_env
 }
 
-# Helper function to wait until "runc state $cid" returns expected status.
-wait_for_runtime_status() {
-    local cid=$1
-    local expected_status=$2
-    local how_long=5
-
-    t1=$(expr $SECONDS + $how_long)
-    while [ $SECONDS -lt $t1 ]; do
-        run_runtime state "$cid"
-        echo "$output"
-        if expr "$output" : ".*status\": \"$expected_status"; then
-            return
-        fi
-        sleep 0.5
-    done
-
-    die "timed out waiting for '$expected_status' from $cid"
-}
-
-# Helper function to run conmon with basic options
-run_conmon_with_default_args() {
-    local extra_args=("$@")
-    timeout 30s "$CONMON_BINARY" \
-        --cid "$CTR_ID" \
-        --cuuid "$CTR_ID" \
-        --runtime "$RUNTIME_BINARY" \
-        --bundle "$BUNDLE_PATH" \
-        --socket-dir-path "$SOCKET_PATH" \
-        --log-level trace \
-        --container-pidfile "$PID_FILE" \
-        --conmon-pidfile "$CONMON_PID_FILE" "${extra_args[@]}"
-
-    # Wait until the container is created
-    wait_for_runtime_status "$CTR_ID" created
-
-    # Check that conmon pidfile was created
-    [ -f "$CONMON_PID_FILE" ]
-
-    # Start the container and wait until it is stopped.
-    run_runtime start "$CTR_ID"
-    wait_for_runtime_status "$CTR_ID" stopped
-}
-
 @test "runtime: simple runtime test" {
     run_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
 
