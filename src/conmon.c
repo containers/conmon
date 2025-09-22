@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
 		pexit("Failed to unblock signals");
 
 	/* Map pid to its handler.  */
-	_cleanup_hashtable_ GHashTable *pid_to_handler = g_hash_table_new(g_int_hash, g_int_equal);
+	_cleanup_(hashtable_free_cleanup) GHashTable *pid_to_handler = g_hash_table_new(g_int_hash, g_int_equal);
 	g_hash_table_insert(pid_to_handler, (pid_t *)&create_pid, runtime_exit_cb);
 
 	/* Register a handler via signalfd for handling SIGCHLD */

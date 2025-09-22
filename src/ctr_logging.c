@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <limits.h>
 
 // if the systemd development files were found, we can log to systemd
 #ifdef USE_JOURNALD
@@ -771,28 +772,471 @@ void reopen_log_files(void)
 	reopen_k8s_file();
 }
 
+/* Atomic symlink validation using file descriptors to prevent race conditions */
+static gboolean path_contains_symlinks_atomic(const char *canonical_path)
+{
+	_cleanup_free_ char *path_copy = NULL;
+	_cleanup_free_ char *component = NULL;
+	char *current_pos;
+	char *slash_pos;
+	int current_fd = AT_FDCWD;
+	int next_fd = -1;
+	struct stat path_stat;
+	gboolean result = FALSE;
+
+	if (!canonical_path)
+		return TRUE;
+
+	path_copy = g_strdup(canonical_path);
+	if (!path_copy)
+		return TRUE; /* Treat allocation failure as unsafe */
+
+	/* Start from root if absolute path */
+	if (path_copy[0] == '/') {
+		current_fd = open("/", O_PATH | O_CLOEXEC);
+		if (current_fd < 0)
+			return TRUE;
+		current_pos = path_copy + 1;
+	} else {
+		current_pos = path_copy;
+	}
+
+	/* Check each directory component atomically */
+	while (current_pos && *current_pos) {
+		slash_pos = strchr(current_pos, '/');
+		if (slash_pos)
+			*slash_pos = '\0';
+
+		/* Use fstatat to check component without following symlinks */
+		if (fstatat(current_fd, current_pos, &path_stat, AT_SYMLINK_NOFOLLOW) == 0) {
+			if (S_ISLNK(path_stat.st_mode)) {
+				result = TRUE;
+				goto cleanup;
+			}
+
+			/* If it's a directory, open it for next iteration */
+			if (S_ISDIR(path_stat.st_mode) && slash_pos) {
+				next_fd = openat(current_fd, current_pos, O_PATH | O_CLOEXEC);
+				if (next_fd < 0) {
+					result = TRUE; /* Treat access failure as unsafe */
+					goto cleanup;
+				}
+				if (current_fd != AT_FDCWD)
+					close(current_fd);
+				current_fd = next_fd;
+				next_fd = -1;
+			}
+		} else {
+			/* Component doesn't exist or access denied */
+			if (errno != ENOENT) {
+				result = TRUE; /* Treat access failure as unsafe */
+				goto cleanup;
+			}
+		}
+
+		if (slash_pos) {
+			*slash_pos = '/';
+			current_pos = slash_pos + 1;
+		} else {
+			break;
+		}
+	}
+
+cleanup:
+	if (current_fd != AT_FDCWD)
+		close(current_fd);
+	if (next_fd >= 0)
+		close(next_fd);
+	return result;
+}
+
+
+/* check if path is within allowlisted directories */
+static gboolean is_path_in_allowlist(const char *canonical_path)
+{
+	char **dir_iter;
+
+	if (!opt_log_allowlist_dirs)
+		return TRUE; /* No allowlist configured, allow all paths */
+
+	/* Check if canonical path starts with any allowed directory */
+	for (dir_iter = opt_log_allowlist_dirs; *dir_iter; dir_iter++) {
+		_cleanup_free_ char *allowed_canonical = NULL;
+
+		/* Skip empty entries */
+		if (strlen(*dir_iter) == 0)
+			continue;
+
+		/* Get canonical path of allowed directory */
+		allowed_canonical = realpath(*dir_iter, NULL);
+		if (!allowed_canonical) {
+			nwarnf("Invalid allowlist directory");
+			continue;
+		}
+
+		/* Check if log path is within this allowed directory */
+		if (g_str_has_prefix(canonical_path, allowed_canonical)) {
+			/* Ensure it's exactly the directory or a subdirectory */
+			size_t allowed_len = strlen(allowed_canonical);
+			if (canonical_path[allowed_len] == '\0' || canonical_path[allowed_len] == '/') {
+				return TRUE;
+			}
+		}
+	}
+
+	return FALSE;
+}
+
+/* Secure file descriptor validation to prevent TOCTOU attacks */
+static gboolean validate_fd_path_security(int fd, const char *expected_path)
+{
+	_cleanup_free_ char *fd_path = NULL;
+	_cleanup_free_ char *expected_canonical = NULL;
+	struct stat fd_stat, path_stat;
+	char proc_fd_path[64];
+	ssize_t link_len;
+
+	/* Get the actual path of the file descriptor */
+	snprintf(proc_fd_path, sizeof(proc_fd_path), "/proc/self/fd/%d", fd);
+	fd_path = g_malloc0(PATH_MAX);
+	link_len = readlink(proc_fd_path, fd_path, PATH_MAX - 1);
+	if (link_len < 0) {
+		nwarnf("Failed to read fd path: %m");
+		return FALSE;
+	}
+	fd_path[link_len] = '\0';
+
+	/* Get canonical path of expected file */
+	expected_canonical = realpath(expected_path, NULL);
+	if (!expected_canonical) {
+		nwarnf("Failed to canonicalize expected path %s: %m", expected_path);
+		return FALSE;
+	}
+
+	/* Compare paths */
+	if (strcmp(fd_path, expected_canonical) != 0) {
+		nwarnf("File descriptor path mismatch: expected %s, got %s", expected_canonical, fd_path);
+		return FALSE;
+	}
+
+	/* Validate file stats match */
+	if (fstat(fd, &fd_stat) != 0) {
+		nwarnf("Failed to stat file descriptor: %m");
+		return FALSE;
+	}
+
+	if (stat(expected_canonical, &path_stat) != 0) {
+		nwarnf("Failed to stat expected path: %m");
+		return FALSE;
+	}
+
+	/* Compare device and inode to ensure they're the same file */
+	if (fd_stat.st_dev != path_stat.st_dev || fd_stat.st_ino != path_stat.st_ino) {
+		nwarnf("File descriptor and path point to different files");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/* Secure path validation using file descriptors to prevent TOCTOU */
+static int secure_validate_log_path(const char *path)
+{
+	_cleanup_free_ char *canonical_path = NULL;
+	_cleanup_free_ char *parent_dir = NULL;
+	_cleanup_free_ char *basename = NULL;
+	int parent_fd = -1;
+	int result = -1;
+	struct stat path_stat;
+
+	if (!path || strlen(path) == 0)
+		return -1;
+
+	/* Prevent excessively long paths */
+	if (strlen(path) >= PATH_MAX)
+		return -1;
+
+	/* Check for directory traversal patterns */
+	if (strstr(path, "../") || strstr(path, "/.."))
+		return -1;
+
+	/* Get parent directory for openat() operations */
+	parent_dir = g_path_get_dirname(path);
+	basename = g_path_get_basename(path);
+	if (!parent_dir || !basename)
+		return -1;
+
+	/* Open parent directory with O_PATH for safe operations */
+	parent_fd = open(parent_dir, O_PATH | O_CLOEXEC);
+	if (parent_fd < 0)
+		return -1;
+
+	/* Use fstatat to check if file exists and get its properties */
+	if (fstatat(parent_fd, basename, &path_stat, AT_SYMLINK_NOFOLLOW) == 0) {
+		/* File exists - check if it's a symlink */
+		if (S_ISLNK(path_stat.st_mode)) {
+			nwarnf("Log path is a symbolic link");
+			goto cleanup;
+		}
+		/* Return the parent fd for atomic operations */
+		result = parent_fd;
+		parent_fd = -1; /* Transfer ownership */
+	} else if (errno == ENOENT) {
+		/* File doesn't exist - validate parent directory security comprehensively */
+		struct stat parent_stat;
+
+		/* Check parent directory permissions and ownership */
+		if (fstat(parent_fd, &parent_stat) != 0) {
+			nwarnf("Failed to stat parent directory: %m");
+			goto cleanup;
+		}
+
+		/* Validate parent directory permissions are not world-writable */
+		if (parent_stat.st_mode & S_IWOTH) {
+			nwarnf("Parent directory is world-writable, security risk: %s", parent_dir);
+			goto cleanup;
+		}
+
+		/* Additional security check: ensure parent directory is not owned by suspicious UIDs */
+		if (parent_stat.st_uid == 0 || parent_stat.st_uid == getuid() || parent_stat.st_uid == geteuid()) {
+			/* Acceptable ownership */
+		} else {
+			nwarnf("Parent directory owned by unexpected UID %d: %s", parent_stat.st_uid, parent_dir);
+			goto cleanup;
+		}
+
+		canonical_path = realpath(parent_dir, NULL);
+		if (!canonical_path)
+			goto cleanup;
+
+		/* Check allowlist if configured */
+		if (opt_log_allowlist_dirs && !is_path_in_allowlist(canonical_path)) {
+			nwarnf("Parent directory not in allowlist");
+			goto cleanup;
+		}
+
+		/* Check for symlinks in parent path using atomic validation */
+		if (path_contains_symlinks_atomic(canonical_path)) {
+			nwarnf("Parent path contains symlinks");
+			goto cleanup;
+		}
+
+
+		result = parent_fd;
+		parent_fd = -1; /* Transfer ownership */
+	}
+
+cleanup:
+	if (parent_fd >= 0)
+		close(parent_fd);
+	return result;
+}
+
+
+/* shift backup log files for rotation */
+static gboolean shift_backup_files(void)
+{
+	gboolean had_errors = FALSE;
+
+	/* Enhanced bounds checking to prevent integer overflow and underflow */
+	if (opt_log_max_files <= 0 || opt_log_max_files > INT_MAX) {
+		nwarnf("Invalid log_max_files value: %d", opt_log_max_files);
+		return FALSE;
+	}
+
+	/* Validate log path using secure validation */
+	int validation_fd = secure_validate_log_path(k8s_log_path);
+	if (validation_fd < 0) {
+		nwarnf("Invalid log path for rotation");
+		return FALSE;
+	}
+	close(validation_fd);
+
+	/* Shift existing backups from highest to lowest: .N-1 -> .N, .N-2 -> .N-1, etc. */
+	int loop_start = (opt_log_max_files > 1) ? opt_log_max_files : 2;
+
+	for (int i = loop_start; i >= 2; i--) {
+		_cleanup_free_ char *from = g_strdup_printf("%s.%d", k8s_log_path, i - 1);
+		_cleanup_free_ char *to = g_strdup_printf("%s.%d", k8s_log_path, i);
+
+		/* Verify string allocation succeeded */
+		if (!from || !to) {
+			nwarnf("Memory allocation failed during backup file shifting");
+			return FALSE;
+		}
+
+		/* Direct atomic rename - overwrites destination if it exists */
+		if (rename(from, to) != 0 && errno != ENOENT) {
+			nwarnf("Failed to shift backup file %s to %s: %m", from, to);
+			had_errors = TRUE;
+		}
+	}
+
+	/* Report success but warn if there were non-critical errors */
+	if (had_errors) {
+		nwarnf("Backup file shifting completed with some errors");
+	}
+
+	return TRUE;
+}
+
+
+/* Helper function to perform the actual file rotation */
+static gboolean perform_file_rotation(const char *temp_path, const char *backup_path)
+{
+	/* Rename current log to .1 */
+	if (rename(k8s_log_path, backup_path) < 0) {
+		nwarnf("Failed to rotate log file: %m");
+		return FALSE;
+	}
+
+	/* Move new file into place atomically */
+	if (rename(temp_path, k8s_log_path) < 0) {
+		nwarnf("Failed to move new log file into place: %m");
+		/* Try to restore the original file */
+		if (rename(backup_path, k8s_log_path) < 0) {
+			nwarnf("CRITICAL: Failed to restore original log file: %m");
+			nwarnf("Original log data may be in backup file");
+		}
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/* Helper function to clean up temporary files and file descriptors */
+static void cleanup_temp_file(int fd, const char *temp_path)
+{
+	if (fd >= 0) {
+		if (close(fd) < 0) {
+			nwarnf("Failed to close temporary file descriptor %d: %m", fd);
+		}
+	}
+	if (temp_path && strlen(temp_path) > 0) {
+		if (unlink(temp_path) < 0 && errno != ENOENT) {
+			nwarnf("Failed to remove temporary file: %m");
+		}
+	}
+}
+
+/* Validate rotation preconditions and acquire file lock */
+static int validate_and_lock_rotation(int *parent_fd)
+{
+	int old_fd = k8s_log_fd;
+	struct flock lock_info = {.l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0};
+
+	*parent_fd = secure_validate_log_path(k8s_log_path);
+	if (*parent_fd < 0) {
+		nwarnf("Cannot rotate: invalid log path");
+		return -1;
+	}
+
+	if (old_fd < 0) {
+		nwarnf("Cannot rotate: invalid file descriptor");
+		close(*parent_fd);
+		*parent_fd = -1;
+		return -1;
+	}
+
+	if (fcntl(old_fd, F_SETLK, &lock_info) == -1) {
+		nwarnf("Log file locked by another process, skipping rotation");
+		close(*parent_fd);
+		*parent_fd = -1;
+		return -1;
+	}
+
+	if (!validate_fd_path_security(old_fd, k8s_log_path)) {
+		nwarnf("File descriptor security validation failed");
+		return -1;
+	}
+
+	return old_fd;
+}
+
+/* Setup rotation file paths and create new log file */
+static int setup_rotation_files(int parent_fd, char **temp_path, char **backup_path)
+{
+	_cleanup_free_ char *basename = g_path_get_basename(k8s_log_path);
+	_cleanup_free_ char *temp_basename = NULL;
+
+	if (!basename || !(*temp_path = g_strdup_printf("%s.new", k8s_log_path)) || !(*backup_path = g_strdup_printf("%s.1", k8s_log_path))
+	    || !(temp_basename = g_strdup_printf("%s.new", basename))) {
+		nwarnf("Memory allocation failed for rotation paths");
+		return -1;
+	}
+
+	int new_fd = openat(parent_fd, temp_basename, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0640);
+	if (new_fd < 0) {
+		nwarnf("Failed to create new log file: %m");
+	}
+	return new_fd;
+}
+
+/* Simplified thread-safe rotation with file locking */
+static void rotate_k8s_file(void)
+{
+	int parent_fd = -1;
+	_cleanup_free_ char *temp_path = NULL;
+	_cleanup_free_ char *backup_path = NULL;
+
+	int old_fd = validate_and_lock_rotation(&parent_fd);
+	if (old_fd < 0)
+		return;
+
+	int new_fd = setup_rotation_files(parent_fd, &temp_path, &backup_path);
+	if (new_fd < 0)
+		goto cleanup;
+
+	if (!shift_backup_files() || !perform_file_rotation(temp_path, backup_path)) {
+		cleanup_temp_file(new_fd, temp_path);
+		goto cleanup;
+	}
+
+	/* Atomic state update */
+	struct flock unlock = {.l_type = F_UNLCK};
+	fcntl(old_fd, F_SETLK, &unlock);
+	close(old_fd);
+
+	k8s_log_fd = new_fd;
+	k8s_bytes_written = 0;
+	close(parent_fd);
+	return;
+
+cleanup:
+	if (parent_fd >= 0)
+		close(parent_fd);
+	unlock.l_type = F_UNLCK;
+	fcntl(old_fd, F_SETLK, &unlock);
+}
+
 /* reopen the k8s log file fd.  */
 static void reopen_k8s_file(void)
 {
 	if (!use_k8s_logging)
 		return;
 
-	_cleanup_free_ char *k8s_log_path_tmp = g_strdup_printf("%s.tmp", k8s_log_path);
+	if (opt_log_rotate) {
+		/* Use log rotation instead of truncation */
+		rotate_k8s_file();
+	} else {
+		/* Original truncation behavior for backward compatibility */
+		_cleanup_free_ char *k8s_log_path_tmp = g_strdup_printf("%s.tmp", k8s_log_path);
 
-	/* Close the current k8s_log_fd */
-	close(k8s_log_fd);
+		/* Close the current k8s_log_fd */
+		close(k8s_log_fd);
 
-	/* Open with O_TRUNC: reset bytes written */
-	k8s_bytes_written = 0;
+		/* Open with O_TRUNC: reset bytes written */
+		k8s_bytes_written = 0;
 
-	/* Open the log path file again */
-	k8s_log_fd = open(k8s_log_path_tmp, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0640);
-	if (k8s_log_fd < 0)
-		pexitf("Failed to open log file %s", k8s_log_path);
+		/* Open the log path file again */
+		k8s_log_fd = open(k8s_log_path_tmp, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0640);
+		if (k8s_log_fd < 0)
+			pexitf("Failed to open log file %s", k8s_log_path);
 
-	/* Replace the previous file */
-	if (rename(k8s_log_path_tmp, k8s_log_path) < 0) {
-		pexit("Failed to rename log file");
+		/* Replace the previous file */
+		if (rename(k8s_log_path_tmp, k8s_log_path) < 0) {
+			pexit("Failed to rename log file");
+		}
 	}
 }
 
