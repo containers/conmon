@@ -295,6 +295,8 @@ setup_test_env() {
     export ROOTFS="$TEST_TMPDIR/rootfs"
     export SOCKET_PATH="$TEST_TMPDIR"
     export ATTACH_PATH="$TEST_TMPDIR/attach"
+    export OCI_ATTACHSYNC_PATH="$TEST_TMPDIR/attach-sync"
+    export OCI_STARTPIPE_PATH="$TEST_TMPDIR/start-pipe"
 }
 
 # Setup full container environment with busybox
@@ -392,7 +394,7 @@ wait_for_runtime_status() {
 # Additional conmon arguments can be passed to this function.
 start_conmon_with_default_args() {
     local extra_args=("$@")
-    timeout 10s "$CONMON_BINARY" \
+    run timeout 10s "$CONMON_BINARY" \
         --cid "$CTR_ID" \
         --cuuid "$CTR_ID" \
         --runtime "$RUNTIME_BINARY" \
@@ -402,6 +404,20 @@ start_conmon_with_default_args() {
         --container-pidfile "$PID_FILE" \
         --syslog \
         --conmon-pidfile "$CONMON_PID_FILE" "${extra_args[@]}"
+
+    if [ "$status" -ne 0 ]; then
+        return
+    fi
+
+    # Do not start the container if it's already running. This can happen
+    # when `start_conmon_with_default_args` has already been called and this
+    # second call uses option like --exec which connects to already running
+    # container.
+    run_runtime state "$CTR_ID"
+    echo "$output"
+    if expr "$output" : ".*status\": \"running"; then
+        return
+    fi
 
     # Wait until the container is created
     wait_for_runtime_status "$CTR_ID" created
