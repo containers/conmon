@@ -79,3 +79,46 @@ teardown() {
     assert_success
     assert_output_contains "conmon version"
 }
+
+@test "runtime: simple test with _OCI_SYNCPIPE defined" {
+    start_oci_sync_pipe_reader
+    run_conmon_with_default_args \
+        --log-path "k8s-file:$LOG_PATH" 6>"$OCI_SYNCPIPE_PATH"
+
+    # Check that the pid is sent to the sync pipe.
+    assert_file_exists $TEST_TMPDIR/syncpipe-output
+    run cat $TEST_TMPDIR/syncpipe-output
+    CONTAINER_PID=$(cat "$PID_FILE")
+    assert "${output}" =~ "\"pid\": $CONTAINER_PID"
+}
+
+@test "runtime: runtime error with _OCI_SYNCPIPE defined" {
+    # This trailing " results in wrong config.json. We expect the runtime
+    # failure.
+    setup_container_env '"'
+    start_oci_sync_pipe_reader
+    run_conmon \
+        --cid "$CTR_ID" \
+        --cuuid "$CTR_ID" \
+        --runtime "$RUNTIME_BINARY" \
+        --log-path "k8s-file:$LOG_PATH" \
+        --bundle "$BUNDLE_PATH" \
+        --socket-dir-path "$SOCKET_PATH" \
+        --syslog \
+        --container-pidfile "$PID_FILE" \
+        --conmon-pidfile "$CONMON_PID_FILE" 6>"$OCI_SYNCPIPE_PATH"
+
+    # Give conmon some time to run the runtime and fail.
+    sleep 1
+
+    assert_file_exists $CONMON_PID_FILE
+    CONMON_PID=$(cat "$CONMON_PID_FILE")
+    wait $CONMON_PID_FILE 2>/dev/null || true
+
+    # Check that the error is sent to the sync pipe.
+    assert_file_exists $TEST_TMPDIR/syncpipe-output
+    run cat $TEST_TMPDIR/syncpipe-output
+    assert "${output}" =~ "\"pid\": -1"
+    assert "${output}" =~ "\"message\":"
+    assert "${output}" =~ "runc create failed"
+}

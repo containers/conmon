@@ -295,8 +295,9 @@ setup_test_env() {
     export ROOTFS="$TEST_TMPDIR/rootfs"
     export SOCKET_PATH="$TEST_TMPDIR"
     export ATTACH_PATH="$TEST_TMPDIR/attach"
-    export OCI_ATTACHSYNC_PATH="$TEST_TMPDIR/attach-sync"
+    export OCI_ATTACHPIPE_PATH="$TEST_TMPDIR/attach-pipe"
     export OCI_STARTPIPE_PATH="$TEST_TMPDIR/start-pipe"
+    export OCI_SYNCPIPE_PATH="$TEST_TMPDIR/sync-pipe"
 }
 
 # Setup full container environment with busybox
@@ -434,6 +435,45 @@ start_conmon_with_default_args() {
 run_conmon_with_default_args() {
     start_conmon_with_default_args "$@"
     wait_for_runtime_status "$CTR_ID" stopped
+}
+
+# Generic helper function to create pipe and read from it.
+_start_pipe_reader() {
+    local pipe_path=$1
+    local pipe_fd_env_name=$2
+    local pipe_fd_number=$3
+    local output_file=$4
+
+    # Create the pipe and export the env variable.
+    mkfifo "$pipe_path"
+    export "$pipe_fd_env_name"="$pipe_fd_number"
+
+    # Run the reader in the background, otherwise it would block until the
+    # conmon opens the other side of the pipe.
+    {
+        exec {r}<"$pipe_path"
+        while IFS= read -r -u "$r" line; do
+            echo "$line" >>$output_file
+        done
+    } &
+}
+
+# Helper function to create the _OCI_SYNCPIPE pipe and start the reader.
+# The data read from the pipe is stored in the $TEST_TMPDIR/syncpipe-output
+# file.
+# To pass the pipe to conmon, use the `6>"$OCI_SYNCPIPE_PATH"` as argument
+# to `run_conmon_with_default_args` or `start_conmon_with_default_args`.
+start_oci_sync_pipe_reader() {
+    _start_pipe_reader "$OCI_SYNCPIPE_PATH" "_OCI_SYNCPIPE" 6 "$TEST_TMPDIR/syncpipe-output"
+}
+
+# Helper function to create the _OCI_ATTACHPIPE pipe and start the reader.
+# The data read from the pipe is stored in the $TEST_TMPDIR/attachpipe-output
+# file.
+# To pass the pipe to conmon, use the `4>"$OCI_ATTACHPIPE_PATH"` as argument
+# to `run_conmon_with_default_args` or `start_conmon_with_default_args`.
+start_oci_attach_pipe_reader() {
+    _start_pipe_reader "$OCI_ATTACHPIPE_PATH" "_OCI_ATTACHPIPE" 4 "$TEST_TMPDIR/attachpipe-output"
 }
 
 # Helper function ensuring the file does not exist.
