@@ -147,7 +147,11 @@ EOF
 generate_runtime_config() {
     local bundle_path="$1"
     local rootfs="$2"
-    local command="$3"
+    local use_terminal="$3"
+    local command="$4"
+    if [[ -z "$use_terminal" ]]; then
+        use_terminal="false"
+    fi
     if [[ -z "$command" ]]; then
         command="for i in \$(/busybox seq 1 100); do /busybox echo \\\"hello from busybox \$i\\\"; done"
     fi
@@ -166,7 +170,7 @@ generate_runtime_config() {
 {
     "ociVersion": "1.0.0",
     "process": {
-        "terminal": false,
+        "terminal": $use_terminal,
         "user": {
             "uid": 0,
             "gid": 0
@@ -216,6 +220,29 @@ generate_runtime_config() {
                 "nosuid",
                 "nodev",
                 "mode=1777"
+            ]
+        },
+        {
+            "destination": "/dev",
+            "type": "tmpfs",
+            "source": "tmpfs",
+            "options": [
+                "nosuid",
+                "strictatime",
+                "mode=755",
+                "size=65536k"
+            ]
+        },
+        {
+            "destination": "/dev/pts",
+            "type": "devpts",
+            "source": "devpts",
+            "options": [
+                "nosuid",
+                "noexec",
+                "newinstance",
+                "ptmxmode=0666",
+                "mode=0620"
             ]
         }
     ],
@@ -298,11 +325,13 @@ setup_test_env() {
     export OCI_ATTACHPIPE_PATH="$TEST_TMPDIR/attach-pipe"
     export OCI_STARTPIPE_PATH="$TEST_TMPDIR/start-pipe"
     export OCI_SYNCPIPE_PATH="$TEST_TMPDIR/sync-pipe"
+    export CTL_PATH="$TEST_TMPDIR/ctl"
 }
 
 # Setup full container environment with busybox
 setup_container_env() {
     local command="$1"
+    local use_terminal="$2"
     setup_test_env
 
     # Cache busybox binary for container tests
@@ -326,7 +355,7 @@ setup_container_env() {
     echo "root:x:0:" > "$ROOTFS/etc/group"
 
     # Generate OCI runtime configuration
-    generate_runtime_config "$BUNDLE_PATH" "$ROOTFS" "$command"
+    generate_runtime_config "$BUNDLE_PATH" "$ROOTFS" "$use_terminal" "$command"
 }
 
 # Cleanup test environment
