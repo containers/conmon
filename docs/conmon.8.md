@@ -46,6 +46,9 @@ Delay before invoking the exit command (in seconds).
 **--exit-dir**
 Path to the directory where exit files are written.
 
+**--full-attach**
+Don't truncate the path to the attach socket. This option causes conmon to ignore --socket-dir-path.
+
 **-h**, **--help**
 Show help options.
 
@@ -73,6 +76,9 @@ the maximum size.
 
 **--log-size-max**
 Maximum size of the log file (in bytes).
+
+**--log-global-size-max**
+Maximum size of all log files combined (in bytes).
 
 **--log-tag**
 Additional tag to use for logging.
@@ -132,6 +138,9 @@ Enable systemd cgroup manager, rather than use the cgroupfs directly.
 
 **--socket-dir-path**
 Location of container attach sockets.
+
+**--sdnotify-socket**
+Path to the host's sd-notify socket to relay messages to.
 
 **--sync**
 Keep the main conmon process as its child by only forking once.
