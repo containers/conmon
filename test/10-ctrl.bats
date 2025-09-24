@@ -139,3 +139,33 @@ test_resize_command_ok() {
     # if big number is passed, it defaults to 24x80 size.
     test_resize_command_ok "1 65535 65535" "24 80"
 }
+
+@test "ctrl: rotate logs with --log-rotate" {
+    setup_container_env "/busybox echo 'before rotation'; while [ ! -f /tmp/test.txt ]; do /busybox sleep 0.1; done; /busybox echo 'after rotation'" "true"
+    generate_process_spec "echo 'Hello from exec!' && echo 'Hello there!' > /tmp/test.txt"
+    start_conmon_with_default_args \
+        --log-path "k8s-file:$LOG_PATH" \
+        -t \
+        --log-rotate
+    wait_for_runtime_status "$CTR_ID" running
+
+    # The control message should rotate the log
+    echo "2 1 1" > ${CTL_PATH}
+
+    run_conmon_with_default_args \
+        --log-path "k8s-file:$LOG_PATH.exec" \
+        --exec \
+        --exec-process-spec "${BUNDLE_PATH}/process.json"
+
+    assert_file_exists "$LOG_PATH.exec"
+    run cat "$LOG_PATH.exec"
+    assert "${output}" =~ "Hello from exec!"
+
+    assert_file_exists "$LOG_PATH.1"
+    run cat "$LOG_PATH.1"
+    assert "${output}" =~ "before rotation"
+
+    assert_file_exists "$LOG_PATH"
+    run cat "$LOG_PATH"
+    assert "${output}" =~ "after rotation"
+}
