@@ -72,6 +72,18 @@ exit:
 	mainfd_stdout = dup(console.fd);
 	if (mainfd_stdout < 0)
 		pexit("Failed to dup console file descriptor");
+	struct stat stat_s = {0};
+	int ret = fstat(mainfd_stdout, &stat_s);
+	if (ret < 0)
+		pexit("main stdout pipe fstat() failed");
+	if (S_ISFIFO(stat_s.st_mode)) {
+		ret = fcntl(mainfd_stdout, F_GETPIPE_SZ);
+		if (ret < 0)
+			pexit("main stdout pipe size determination failed");
+		mainfd_stdout_size = (size_t)ret;
+	} else {
+		mainfd_stdout_size = DEF_STDOUT_BUF_SIZE;
+	}
 
 	/* Now that we have a fd to the tty, make sure we handle any pending data
 	 * that was already buffered. */

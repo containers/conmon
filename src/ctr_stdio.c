@@ -112,13 +112,14 @@ static void drain_log_buffers(stdpipe_t pipe)
 
 static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 {
-	char buf[STDIO_BUF_SIZE];
+	size_t buf_size = ((pipe == STDOUT_PIPE) ? mainfd_stdout_size : mainfd_stderr_size);
+	char *buf = alloca(buf_size);
 	ssize_t num_read = 0;
 
 	if (eof)
 		*eof = false;
 
-	num_read = read(fd, buf, STDIO_BUF_SIZE);
+	num_read = read(fd, buf, buf_size);
 	if (num_read == 0) {
 		if (eof)
 			*eof = true;
