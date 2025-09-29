@@ -165,6 +165,10 @@ int main(int argc, char *argv[])
 				pexit("Failed to create !terminal stdin pipe");
 
 			mainfd_stdin = fds[1];
+			ret = fcntl(mainfd_stdin, F_GETPIPE_SZ);
+			if (ret < 0)
+				pexit("main stdin pipe size determination failed");
+			mainfd_stdin_size = (size_t)ret;
 			workerfd_stdin = fds[0];
 
 			if (g_unix_set_fd_nonblocking(mainfd_stdin, TRUE, NULL) == FALSE)
@@ -175,6 +179,10 @@ int main(int argc, char *argv[])
 			pexit("Failed to create !terminal stdout pipe");
 
 		mainfd_stdout = fds[0];
+		ret = fcntl(mainfd_stdout, F_GETPIPE_SZ);
+		if (ret < 0)
+			pexit("main stdout pipe size determination failed");
+		mainfd_stdout_size = (size_t)ret;
 		workerfd_stdout = fds[1];
 	}
 
@@ -194,6 +202,13 @@ int main(int argc, char *argv[])
 		pexit("Failed to create stderr pipe");
 
 	mainfd_stderr = fds[0];
+	ret = fcntl(mainfd_stderr, F_GETPIPE_SZ);
+	if (ret < 0)
+		pexit("main stderr pipe size determination failed");
+	mainfd_stderr_size = (size_t)ret;
+	if ((mainfd_stdout >= 0) && (mainfd_stderr_size != mainfd_stdout_size)) {
+		nwarn("main stderr and stdout pipe sizes don't match");
+	}
 	workerfd_stderr = fds[1];
 
 	GPtrArray *runtime_argv = configure_runtime_args(csname);

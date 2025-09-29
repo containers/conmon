@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "ctr_logging.h"
+#include "globals.h"
 #include "cli.h"
 #include "config.h"
 #include <ctype.h>
@@ -355,10 +356,18 @@ static int parse_priority_prefix(const char *buf, size_t buflen, int *priority, 
  */
 static int write_journald(int pipe, char *buf, size_t buflen)
 {
-	static char stdout_partial_buf[STDIO_BUF_SIZE];
+	static char *stdout_partial_buf = NULL;
 	static size_t stdout_partial_buf_len = 0;
-	static char stderr_partial_buf[STDIO_BUF_SIZE];
+	static char *stderr_partial_buf = NULL;
 	static size_t stderr_partial_buf_len = 0;
+	size_t buf_size = (pipe == STDOUT_PIPE ? mainfd_stdout_size : mainfd_stderr_size);
+
+	if (stdout_partial_buf == NULL) {
+		stdout_partial_buf = g_malloc(mainfd_stdout_size);
+	}
+	if (stderr_partial_buf == NULL) {
+		stderr_partial_buf = g_malloc(mainfd_stderr_size);
+	}
 
 	char *partial_buf;
 	size_t *partial_buf_len;
@@ -388,7 +397,7 @@ static int write_journald(int pipe, char *buf, size_t buflen)
 		/* If this is a partial line, and we have capacity to buffer it, buffer it and return.
 		 * The capacity of the partial_buf is one less than its size so that we can always add
 		 * a null terminating char later */
-		if (buflen && partial && ((unsigned long)line_len < (STDIO_BUF_SIZE - *partial_buf_len))) {
+		if (buflen && partial && ((unsigned long)line_len < (buf_size - *partial_buf_len))) {
 			memcpy(partial_buf + *partial_buf_len, buf, line_len);
 			*partial_buf_len += line_len;
 			return 0;
