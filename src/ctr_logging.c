@@ -77,6 +77,8 @@ static size_t container_tag_len;
 static char *syslog_identifier = NULL;
 static size_t syslog_identifier_len;
 
+#define WRITEV_BUFFER_N_IOV 128
+
 typedef struct {
 	int iovcnt;
 	struct iovec iov[WRITEV_BUFFER_N_IOV];
@@ -551,12 +553,6 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 			if (writev_buffer_flush(k8s_log_fd, &bufv) < 0) {
 				nwarn("failed to flush buffer to log");
 			}
-			/*
-			 * Always reset the buffer after rotation to ensure clean state
-			 * with the new file descriptor. Any unflushed data is lost, but
-			 * this prevents corruption of subsequent log entries.
-			 */
-			bufv.iovcnt = 0;
 			reopen_k8s_file();
 		}
 
@@ -629,29 +625,53 @@ static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen)
 
 static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf)
 {
-	size_t count = 0;
+	ssize_t count = 0;
+	int iovcnt = buf->iovcnt;
+	struct iovec *iov = buf->iov;
 
-	for (int i = 0; i < buf->iovcnt; i++) {
-		const char *ptr = buf->iov[i].iov_base;
-		size_t remaining = buf->iov[i].iov_len;
+	/*
+	 * By definition, flushing the buffers will either be entirely successful, or will fail at some point
+	 * along the way.  There is no facility to attempt to retry a writev() system call outside of an EINTR
+	 * errno.  Therefore, no matter the outcome, always reset the writev_buffer_t data structure.
+	 */
+	buf->iovcnt = 0;
 
-		while (remaining > 0) {
-			ssize_t written = write(fd, ptr, remaining);
-			if (written < 0) {
-				if (errno == EINTR)
-					continue;
-				return -1;
+	while (iovcnt > 0) {
+		ssize_t res;
+		do {
+			res = writev(fd, iov, iovcnt);
+		} while (res == -1 && errno == EINTR);
+
+		if (res <= 0) {
+			/*
+			 * Any unflushed data is lost (this would be a good place to add a counter for how many times
+			 * this occurs and another count for how much data is lost).
+			 *
+			 * Note that if writev() returns a 0, this logic considers it an error.
+			 */
+			return -1;
+		}
+
+		count += res;
+
+		while (res > 0) {
+			size_t iov_len = iov->iov_len;
+			size_t from_this = MIN((size_t)res, iov_len);
+			res -= from_this;
+			iov_len -= from_this;
+
+			if (iov_len == 0) {
+				iov++;
+				iovcnt--;
+				/* continue, res still > 0 */
+			} else {
+				iov->iov_len = iov_len;
+				iov->iov_base += from_this;
+				/* break, res is 0 */
 			}
-			if (written == 0)
-				return -1;
-
-			ptr += written;
-			remaining -= written;
-			count += written;
 		}
 	}
 
-	buf->iovcnt = 0;
 	return count;
 }
 
