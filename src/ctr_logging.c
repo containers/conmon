@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "ctr_logging.h"
+#include "ctr_logging_buffer.h"
 #include "cli.h"
 #include "config.h"
 #include <ctype.h>
@@ -761,6 +762,9 @@ static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 /* Force closing any open FD. */
 void close_logging_fds(void)
 {
+	/* Shutdown async logging system */
+	shutdown_async_logging();
+
 	if (k8s_log_fd >= 0)
 		close(k8s_log_fd);
 	k8s_log_fd = -1;
@@ -1243,6 +1247,9 @@ static void reopen_k8s_file(void)
 
 void sync_logs(void)
 {
+	/* Flush any buffered logs before syncing */
+	flush_log_buffer();
+
 	/* Sync the logs to disk */
 	if (k8s_log_fd > 0)
 		if (fsync(k8s_log_fd) < 0)
