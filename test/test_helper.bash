@@ -22,7 +22,31 @@ assert_failure() {
 # Default paths and variables
 CONMON_BINARY="${CONMON_BINARY:-/usr/bin/conmon}"
 RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
-BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-i686-uclibc/busybox"
+
+# Detect architecture and set appropriate busybox source
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)
+        BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-i686-uclibc/busybox"
+        ;;
+    aarch64|arm64)
+        BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-defconfig-multiarch-musl/busybox-armv8l"
+        ;;
+    ppc64le)
+        BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-defconfig-multiarch-musl/busybox-powerpc64"
+        ;;
+    ppc64)
+        BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-defconfig-multiarch-musl/busybox-powerpc64"
+        ;;
+    i?86)
+        BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-defconfig-multiarch-musl/busybox-i686"
+        ;;
+    *)
+        # Default to multiarch build for other architectures
+        BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-defconfig-multiarch-musl/busybox-${ARCH}"
+        ;;
+esac
+
 BUSYBOX_DEST_DIR="/tmp/conmon-test-images"
 BUSYBOX_DEST="/tmp/conmon-test-images/busybox"
 VALID_PATH="/tmp"
