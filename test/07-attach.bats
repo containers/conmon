@@ -5,7 +5,7 @@ load test_helper
 setup() {
     check_conmon_binary
     check_runtime_binary
-    setup_container_env "/busybox cat && echo 'Container stopped!'"
+    setup_container_env "cat && echo 'Container stopped!'"
 }
 
 teardown() {

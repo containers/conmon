@@ -5,7 +5,7 @@ load test_helper
 setup() {
     check_conmon_binary
     check_runtime_binary
-    setup_container_env "while [ ! -f /tmp/test.txt ]; do /busybox sleep 0.1; done; /busybox cat /tmp/test.txt"
+    setup_container_env "while [ ! -f /tmp/test.txt ]; do sleep 0.1; done; cat /tmp/test.txt"
     generate_process_spec "echo 'Hello from exec!' && echo 'Hello there!' > /tmp/test.txt"
 }
 

@@ -14,7 +14,7 @@ teardown() {
 
 @test "partial log: container with printf (no newline) generates F-sequence" {
     # Modify config to run printf instead of echo
-    jq '.process.args = ["/busybox", "printf", "hello world"]' "$BUNDLE_PATH/config.json" > "$BUNDLE_PATH/config.json.tmp"
+    jq '.process.args = ["/usr/bin/printf", "hello world"]' "$BUNDLE_PATH/config.json" > "$BUNDLE_PATH/config.json.tmp"
     mv "$BUNDLE_PATH/config.json.tmp" "$BUNDLE_PATH/config.json"
 
     # Run conmon
