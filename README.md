@@ -45,6 +45,7 @@ sudo yum install -y \
   glib2-devel \
   glibc-devel \
   libseccomp-devel \
+  systemd-devel \
   make \
   pkgconfig \
   runc
@@ -86,6 +87,17 @@ for most Linux distributions.
 Note, to run conmon, you'll also need to have an OCI compliant runtime
 installed, like [runc](https://github.com/opencontainers/runc) or
 [crun](https://github.com/containers/crun).
+
+## Testing
+
+Once you have successfully built `conmon`, run the tests using:
+
+``` shell
+make test
+```
+
+Note that you'll also need the `bats` and `socat` packages install if not
+present.
 
 ## Static build
 
