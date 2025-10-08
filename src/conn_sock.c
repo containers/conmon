@@ -39,7 +39,7 @@ static char *setup_socket(int *fd, const char *path);
   setup_attach_socket() is responsible for setting the correct remote FD and pushing it onto the queue.
 */
 static struct local_sock_s local_mainfd_stdin = {&mainfd_stdin, true, NULL, "container stdin", NULL};
-struct remote_sock_s remote_attach_sock = {
+static struct remote_sock_s remote_attach_sock = {
 	SOCK_TYPE_CONSOLE,   /* sock_type */
 	-1,		     /* fd */
 	&local_mainfd_stdin, /* dest */
@@ -349,31 +349,30 @@ char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 	return base_path;
 }
 
-
 void schedule_main_stdin_write()
 {
 	schedule_local_sock_write(&local_mainfd_stdin);
 }
 
-void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, int len)
+static void write_remote_sock(gpointer data, G_GNUC_UNUSED gpointer user_data)
+{
+	struct remote_sock_s *remote_sock = (struct remote_sock_s *)data;
+	if (!remote_sock->writable)
+		return;
+	writev_iov_t *iov = (writev_iov_t *)user_data;
+	if (writev_all(remote_sock->fd, iov) < 0) {
+		nwarn("Failed to write to remote console socket");
+		remote_sock_shutdown(remote_sock, SHUT_WR);
+	}
+}
+
+void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, size_t buflen)
 {
 	if (local_mainfd_stdin.readers == NULL)
 		return;
-
-	for (int i = local_mainfd_stdin.readers->len; i > 0; i--) {
-		struct remote_sock_s *remote_sock = g_ptr_array_index(local_mainfd_stdin.readers, i - 1);
-
-		if (remote_sock->writable) {
-			if (write_all(remote_sock->fd, &pipe, 1) < 0) {
-				nwarn("Failed to write to remote console socket");
-				remote_sock_shutdown(remote_sock, SHUT_WR);
-			}
-			if (write_all(remote_sock->fd, buf, len) < 0) {
-				nwarn("Failed to write to remote console socket");
-				remote_sock_shutdown(remote_sock, SHUT_WR);
-			}
-		}
-	}
+	struct iovec iov[2] = {{&pipe, 1}, {buf, buflen}};
+	writev_iov_t wviov = {2, 2, iov};
+	g_ptr_array_foreach(local_mainfd_stdin.readers, write_remote_sock, &wviov);
 }
 
 /* Internal */
