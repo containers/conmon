@@ -25,8 +25,8 @@ RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
 
 # UBI10-micro container image for test rootfs
 UBI10_MICRO_IMAGE="registry.access.redhat.com/ubi10/ubi-micro:latest"
-ROOTFS_CACHE_DIR="/tmp/conmon-test-images"
-ROOTFS_CACHE_MARKER="/tmp/conmon-test-images/.ubi10-micro-cached"
+ROOTFS_CACHE_DIR="/tmp/conmon-images"
+ROOTFS_CACHE_MARKER="/tmp/conmon-images/.ubi10-micro-cached"
 VALID_PATH="/tmp"
 INVALID_PATH="/not/a/path"
 
