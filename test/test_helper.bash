@@ -23,8 +23,8 @@ assert_failure() {
 CONMON_BINARY="${CONMON_BINARY:-/usr/bin/conmon}"
 RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
 BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-i686-uclibc/busybox"
-BUSYBOX_DEST_DIR="/tmp/conmon-test-images"
-BUSYBOX_DEST="/tmp/conmon-test-images/busybox"
+BUSYBOX_DEST_DIR="/tmp/conmon-busybox"
+BUSYBOX_DEST="${BUSYBOX_DEST_DIR}/busybox"
 VALID_PATH="/tmp"
 INVALID_PATH="/not/a/path"
 
