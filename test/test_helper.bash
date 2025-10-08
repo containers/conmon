@@ -25,8 +25,6 @@ RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
 
 # UBI10-micro container image for test rootfs
 UBI10_MICRO_IMAGE="registry.access.redhat.com/ubi10/ubi-micro:latest"
-ROOTFS_CACHE_DIR="/tmp/conmon-test-images"
-ROOTFS_CACHE_MARKER="/tmp/conmon-test-images/.ubi10-micro-cached"
 VALID_PATH="/tmp"
 INVALID_PATH="/not/a/path"
 
@@ -35,23 +33,12 @@ generate_ctr_id() {
     echo "conmon-test-$(date +%s)-$$-$RANDOM"
 }
 
-# Cache UBI10-micro rootfs for container tests
-cache_ubi10_rootfs() {
-    if [[ -f "$ROOTFS_CACHE_MARKER" ]]; then
-        return 0
-    fi
-
-    mkdir -p "$ROOTFS_CACHE_DIR"
-
+# Pull UBI10-micro rootfs for container tests
+pull_ubi10_rootfs() {
     # Pull UBI10-micro image if not already present
-    if ! podman image exists "$UBI10_MICRO_IMAGE" 2>/dev/null; then
-        if ! podman pull "$UBI10_MICRO_IMAGE" >/dev/null 2>&1; then
-            skip "Failed to pull UBI10-micro image"
-        fi
+    if ! podman pull --policy=newer "$UBI10_MICRO_IMAGE" >/dev/null 2>&1; then
+        skip "Failed to pull UBI10-micro image"
     fi
-
-    # Mark as cached
-    touch "$ROOTFS_CACHE_MARKER"
 }
 
 # Run conmon with given arguments and capture output
@@ -340,8 +327,8 @@ setup_container_env() {
     local use_terminal="$2"
     setup_test_env
 
-    # Cache UBI10-micro image
-    cache_ubi10_rootfs
+    # Pull UBI10-micro image
+    pull_ubi10_rootfs
 
     # Create the rootfs directory
     mkdir -p "$ROOTFS"
