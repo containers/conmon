@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	int start_pipe_fd = get_pipe_fd_from_env("_OCI_STARTPIPE");
 	if (start_pipe_fd > 0) {
 		/* Block for an initial write to the start pipe before
-		   spawning any childred or exiting, to ensure the
+		   spawning any children or exiting, to ensure the
 		   parent can put us in the right cgroup. */
 		num_read = read(start_pipe_fd, buf, BUF_SIZE);
 		if (num_read < 0) {
@@ -283,10 +283,10 @@ int main(int argc, char *argv[])
 			if (start_pipe_fd > 0) {
 				ndebug("exec with attach is waiting for start message from parent");
 				num_read = read(start_pipe_fd, buf, BUF_SIZE);
-				ndebug("exec with attach got start message from parent");
 				if (num_read < 0) {
 					_pexit("start-pipe read failed");
 				}
+				ndebug("exec with attach got start message from parent");
 				close(start_pipe_fd);
 			}
 		}
