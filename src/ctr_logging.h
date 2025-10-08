@@ -6,7 +6,7 @@
 #include <stdbool.h> /* bool */
 
 void reopen_log_files(void);
-bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read);
+bool write_to_logs(stdpipe_t pipe, char *buf, size_t buflen);
 void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t log_global_size_max_, char *cuuid_, char *name_, char *tag,
 			   gchar **labels);
 void sync_logs(void);

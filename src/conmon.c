@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 	umask(DEFAULT_UMASK);
 	_cleanup_gerror_ GError *err = NULL;
 	char buf[BUF_SIZE];
-	int num_read;
+	ssize_t num_read;
 	_cleanup_close_ int dev_null_r_cleanup = -1;
 	_cleanup_close_ int dev_null_w_cleanup = -1;
 	_cleanup_close_ int dummyfd = -1;
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		/* Block for an initial write to the start pipe before
 		   spawning any children or exiting, to ensure the
 		   parent can put us in the right cgroup. */
-		num_read = read(start_pipe_fd, buf, BUF_SIZE);
+		num_read = read(start_pipe_fd, buf, sizeof(buf));
 		if (num_read < 0) {
 			pexit("start-pipe read failed");
 		}
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
 		if (opt_attach) {
 			if (start_pipe_fd > 0) {
 				ndebug("exec with attach is waiting for start message from parent");
-				num_read = read(start_pipe_fd, buf, BUF_SIZE);
+				num_read = read(start_pipe_fd, buf, sizeof(buf));
 				if (num_read < 0) {
 					_pexit("start-pipe read failed");
 				}
@@ -370,7 +370,7 @@ int main(int argc, char *argv[])
 		 * Read from container stderr for any error and send it to parent
 		 * We send -1 as pid to signal to parent that create container has failed.
 		 */
-		num_read = read(mainfd_stderr, buf, BUF_SIZE - 1);
+		num_read = read(mainfd_stderr, buf, sizeof(buf) - 1);
 		const char *error_msg = NULL;
 		if (num_read > 0) {
 			buf[num_read] = '\0';
