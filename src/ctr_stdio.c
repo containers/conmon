@@ -138,11 +138,11 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 		nwarnf("stdio_input read failed: %m");
 		return false;
 	} else {
-		bool written = write_to_logs(pipe, buf, num_read);
+		bool written = write_to_logs(pipe, buf, (size_t)num_read);
 		if (!written)
 			return false;
 
-		write_back_to_remote_consoles(pipe, buf, num_read);
+		write_back_to_remote_consoles(pipe, buf, (size_t)num_read);
 		return true;
 	}
 }

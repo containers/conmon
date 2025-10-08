@@ -81,14 +81,14 @@ static size_t syslog_identifier_len;
 
 static void parse_log_path(char *log_config);
 static const char *stdpipe_name(stdpipe_t pipe);
-static int write_journald(int pipe, char *buf, ssize_t num_read);
-static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen);
-static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen);
-static ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, ssize_t len);
-static ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, ssize_t len);
-static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
+static int write_journald(int pipe, char *buf, size_t buflen);
+static int write_k8s_log(stdpipe_t pipe, const char *buf, size_t buflen);
+static bool get_line_len(ptrdiff_t *line_len, const char *buf, size_t buflen);
+static ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, size_t len);
+static ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, size_t len);
+static void set_k8s_timestamp(char *buf, size_t buflen, const char *pipename);
 static void reopen_k8s_file(void);
-static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority, const char **message_start);
+static int parse_priority_prefix(const char *buf, size_t buflen, int *priority, const char **message_start);
 
 
 gboolean logging_is_passthrough(void)
@@ -292,13 +292,13 @@ static void parse_log_path(char *log_config)
 }
 
 /* write container output to all logs the user defined */
-bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
+bool write_to_logs(stdpipe_t pipe, char *buf, size_t buflen)
 {
-	if (use_k8s_logging && write_k8s_log(pipe, buf, num_read) < 0) {
+	if (use_k8s_logging && write_k8s_log(pipe, buf, buflen) < 0) {
 		nwarn("write_k8s_log failed");
 		return G_SOURCE_CONTINUE;
 	}
-	if (use_journald_logging && write_journald(pipe, buf, num_read) < 0) {
+	if (use_journald_logging && write_journald(pipe, buf, buflen) < 0) {
 		nwarn("write_journald failed");
 		return G_SOURCE_CONTINUE;
 	}
@@ -316,7 +316,7 @@ bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
  *  0 if no valid priority prefix was found
  * -1 on error (invalid parameters)
  */
-static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority, const char **message_start)
+static int parse_priority_prefix(const char *buf, size_t buflen, int *priority, const char **message_start)
 {
 	if (!buf || !priority || !message_start) {
 		return -1;
@@ -353,7 +353,7 @@ static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority,
  * otherwise, write with error priority. Partial lines (that don't end in a newline) are buffered
  * between invocations. A 0 buflen argument forces a buffered partial line to be flushed.
  */
-static int write_journald(int pipe, char *buf, ssize_t buflen)
+static int write_journald(int pipe, char *buf, size_t buflen)
 {
 	static char stdout_partial_buf[STDIO_BUF_SIZE];
 	static size_t stdout_partial_buf_len = 0;
@@ -479,7 +479,7 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
  * not terminated by a newline. A 0 buflen argument forces any buffered partial
  * line to be finalized with an F-sequence.
  */
-static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
+static int write_k8s_log(stdpipe_t pipe, const char *buf, size_t buflen)
 {
 	static bool stdout_has_partial = false;
 	static bool stderr_has_partial = false;
@@ -606,7 +606,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 /* Find the end of the line, or alternatively the end of the buffer.
  * Returns false in the former case (it's a whole line) or true in the latter (it's a partial)
  */
-static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen)
+static bool get_line_len(ptrdiff_t *line_len, const char *buf, size_t buflen)
 {
 	bool partial = FALSE;
 	const char *line_end = memchr(buf, '\n', buflen);
@@ -618,7 +618,7 @@ static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen)
 	return partial;
 }
 
-ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, ssize_t len)
+ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, size_t len)
 {
 	if (data == NULL)
 		return 1;
@@ -635,7 +635,7 @@ ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data
 	return 1;
 }
 
-ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, ssize_t len)
+ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, size_t len)
 {
 	if (data == NULL)
 		return 1;
@@ -668,7 +668,7 @@ static const char *stdpipe_name(stdpipe_t pipe)
 }
 
 /* Generate timestamp string to buf. */
-static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
+static void set_k8s_timestamp(char *buf, size_t buflen, const char *pipename)
 {
 	static int tzset_called = 0;
 
@@ -715,7 +715,7 @@ static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 			   off_sign, off / 3600, (off % 3600) / 60, pipename);
 
 	/* Ensure null termination if snprintf output exceeds buffer length. */
-	if (len >= buflen && buflen > 0) {
+	if (len >= (ssize_t)buflen && buflen > 0) {
 		buf[buflen - 1] = '\0';
 	}
 }
