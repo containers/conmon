@@ -84,7 +84,7 @@ build_task:
         disk: 200
 
     script:
-        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel
+        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel podman bats jq socat
         - cd $CIRRUS_WORKING_DIR
         - make
         - make test
@@ -99,7 +99,7 @@ coverage_task:
         disk: 200
 
     script:
-        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel gcovr
+        - dnf install -y make glib2-devel git gcc pkg-config systemd-devel libseccomp-devel gcovr podman bats jq socat
         - cd $CIRRUS_WORKING_DIR
         - make test-coverage
 

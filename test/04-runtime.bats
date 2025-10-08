@@ -18,7 +18,7 @@ teardown() {
     # Check that log file was created
     [ -f "$LOG_PATH" ]
     run cat "$LOG_PATH"
-    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the log"
+    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the log"
 }
 
 @test "runtime: container execution with different log drivers" {
@@ -26,7 +26,7 @@ teardown() {
     run_conmon_with_default_args --log-path "journald:"
 
     run journalctl --user CONTAINER_ID_FULL="$CTR_ID"
-    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the journald"
+    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the journald"
 }
 
 @test "runtime: container execution with multiple log drivers" {
@@ -37,10 +37,10 @@ teardown() {
     [ -f "$LOG_PATH" ]
 
     run cat "$LOG_PATH"
-    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the log"
+    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the log"
 
     run journalctl --user CONTAINER_ID_FULL="$CTR_ID"
-    assert "${output}" =~ "hello from busybox"  "'hello from busybox' found in the journald"
+    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the journald"
 }
 
 @test "runtime: container with log size limit" {
@@ -54,7 +54,7 @@ teardown() {
     [ -f "$LOG_PATH" ]
 
     run cat "$LOG_PATH"
-    assert "${output}" !~ "hello from busybox 11"  "'hello from busybox 11' not in the logs"
+    assert "${output}" !~ "hello from ubi10 11"  "'hello from ubi10 11' not in the logs"
 }
 
 @test "runtime: invalid runtime binary should fail" {

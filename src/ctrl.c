@@ -108,8 +108,12 @@ static gboolean process_winsz_ctrl_line(char *line)
 	int height, width, ret = -1;
 	ret = sscanf(line, "%d %d\n", &height, &width);
 	ndebugf("Height: %d, Width: %d", height, width);
-	if (ret != 2 || height < 0 || width < 0) {
-		nwarn("Failed to parse window size message");
+	if (ret != 2) {
+		nwarn("Failed to parse window size");
+		return FALSE;
+	}
+	if (height < 0 || width < 0 || height > 1000 || width > 1000) {
+		nwarnf("Invalid window size: %dx%d (must be between 0 and 1000)", height, width);
 		return FALSE;
 	}
 	resize_winsz(height, width);
@@ -137,14 +141,26 @@ static gboolean process_terminal_ctrl_line(char *line)
 	 */
 	int ctl_msg_type, height, width, ret = -1;
 	ret = sscanf(line, "%d %d %d\n", &ctl_msg_type, &height, &width);
-	if (ret != 3 || height < 0 || width < 0) {
-		nwarn("Failed to parse control message");
+	if (ret != 3) {
+		nwarnf("Invalid control message format");
+		return FALSE;
+	}
+	if (ctl_msg_type != WIN_RESIZE_EVENT && ctl_msg_type != REOPEN_LOGS_EVENT) {
+		nwarnf("Invalid control message type: %d", ctl_msg_type);
+		return FALSE;
+	}
+	if (height < 0 || width < 0 || height > 1000 || width > 1000) {
+		nwarnf("Invalid window size: %dx%d (must be between 0 and 1000)", height, width);
 		return FALSE;
 	}
 
 	ndebugf("Message type: %d", ctl_msg_type);
 	switch (ctl_msg_type) {
 	case WIN_RESIZE_EVENT: {
+		if (height < 0 || width < 0 || height > 1000 || width > 1000) {
+			nwarnf("Invalid window size: %dx%d (must be between 0 and 1000)", height, width);
+			return FALSE;
+		}
 		_cleanup_free_ char *hw_str = g_strdup_printf("%d %d\n", height, width);
 		if (write(winsz_fd_w, hw_str, strlen(hw_str)) < 0) {
 			nwarn("Failed to write to window resizing fd. A resize event may have been dropped");

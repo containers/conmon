@@ -22,9 +22,11 @@ assert_failure() {
 # Default paths and variables
 CONMON_BINARY="${CONMON_BINARY:-/usr/bin/conmon}"
 RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
-BUSYBOX_SOURCE="https://busybox.net/downloads/binaries/1.31.0-i686-uclibc/busybox"
-BUSYBOX_DEST_DIR="/tmp/conmon-test-images"
-BUSYBOX_DEST="/tmp/conmon-test-images/busybox"
+
+# UBI10-micro container image for test rootfs
+UBI10_MICRO_IMAGE="registry.access.redhat.com/ubi10/ubi-micro:latest"
+ROOTFS_CACHE_DIR="/tmp/conmon-test-images"
+ROOTFS_CACHE_MARKER="/tmp/conmon-test-images/.ubi10-micro-cached"
 VALID_PATH="/tmp"
 INVALID_PATH="/not/a/path"
 
@@ -33,17 +35,23 @@ generate_ctr_id() {
     echo "conmon-test-$(date +%s)-$$-$RANDOM"
 }
 
-# Cache busybox binary for container tests
-cache_busybox() {
-    if [[ -f "$BUSYBOX_DEST" ]]; then
+# Cache UBI10-micro rootfs for container tests
+cache_ubi10_rootfs() {
+    if [[ -f "$ROOTFS_CACHE_MARKER" ]]; then
         return 0
     fi
 
-    mkdir -p "$BUSYBOX_DEST_DIR"
-    if ! curl -s -L "$BUSYBOX_SOURCE" -o "$BUSYBOX_DEST"; then
-        skip "Failed to download busybox binary"
+    mkdir -p "$ROOTFS_CACHE_DIR"
+
+    # Pull UBI10-micro image if not already present
+    if ! podman image exists "$UBI10_MICRO_IMAGE" 2>/dev/null; then
+        if ! podman pull "$UBI10_MICRO_IMAGE" >/dev/null 2>&1; then
+            skip "Failed to pull UBI10-micro image"
+        fi
     fi
-    chmod +x "$BUSYBOX_DEST"
+
+    # Mark as cached
+    touch "$ROOTFS_CACHE_MARKER"
 }
 
 # Run conmon with given arguments and capture output
@@ -99,7 +107,7 @@ cleanup_tmpdir() {
 generate_process_spec() {
     local command="$1"
     if [[ -z "$command" ]]; then
-        command="for i in \$(/busybox seq 1 100); do /busybox echo \\\"hello from busybox \$i\\\"; done"
+        command="for i in \$(seq 1 100); do echo \\\"hello from ubi10 \$i\\\"; done"
     fi
     if [[ -z "$BUNDLE_PATH" || ! -e "$BUNDLE_PATH" ]]; then
         die "The BUNDLE_PATH directory does not exist. Ensure 'generate_process_spec'" \
@@ -115,8 +123,7 @@ generate_process_spec() {
         "gid": 0
     },
     "args": [
-        "/busybox",
-        "sh",
+        "/bin/sh",
         "-c",
         "$command"
     ],
@@ -153,7 +160,7 @@ generate_runtime_config() {
         use_terminal="false"
     fi
     if [[ -z "$command" ]]; then
-        command="for i in \$(/busybox seq 1 100); do /busybox echo \\\"hello from busybox \$i\\\"; done"
+        command="for i in \$(seq 1 100); do echo \\\"hello from ubi10 \$i\\\"; done"
     fi
     local config_path="$bundle_path/config.json"
 
@@ -176,8 +183,7 @@ generate_runtime_config() {
             "gid": 0
         },
         "args": [
-            "/busybox",
-            "sh",
+            "/bin/sh",
             "-c",
             "$command"
         ],
@@ -328,31 +334,28 @@ setup_test_env() {
     export CTL_PATH="$TEST_TMPDIR/ctl"
 }
 
-# Setup full container environment with busybox
+# Setup full container environment with UBI10-micro
 setup_container_env() {
     local command="$1"
     local use_terminal="$2"
     setup_test_env
 
-    # Cache busybox binary for container tests
-    cache_busybox
+    # Cache UBI10-micro image
+    cache_ubi10_rootfs
 
-    # Create the rootfs directory structure
-    mkdir -p "$ROOTFS"/{bin,sbin,etc,proc,sys,dev,tmp}
+    # Create the rootfs directory
+    mkdir -p "$ROOTFS"
 
-    # Copy busybox to rootfs and set up basic filesystem
-    cp "$BUSYBOX_DEST" "$ROOTFS/busybox"
-    chmod +x "$ROOTFS/busybox"
-
-    # Create busybox symlinks for common commands
-    ln -sf busybox "$ROOTFS/bin/sh"
-    ln -sf busybox "$ROOTFS/bin/echo"
-    ln -sf busybox "$ROOTFS/bin/ls"
-    ln -sf busybox "$ROOTFS/bin/cat"
-
-    # Create minimal /etc files
-    echo "root:x:0:0:root:/:/bin/sh" > "$ROOTFS/etc/passwd"
-    echo "root:x:0:" > "$ROOTFS/etc/group"
+    # Extract UBI10-micro container filesystem to rootfs
+    local temp_container="conmon-test-ubi10-$$-$RANDOM"
+    if ! podman create --name "$temp_container" "$UBI10_MICRO_IMAGE" >/dev/null 2>&1; then
+        skip "Failed to create UBI10-micro container"
+    fi
+    if ! podman export "$temp_container" | tar -C "$ROOTFS" -xf - 2>/dev/null; then
+        podman rm "$temp_container" >/dev/null 2>&1 || true
+        skip "Failed to export UBI10-micro rootfs"
+    fi
+    podman rm "$temp_container" >/dev/null 2>&1 || true
 
     # Generate OCI runtime configuration
     generate_runtime_config "$BUNDLE_PATH" "$ROOTFS" "$use_terminal" "$command"

@@ -58,6 +58,7 @@ install_packages() {
         automake \
         conntrack \
         criu \
+        jq \
         libaio-dev \
         libapparmor-dev \
         libbtrfs-dev \
@@ -75,6 +76,7 @@ install_packages() {
         libtool \
         libudev-dev \
         libyajl-dev \
+        podman \
         sed \
         socat \
         uuid-dev

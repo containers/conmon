@@ -1,11 +1,7 @@
-FROM registry.fedoraproject.org/fedora:latest
+FROM registry.access.redhat.com/ubi10/ubi:latest
 
-RUN sudo dnf install -y make automake gcc gcc-c++ kernel-devel glib2-devel && \
-    sudo dnf clean all && \
-    rm -rf /var/cache/dnf
-
-RUN sudo dnf update -y && \
-    sudo dnf clean all && \
+RUN dnf install -y make automake gcc gcc-c++ glib2-devel pkg-config systemd-devel libseccomp-devel && \
+    dnf clean all && \
     rm -rf /var/cache/dnf
 
 # replaces the mktemp from the tutorial as everything is temporary in a

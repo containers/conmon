@@ -5,7 +5,7 @@ load test_helper
 setup() {
     check_conmon_binary
     check_runtime_binary
-    setup_container_env "while [ ! -f /tmp/test.txt ]; do /busybox sleep 0.1; done; /busybox stty size" "true"
+    setup_container_env "while [ ! -f /tmp/test.txt ]; do sleep 0.1; done; stty size" "true"
     generate_process_spec "echo 'Hello from exec!' && echo 'Hello there!' > /tmp/test.txt"
 }
 
@@ -38,8 +38,9 @@ test_resize_command_fail() {
     # Check that the main process noticed the /tmp/test.txt.
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
-    # No terminal resize
-    assert "${output}" =~ "standard input"
+    # No terminal resize - should show default/initial size (0 0)
+    # When resize fails, terminal stays at initial size
+    assert "${output}" =~ "0 0"
 }
 
 # Helper function to send the resize command. Fails if the resize command
@@ -102,8 +103,8 @@ test_resize_command_ok() {
     # Check that the log exists now.
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
-    # No terminal resize
-    assert "${output}" =~ "standard input"
+    # No terminal resize - should show default/initial size (0 0)
+    assert "${output}" =~ "0 0"
 }
 
 @test "ctrl: unknown message 'foo'" {
@@ -126,18 +127,35 @@ test_resize_command_ok() {
     test_resize_command_fail "1 0x10 0x20"
 }
 
-@test "ctrl: resize overflow" {
-    test_resize_command_fail "1 1000000000000 100000000000"
+@test "ctrl: resize overflow rejected" {
+    # Test that values > 65535 are properly rejected
+    # This prevents silent wraparound bugs (100000 -> 34464)
+    test_resize_command_fail "1 100000 100000"
 }
 
 @test "ctrl: resize with leading zeros" {
     test_resize_command_ok "1 0010 0020" "10 20"
 }
 
-@test "ctrl: too big size" {
-    # This is weird, but ioctl works like that...
-    # if big number is passed, it defaults to 24x80 size.
-    test_resize_command_ok "1 65535 65535" "24 80"
+@test "ctrl: maximum valid size" {
+    # Test with maximum valid practical terminal size (1000x1000)
+    # This prevents potential DoS from applications allocating large screen buffers
+    test_resize_command_ok "1 1000 1000" "1000 1000"
+}
+
+@test "ctrl: size exceeding maximum - height too large" {
+    # Values above 1000 should be rejected
+    test_resize_command_fail "1 1001 1000"
+}
+
+@test "ctrl: size exceeding maximum - width too large" {
+    # Values above 1000 should be rejected
+    test_resize_command_fail "1 1000 1001"
+}
+
+@test "ctrl: size exceeding maximum - both too large" {
+    # Values above 1000 should be rejected
+    test_resize_command_fail "1 65535 65535"
 }
 
 @test "ctrl: rotate logs with --log-rotate" {

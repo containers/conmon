@@ -50,7 +50,7 @@ teardown() {
     fi
 
     # Check if we can create a simple container for testing
-    if ! timeout 10 podman --conmon $conmon_path run --rm busybox:latest true >/dev/null 2>&1; then
+    if ! timeout 10 podman --conmon $conmon_path run --rm registry.access.redhat.com/ubi10/ubi-micro:latest true >/dev/null 2>&1; then
         skip "Cannot create test containers with podman"
     fi
 
@@ -58,7 +58,7 @@ teardown() {
 
     # Create a test container
     local container_id
-    container_id=$(podman --conmon $conmon_path run -dt busybox:latest sleep 30)
+    container_id=$(podman --conmon $conmon_path run -dt registry.access.redhat.com/ubi10/ubi-micro:latest sleep 30)
 
     if [ -z "$container_id" ]; then
         skip "Failed to create test container"
