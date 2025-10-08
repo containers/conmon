@@ -355,7 +355,7 @@ void schedule_main_stdin_write()
 	schedule_local_sock_write(&local_mainfd_stdin);
 }
 
-void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, int len)
+void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, size_t buflen)
 {
 	if (local_mainfd_stdin.readers == NULL)
 		return;
@@ -368,7 +368,7 @@ void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, int len)
 				nwarn("Failed to write to remote console socket");
 				remote_sock_shutdown(remote_sock, SHUT_WR);
 			}
-			if (write_all(remote_sock->fd, buf, len) < 0) {
+			if (write_all(remote_sock->fd, buf, buflen) < 0) {
 				nwarn("Failed to write to remote console socket");
 				remote_sock_shutdown(remote_sock, SHUT_WR);
 			}

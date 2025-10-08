@@ -53,7 +53,7 @@ char *setup_seccomp_socket(const char *socket);
 char *setup_attach_socket(void);
 void setup_notify_socket(char *);
 void schedule_main_stdin_write();
-void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, int len);
+void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, size_t len);
 void close_all_readers();
 
 #endif // CONN_SOCK_H

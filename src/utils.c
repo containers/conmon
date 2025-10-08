@@ -62,9 +62,9 @@ static void get_signal_descriptor_mask(sigset_t *set)
 	sigprocmask(SIG_BLOCK, set, NULL);
 }
 
-ssize_t write_all(int fd, const void *buf, size_t count)
+ssize_t write_all(int fd, const void *buf, size_t buflen)
 {
-	size_t remaining = count;
+	size_t remaining = buflen;
 	const char *p = buf;
 	ssize_t res;
 
@@ -80,7 +80,7 @@ ssize_t write_all(int fd, const void *buf, size_t count)
 		p += res;
 	}
 
-	return count;
+	return buflen;
 }
 
 #ifdef __linux__
