@@ -1,6 +1,7 @@
 #include "cli.h"
 #include "globals.h"
 #include "ctr_logging.h"
+#include "ctr_logging_buffer.h"
 #include "config.h"
 #include "utils.h"
 
@@ -223,6 +224,14 @@ void process_cli()
 		opt_container_pid_file = g_strdup_printf("%s/pidfile-%s", cwd, opt_cid);
 
 	configure_log_drivers(opt_log_path, opt_log_size_max, opt_log_global_size_max, opt_cid, opt_name, opt_log_tag, opt_log_labels);
+
+	/* Initialize async logging for improved log performance */
+	if (!init_async_logging()) {
+		nwarn("Failed to initialize async logging, falling back to direct logging");
+	} else {
+		/* Register cleanup handler for async logging */
+		atexit(shutdown_async_logging);
+	}
 
 	/* Warn if --no-container-partial-message is used without journald logging */
 	if (opt_no_container_partial_message && !logging_is_journald_enabled()) {
