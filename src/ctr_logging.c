@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "ctr_logging.h"
+#include "globals.h"
 #include "cli.h"
 #include "config.h"
 #include <ctype.h>
@@ -79,22 +80,16 @@ static size_t syslog_identifier_len;
 
 #define WRITEV_BUFFER_N_IOV 128
 
-typedef struct {
-	int iovcnt;
-	struct iovec iov[WRITEV_BUFFER_N_IOV];
-} writev_buffer_t;
-
 static void parse_log_path(char *log_config);
 static const char *stdpipe_name(stdpipe_t pipe);
-static int write_journald(int pipe, char *buf, ssize_t num_read);
-static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen);
-static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen);
-static ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *data, ssize_t len);
-static ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const void *data, ssize_t len);
-static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf);
-static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
+static int write_journald(int pipe, char *buf, size_t buflen);
+static int write_k8s_log(stdpipe_t pipe, const char *buf, size_t buflen);
+static bool get_line_len(ptrdiff_t *line_len, const char *buf, size_t buflen);
+static ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, size_t len);
+static ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, size_t len);
+static void set_k8s_timestamp(char *buf, size_t buflen, const char *pipename);
 static void reopen_k8s_file(void);
-static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority, const char **message_start);
+static int parse_priority_prefix(const char *buf, size_t buflen, int *priority, const char **message_start);
 
 
 gboolean logging_is_passthrough(void)
@@ -298,13 +293,13 @@ static void parse_log_path(char *log_config)
 }
 
 /* write container output to all logs the user defined */
-bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
+bool write_to_logs(stdpipe_t pipe, char *buf, size_t buflen)
 {
-	if (use_k8s_logging && write_k8s_log(pipe, buf, num_read) < 0) {
+	if (use_k8s_logging && write_k8s_log(pipe, buf, buflen) < 0) {
 		nwarn("write_k8s_log failed");
 		return G_SOURCE_CONTINUE;
 	}
-	if (use_journald_logging && write_journald(pipe, buf, num_read) < 0) {
+	if (use_journald_logging && write_journald(pipe, buf, buflen) < 0) {
 		nwarn("write_journald failed");
 		return G_SOURCE_CONTINUE;
 	}
@@ -322,7 +317,7 @@ bool write_to_logs(stdpipe_t pipe, char *buf, ssize_t num_read)
  *  0 if no valid priority prefix was found
  * -1 on error (invalid parameters)
  */
-static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority, const char **message_start)
+static int parse_priority_prefix(const char *buf, size_t buflen, int *priority, const char **message_start)
 {
 	if (!buf || !priority || !message_start) {
 		return -1;
@@ -359,12 +354,20 @@ static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority,
  * otherwise, write with error priority. Partial lines (that don't end in a newline) are buffered
  * between invocations. A 0 buflen argument forces a buffered partial line to be flushed.
  */
-static int write_journald(int pipe, char *buf, ssize_t buflen)
+static int write_journald(int pipe, char *buf, size_t buflen)
 {
-	static char stdout_partial_buf[STDIO_BUF_SIZE];
+	static char *stdout_partial_buf = NULL;
 	static size_t stdout_partial_buf_len = 0;
-	static char stderr_partial_buf[STDIO_BUF_SIZE];
+	static char *stderr_partial_buf = NULL;
 	static size_t stderr_partial_buf_len = 0;
+	size_t buf_size = (pipe == STDOUT_PIPE ? mainfd_stdout_size : mainfd_stderr_size);
+
+	if (stdout_partial_buf == NULL) {
+		stdout_partial_buf = g_malloc(mainfd_stdout_size);
+	}
+	if (stderr_partial_buf == NULL) {
+		stderr_partial_buf = g_malloc(mainfd_stderr_size);
+	}
 
 	char *partial_buf;
 	size_t *partial_buf_len;
@@ -386,14 +389,15 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 	ptrdiff_t line_len = 0;
 
 	while (buflen > 0 || *partial_buf_len > 0) {
-		writev_buffer_t bufv = {0};
+		struct iovec vecs[WRITEV_BUFFER_N_IOV];
+		writev_iov_t bufv = {0, WRITEV_BUFFER_N_IOV, vecs};
 
 		bool partial = buflen == 0 || get_line_len(&line_len, buf, buflen);
 
 		/* If this is a partial line, and we have capacity to buffer it, buffer it and return.
 		 * The capacity of the partial_buf is one less than its size so that we can always add
 		 * a null terminating char later */
-		if (buflen && partial && ((unsigned long)line_len < (STDIO_BUF_SIZE - *partial_buf_len))) {
+		if (buflen && partial && ((unsigned long)line_len < (buf_size - *partial_buf_len))) {
 			memcpy(partial_buf + *partial_buf_len, buf, line_len);
 			*partial_buf_len += line_len;
 			return 0;
@@ -484,12 +488,13 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
  * not terminated by a newline. A 0 buflen argument forces any buffered partial
  * line to be finalized with an F-sequence.
  */
-static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
+static int write_k8s_log(stdpipe_t pipe, const char *buf, size_t buflen)
 {
 	static bool stdout_has_partial = false;
 	static bool stderr_has_partial = false;
 
-	writev_buffer_t bufv = {0};
+	struct iovec vecs[WRITEV_BUFFER_N_IOV];
+	writev_iov_t bufv = {0, WRITEV_BUFFER_N_IOV, vecs};
 	int64_t bytes_to_be_written = 0;
 
 	bool *has_partial = (pipe == STDOUT_PIPE) ? &stdout_has_partial : &stderr_has_partial;
@@ -550,7 +555,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		 * a timestamp.
 		 */
 		if ((log_size_max > 0) && (k8s_bytes_written + bytes_to_be_written) > log_size_max) {
-			if (writev_buffer_flush(k8s_log_fd, &bufv) < 0) {
+			if (writev_all(k8s_log_fd, &bufv) < 0) {
 				nwarn("failed to flush buffer to log");
 			}
 			reopen_k8s_file();
@@ -600,7 +605,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		buflen -= line_len;
 	}
 
-	if (writev_buffer_flush(k8s_log_fd, &bufv) < 0) {
+	if (writev_all(k8s_log_fd, &bufv) < 0) {
 		nwarn("failed to flush buffer to log");
 	}
 
@@ -610,7 +615,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 /* Find the end of the line, or alternatively the end of the buffer.
  * Returns false in the former case (it's a whole line) or true in the latter (it's a partial)
  */
-static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen)
+static bool get_line_len(ptrdiff_t *line_len, const char *buf, size_t buflen)
 {
 	bool partial = FALSE;
 	const char *line_end = memchr(buf, '\n', buflen);
@@ -622,66 +627,12 @@ static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen)
 	return partial;
 }
 
-
-static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf)
-{
-	ssize_t count = 0;
-	int iovcnt = buf->iovcnt;
-	struct iovec *iov = buf->iov;
-
-	/*
-	 * By definition, flushing the buffers will either be entirely successful, or will fail at some point
-	 * along the way.  There is no facility to attempt to retry a writev() system call outside of an EINTR
-	 * errno.  Therefore, no matter the outcome, always reset the writev_buffer_t data structure.
-	 */
-	buf->iovcnt = 0;
-
-	while (iovcnt > 0) {
-		ssize_t res;
-		do {
-			res = writev(fd, iov, iovcnt);
-		} while (res == -1 && errno == EINTR);
-
-		if (res <= 0) {
-			/*
-			 * Any unflushed data is lost (this would be a good place to add a counter for how many times
-			 * this occurs and another count for how much data is lost).
-			 *
-			 * Note that if writev() returns a 0, this logic considers it an error.
-			 */
-			return -1;
-		}
-
-		count += res;
-
-		while (res > 0) {
-			size_t iov_len = iov->iov_len;
-			size_t from_this = MIN((size_t)res, iov_len);
-			res -= from_this;
-			iov_len -= from_this;
-
-			if (iov_len == 0) {
-				iov++;
-				iovcnt--;
-				/* continue, res still > 0 */
-			} else {
-				iov->iov_len = iov_len;
-				iov->iov_base += from_this;
-				/* break, res is 0 */
-			}
-		}
-	}
-
-	return count;
-}
-
-
-ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *data, ssize_t len)
+ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, size_t len)
 {
 	if (data == NULL)
 		return 1;
 
-	if (buf->iovcnt == WRITEV_BUFFER_N_IOV && writev_buffer_flush(fd, buf) < 0)
+	if (buf->iovcnt == buf->max_iovcnt && writev_all(fd, buf) < 0)
 		return -1;
 
 	if (len > 0) {
@@ -693,12 +644,12 @@ ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *d
 	return 1;
 }
 
-ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const void *data, ssize_t len)
+ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, size_t len)
 {
 	if (data == NULL)
 		return 1;
 
-	if (buf->iovcnt == WRITEV_BUFFER_N_IOV)
+	if (buf->iovcnt == buf->max_iovcnt)
 		return -1;
 
 	if (len > 0) {
@@ -726,7 +677,7 @@ static const char *stdpipe_name(stdpipe_t pipe)
 }
 
 /* Generate timestamp string to buf. */
-static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
+static void set_k8s_timestamp(char *buf, size_t buflen, const char *pipename)
 {
 	static int tzset_called = 0;
 
@@ -773,7 +724,7 @@ static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename)
 			   off_sign, off / 3600, (off % 3600) / 60, pipename);
 
 	/* Ensure null termination if snprintf output exceeds buffer length. */
-	if (len >= buflen && buflen > 0) {
+	if (len >= (ssize_t)buflen && buflen > 0) {
 		buf[buflen - 1] = '\0';
 	}
 }
