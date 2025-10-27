@@ -159,7 +159,7 @@ test_resize_command_ok() {
 }
 
 @test "ctrl: rotate logs with --log-rotate" {
-    setup_container_env "/busybox echo 'before rotation'; while [ ! -f /tmp/test.txt ]; do /busybox sleep 0.1; done; /busybox echo 'after rotation'" "true"
+    setup_container_env "echo 'before rotation'; while [ ! -f /tmp/test.txt ]; do sleep 0.1; done; echo 'after rotation'" "true"
     generate_process_spec "echo 'Hello from exec!' && echo 'Hello there!' > /tmp/test.txt"
     start_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH" \
