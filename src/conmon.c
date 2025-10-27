@@ -371,22 +371,28 @@ int main(int argc, char *argv[])
 		 * We send -1 as pid to signal to parent that create container has failed.
 		 */
 		num_read = read(mainfd_stderr, buf, BUF_SIZE - 1);
+		const char *error_msg = NULL;
 		if (num_read > 0) {
 			buf[num_read] = '\0';
 			nwarnf("runtime stderr: %s", buf);
-			if (sync_pipe_fd > 0) {
-				int to_report = -1;
-				if (opt_exec && container_status > 0) {
-					to_report = -1 * container_status;
-				}
-				write_or_close_sync_fd(&sync_pipe_fd, to_report, buf);
+			error_msg = buf;
+		}
+		/* Always report failure to parent, even if we couldn't read stderr */
+		if (sync_pipe_fd > 0) {
+			int to_report = -1;
+			if (opt_exec && container_status > 0) {
+				to_report = -1 * container_status;
 			}
+			write_or_close_sync_fd(&sync_pipe_fd, to_report, error_msg);
 		}
 		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
 	}
 
-	if (opt_terminal && mainfd_stdout == -1)
+	if (opt_terminal && mainfd_stdout == -1) {
+		if (sync_pipe_fd > 0)
+			write_or_close_sync_fd(&sync_pipe_fd, -1, "Runtime did not set up terminal");
 		nexit("Runtime did not set up terminal");
+	}
 
 	/* Read the pid so we can wait for the process to exit */
 	_cleanup_free_ char *contents = NULL;
