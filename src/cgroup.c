@@ -124,7 +124,11 @@ static void setup_oom_handling_cgroup_v2(int pid)
 	}
 
 	if (inotify_add_watch(ifd, memory_events_file_path, IN_MODIFY) < 0) {
-		nwarnf("Failed to add inotify watch for %s", memory_events_file_path);
+		if (errno == ENOENT) {
+			ndebugf("memory.events file does not exist at %s, skipping OOM monitoring", memory_events_file_path);
+		} else {
+			nwarnf("Failed to add inotify watch for %s", memory_events_file_path);
+		}
 		return;
 	}
 
