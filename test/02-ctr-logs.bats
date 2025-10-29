@@ -124,13 +124,13 @@ run_conmon_with_log_opts() {
         --log-label "CONMON_TEST_LABEL2=$CTR_ID"
 
     run journalctl --user CONMON_TEST_LABEL1="$CTR_ID"
-    assert "${output}" =~ "hello from busybox"
+    assert "${output}" =~ "hello from ubi10"
 
     run journalctl --user CONMON_TEST_LABEL2="$CTR_ID"
-    assert "${output}" =~ "hello from busybox"
+    assert "${output}" =~ "hello from ubi10"
 
     run journalctl --user NON_EXISTING_LABEL="$CTR_ID"
-    assert "${output}" !~ "hello from busybox"
+    assert "${output}" !~ "hello from ubi10"
 }
 
 @test "ctr logs: k8s-file with --log-tag" {
@@ -147,13 +147,13 @@ run_conmon_with_log_opts() {
         --log-tag "tag_$CTR_ID"
 
     run journalctl --user CONTAINER_TAG="tag_$CTR_ID"
-    assert "${output}" =~ "hello from busybox"
+    assert "${output}" =~ "hello from ubi10"
 }
 
 @test "ctr logs: journald partial message" {
     # Print a message longer than the conmon buffer.
     # It should split it into multiple partial messages.
-    setup_container_env "printf '%*s' "65535" | /busybox tr ' ' '#'"
+    setup_container_env "printf '%*s' "65535" | tr ' ' '#'"
     run_conmon_with_default_args \
         --log-path "journald:"
 
@@ -164,7 +164,7 @@ run_conmon_with_log_opts() {
 @test "ctr logs: k8s partial message" {
     # Print a message longer than the conmon buffer.
     # It should split it into multiple partial messages.
-    setup_container_env "printf '%*s' "65535" | /busybox tr ' ' '#'"
+    setup_container_env "printf '%*s' "65535" | tr ' ' '#'"
     run_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH"
 
