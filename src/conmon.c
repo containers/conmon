@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 	umask(DEFAULT_UMASK);
 	_cleanup_gerror_ GError *err = NULL;
 	char buf[BUF_SIZE];
-	int num_read;
+	ssize_t num_read;
 	_cleanup_close_ int dev_null_r_cleanup = -1;
 	_cleanup_close_ int dev_null_w_cleanup = -1;
 	_cleanup_close_ int dummyfd = -1;
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		/* Block for an initial write to the start pipe before
 		   spawning any children or exiting, to ensure the
 		   parent can put us in the right cgroup. */
-		num_read = read(start_pipe_fd, buf, BUF_SIZE);
+		num_read = read(start_pipe_fd, buf, sizeof(buf));
 		if (num_read < 0) {
 			pexit("start-pipe read failed");
 		}
@@ -165,6 +165,10 @@ int main(int argc, char *argv[])
 				pexit("Failed to create !terminal stdin pipe");
 
 			mainfd_stdin = fds[1];
+			ret = fcntl(mainfd_stdin, F_GETPIPE_SZ);
+			if (ret < 0)
+				pexit("main stdin pipe size determination failed");
+			mainfd_stdin_size = (size_t)ret;
 			workerfd_stdin = fds[0];
 
 			if (g_unix_set_fd_nonblocking(mainfd_stdin, TRUE, NULL) == FALSE)
@@ -175,6 +179,10 @@ int main(int argc, char *argv[])
 			pexit("Failed to create !terminal stdout pipe");
 
 		mainfd_stdout = fds[0];
+		ret = fcntl(mainfd_stdout, F_GETPIPE_SZ);
+		if (ret < 0)
+			pexit("main stdout pipe size determination failed");
+		mainfd_stdout_size = (size_t)ret;
 		workerfd_stdout = fds[1];
 	}
 
@@ -194,6 +202,13 @@ int main(int argc, char *argv[])
 		pexit("Failed to create stderr pipe");
 
 	mainfd_stderr = fds[0];
+	ret = fcntl(mainfd_stderr, F_GETPIPE_SZ);
+	if (ret < 0)
+		pexit("main stderr pipe size determination failed");
+	mainfd_stderr_size = (size_t)ret;
+	if ((mainfd_stdout >= 0) && (mainfd_stderr_size != mainfd_stdout_size)) {
+		nwarn("main stderr and stdout pipe sizes don't match");
+	}
 	workerfd_stderr = fds[1];
 
 	GPtrArray *runtime_argv = configure_runtime_args(csname);
@@ -282,7 +297,7 @@ int main(int argc, char *argv[])
 		if (opt_attach) {
 			if (start_pipe_fd > 0) {
 				ndebug("exec with attach is waiting for start message from parent");
-				num_read = read(start_pipe_fd, buf, BUF_SIZE);
+				num_read = read(start_pipe_fd, buf, sizeof(buf));
 				if (num_read < 0) {
 					_pexit("start-pipe read failed");
 				}
@@ -370,7 +385,7 @@ int main(int argc, char *argv[])
 		 * Read from container stderr for any error and send it to parent
 		 * We send -1 as pid to signal to parent that create container has failed.
 		 */
-		num_read = read(mainfd_stderr, buf, BUF_SIZE - 1);
+		num_read = read(mainfd_stderr, buf, sizeof(buf) - 1);
 		const char *error_msg = NULL;
 		if (num_read > 0) {
 			buf[num_read] = '\0';
