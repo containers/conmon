@@ -12,7 +12,7 @@ jobs:
   conmon:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install BATS
         run: |
           sudo apt-get update
@@ -29,7 +29,7 @@ jobs:
       matrix:
         go-version: [stable, oldstable]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
