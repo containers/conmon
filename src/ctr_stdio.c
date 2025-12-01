@@ -4,6 +4,7 @@
 #include "conn_sock.h"
 #include "utils.h"
 #include "ctr_logging.h"
+#include "ctr_logging_buffer.h"
 #include "cli.h"
 
 #include <stdbool.h>
@@ -107,7 +108,7 @@ static void drain_log_buffers(stdpipe_t pipe)
 	/* We pass a single byte buffer because write_to_logs expects that there is one
 	   byte of capacity beyond the buflen that we specify */
 	char buf[1];
-	write_to_logs(pipe, buf, 0);
+	write_to_logs_buffered(pipe, buf, 0);
 }
 
 static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
@@ -146,7 +147,7 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 		// Always null terminate the buffer, just in case.
 		buf[num_read] = '\0';
 
-		bool written = write_to_logs(pipe, buf, num_read);
+		bool written = write_to_logs_buffered(pipe, buf, num_read);
 		if (!written)
 			return false;
 

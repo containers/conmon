@@ -24,7 +24,7 @@ with pkgs; stdenv.mkDerivation rec {
     # Static builds will use PKG_CONFIG_PATH approach instead
   ];
   prePatch = ''
-    export CFLAGS='-static -pthread'
+    export CFLAGS='-static'
     export LDFLAGS='-s -w -static-libgcc -static'
     export EXTRA_LDFLAGS='-s -w -linkmode external -extldflags "-static -lm"'
     ${lib.optionalString (!enableSystemd) "export DISABLE_SYSTEMD=1"}

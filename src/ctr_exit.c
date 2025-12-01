@@ -6,6 +6,7 @@
 #include "parent_pipe_fd.h"
 #include "globals.h"
 #include "ctr_logging.h"
+#include "ctr_logging_buffer.h"
 #include "close_fds.h"
 #include "oom.h"
 
@@ -129,6 +130,8 @@ void runtime_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer 
 {
 	runtime_status = status;
 	create_pid = -1;
+	/* Flush logs before runtime exit to ensure CRI-O sees all logs */
+	flush_log_buffer();
 	g_main_loop_quit(main_loop);
 }
 
@@ -137,6 +140,10 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 	if (get_exit_status(status) != 0) {
 		ninfof("container %d exited with status %d", pid, get_exit_status(status));
 	}
+
+	/* Force flush async log buffer before container exit to ensure CRI-O sees all logs */
+	flush_log_buffer();
+
 	container_status = status;
 	container_pid = -1;
 	/* In the case of a quickly exiting exec command, the container exit callback
@@ -149,6 +156,8 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 		return;
 	}
 
+	/* Final flush before main loop quits */
+	flush_log_buffer();
 	g_main_loop_quit(main_loop);
 }
 

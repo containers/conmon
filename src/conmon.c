@@ -14,6 +14,7 @@
 #include "conn_sock.h"
 #include "ctrl.h"
 #include "ctr_stdio.h"
+#include "ctr_logging_buffer.h"
 #include "config.h"
 #include "parent_pipe_fd.h"
 #include "ctr_exit.h"
@@ -418,6 +419,8 @@ int main(int argc, char *argv[])
 	if (mainfd_stderr >= 0) {
 		g_unix_fd_add(mainfd_stderr, G_IO_IN, stdio_cb, GINT_TO_POINTER(STDERR_PIPE));
 	}
+	/* Setup log buffer timer for async flushing */
+	setup_log_timer_in_main_loop();
 
 	if (opt_timeout > 0) {
 		g_timeout_add_seconds(opt_timeout, timeout_cb, NULL);
