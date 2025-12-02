@@ -105,8 +105,12 @@ int get_signal_descriptor()
 void drop_signal_event(int fd)
 {
 	struct signalfd_siginfo siginfo;
-	ssize_t s = read(fd, &siginfo, sizeof siginfo);
-	g_assert_cmpint(s, ==, sizeof siginfo);
+	ssize_t s = read(fd, &siginfo, sizeof(siginfo));
+	if (s != sizeof(siginfo)) {
+		if (s < 0)
+			nwarn("Failed to read from signalfd");
+		return;
+	}
 }
 
 #endif
