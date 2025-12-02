@@ -106,6 +106,7 @@ docs:
 .PHONY: clean
 clean:
 	rm -rf bin/ src/*.o src/*.gcno src/*.gcda *.gcov
+	$(MAKE) -C test clean
 	$(MAKE) -C docs clean
 
 .PHONY: install install.bin install.crio install.podman podman crio
