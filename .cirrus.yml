@@ -17,7 +17,7 @@ env:
     TRAVIS: "true"
 
     # VM Image built in containers/automation_images
-    IMAGE_SUFFIX: "c20250721t181111z-f42f41d13"
+    IMAGE_SUFFIX: "c20251211t152018z-f43f42d14"
     FEDORA_CACHE_IMAGE_NAME: "fedora-${IMAGE_SUFFIX}"
 
     # Container FQIN's
