@@ -61,8 +61,12 @@ log_error() {
 check_dependencies() {
     local missing_deps=()
 
-    if ! command -v bats >/dev/null 2>&1; then
+    if ! command -v bats >& /dev/null; then
         missing_deps+=("bats")
+    fi
+
+    if ! command -v socat >& /dev/null; then
+        missing_deps+=("socat")
     fi
 
     if [[ ! -x "$CONMON_BINARY" ]]; then
