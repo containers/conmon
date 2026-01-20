@@ -643,3 +643,72 @@ function die() {
     echo "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" >&2
     bail-now
 }
+
+# Find the actual conmon PID when conmon forks (even with --sync)
+# Returns the forked conmon PID, or the original PID if no fork is found
+find_conmon_forked_pid() {
+    local original_pid="$1"
+    local container_id="$2"
+    
+    if [[ -z "$original_pid" || -z "$container_id" ]]; then
+        echo "$original_pid"
+        return
+    fi
+    
+    # Look for forked conmon processes
+    local forked_pids=$(pgrep -f "conmon.*$container_id" 2>/dev/null || echo "")
+    if [[ -n "$forked_pids" ]]; then
+        # Use the first one that's not our original PID
+        for pid in $forked_pids; do
+            if [[ "$pid" != "$original_pid" ]]; then
+                echo "$pid"
+                return
+            fi
+        done
+    fi
+    
+    # Return original PID if no fork found
+    echo "$original_pid"
+}
+
+# Unified function to start conmon with healthcheck parameters
+# Usage: start_conmon_healthcheck <cmd> <interval> <timeout> [retries] [start_period] [log_path] [log_level] [args...]
+start_conmon_healthcheck() {
+    local healthcheck_cmd="${1:-/busybox}"
+    local healthcheck_interval="$2"
+    local healthcheck_timeout="$3"
+    local healthcheck_retries="${4:-1}"
+    local healthcheck_start_period="$5"
+    local log_path="${6:-k8s-file:$LOG_PATH}"
+    local log_level="${7:-trace}"
+    shift 7  # Remove the first 7 parameters, leaving any healthcheck args
+    
+    local cmd_args=()
+    cmd_args+=(
+        --cid "$CTR_ID"
+        --cuuid "$CTR_ID"
+        --runtime "$RUNTIME_BINARY"
+        --bundle "$BUNDLE_PATH"
+        --log-path "$log_path"
+        --syslog
+        --healthcheck-cmd "$healthcheck_cmd"
+        --healthcheck-interval "$healthcheck_interval"
+        --healthcheck-timeout "$healthcheck_timeout"
+        --healthcheck-retries "$healthcheck_retries"
+        --healthcheck-start-period "$healthcheck_start_period"
+        --socket-dir-path "$SOCKET_PATH"
+        --container-pidfile "$PID_FILE"
+        --conmon-pidfile "$CONMON_PID_FILE"
+        --log-level "$log_level"
+        --sync
+    )
+    
+    # Add any healthcheck arguments
+    for arg in "$@"; do
+        cmd_args+=(--healthcheck-arg "$arg")
+    done
+    
+    "$CONMON_BINARY" "${cmd_args[@]}" &
+    echo $!
+}
+

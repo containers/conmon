@@ -61,6 +61,12 @@ char *opt_seccomp_notify_plugins = NULL;
 gboolean opt_log_rotate = FALSE;
 int opt_log_max_files = 1;
 gchar **opt_log_allowlist_dirs = NULL;
+char *opt_healthcheck_cmd = NULL;
+gchar **opt_healthcheck_args = NULL;
+int opt_healthcheck_interval = -1;
+int opt_healthcheck_timeout = -1;
+int opt_healthcheck_retries = -1;
+int opt_healthcheck_start_period = -1;
 GOptionEntry opt_entries[] = {
 	{"api-version", 0, 0, G_OPTION_ARG_NONE, &opt_api_version, "Conmon API version to use", NULL},
 	{"bundle", 'b', 0, G_OPTION_ARG_STRING, &opt_bundle_path, "Location of the OCI Bundle path", NULL},
@@ -125,6 +131,15 @@ GOptionEntry opt_entries[] = {
 	 NULL},
 	{"log-max-files", 0, 0, G_OPTION_ARG_INT, &opt_log_max_files, "Number of backup log files to keep (default: 1)", NULL},
 	{"log-allowlist-dir", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_log_allowlist_dirs, "Allowed log directory", NULL},
+	{"healthcheck-cmd", 0, 0, G_OPTION_ARG_STRING, &opt_healthcheck_cmd, "Healthcheck command to execute", NULL},
+	{"healthcheck-arg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_healthcheck_args,
+	 "Healthcheck command arguments (can be used multiple times)", NULL},
+	{"healthcheck-interval", 0, 0, G_OPTION_ARG_INT, &opt_healthcheck_interval, "Healthcheck interval in seconds (default: 30)", NULL},
+	{"healthcheck-timeout", 0, 0, G_OPTION_ARG_INT, &opt_healthcheck_timeout, "Healthcheck timeout in seconds (default: 30)", NULL},
+	{"healthcheck-retries", 0, 0, G_OPTION_ARG_INT, &opt_healthcheck_retries,
+	 "Number of consecutive failures before marking unhealthy (default: 3)", NULL},
+	{"healthcheck-start-period", 0, 0, G_OPTION_ARG_INT, &opt_healthcheck_start_period,
+	 "Start period in seconds before healthchecks start counting failures (default: 0)", NULL},
 	{NULL, 0, 0, 0, NULL, NULL, NULL}};
 
 
@@ -227,5 +242,12 @@ void process_cli()
 	/* Warn if --no-container-partial-message is used without journald logging */
 	if (opt_no_container_partial_message && !logging_is_journald_enabled()) {
 		nwarnf("--no-container-partial-message has no effect without journald log driver");
+	}
+
+	/* Validate healthcheck parameters - if any healthcheck options were provided without --healthcheck-cmd */
+	if (opt_healthcheck_cmd == NULL
+	    && (opt_healthcheck_interval != -1 || opt_healthcheck_timeout != -1 || opt_healthcheck_retries != -1
+		|| opt_healthcheck_start_period != -1 || opt_healthcheck_args != NULL)) {
+		nexit("Healthcheck parameters specified without --healthcheck-cmd. Please provide --healthcheck-cmd to enable healthcheck functionality.");
 	}
 }
