@@ -79,19 +79,13 @@ static size_t syslog_identifier_len;
 
 #define WRITEV_BUFFER_N_IOV 128
 
-typedef struct {
-	int iovcnt;
-	struct iovec iov[WRITEV_BUFFER_N_IOV];
-} writev_buffer_t;
-
 static void parse_log_path(char *log_config);
 static const char *stdpipe_name(stdpipe_t pipe);
 static int write_journald(int pipe, char *buf, ssize_t num_read);
 static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen);
 static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen);
-static ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *data, ssize_t len);
-static ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const void *data, ssize_t len);
-static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf);
+static ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, ssize_t len);
+static ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, ssize_t len);
 static void set_k8s_timestamp(char *buf, ssize_t buflen, const char *pipename);
 static void reopen_k8s_file(void);
 static int parse_priority_prefix(const char *buf, ssize_t buflen, int *priority, const char **message_start);
@@ -386,7 +380,8 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
 	ptrdiff_t line_len = 0;
 
 	while (buflen > 0 || *partial_buf_len > 0) {
-		writev_buffer_t bufv = {0};
+		struct iovec vecs[WRITEV_BUFFER_N_IOV];
+		writev_iov_t bufv = {0, WRITEV_BUFFER_N_IOV, vecs};
 
 		bool partial = buflen == 0 || get_line_len(&line_len, buf, buflen);
 
@@ -489,7 +484,8 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 	static bool stdout_has_partial = false;
 	static bool stderr_has_partial = false;
 
-	writev_buffer_t bufv = {0};
+	struct iovec vecs[WRITEV_BUFFER_N_IOV];
+	writev_iov_t bufv = {0, WRITEV_BUFFER_N_IOV, vecs};
 	int64_t bytes_to_be_written = 0;
 
 	bool *has_partial = (pipe == STDOUT_PIPE) ? &stdout_has_partial : &stderr_has_partial;
@@ -550,7 +546,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		 * a timestamp.
 		 */
 		if ((log_size_max > 0) && (k8s_bytes_written + bytes_to_be_written) > log_size_max) {
-			if (writev_buffer_flush(k8s_log_fd, &bufv) < 0) {
+			if (writev_all(k8s_log_fd, &bufv) < 0) {
 				nwarn("failed to flush buffer to log");
 			}
 			reopen_k8s_file();
@@ -600,7 +596,7 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 		buflen -= line_len;
 	}
 
-	if (writev_buffer_flush(k8s_log_fd, &bufv) < 0) {
+	if (writev_all(k8s_log_fd, &bufv) < 0) {
 		nwarn("failed to flush buffer to log");
 	}
 
@@ -622,66 +618,12 @@ static bool get_line_len(ptrdiff_t *line_len, const char *buf, ssize_t buflen)
 	return partial;
 }
 
-
-static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf)
-{
-	ssize_t count = 0;
-	int iovcnt = buf->iovcnt;
-	struct iovec *iov = buf->iov;
-
-	/*
-	 * By definition, flushing the buffers will either be entirely successful, or will fail at some point
-	 * along the way.  There is no facility to attempt to retry a writev() system call outside of an EINTR
-	 * errno.  Therefore, no matter the outcome, always reset the writev_buffer_t data structure.
-	 */
-	buf->iovcnt = 0;
-
-	while (iovcnt > 0) {
-		ssize_t res;
-		do {
-			res = writev(fd, iov, iovcnt);
-		} while (res == -1 && errno == EINTR);
-
-		if (res <= 0) {
-			/*
-			 * Any unflushed data is lost (this would be a good place to add a counter for how many times
-			 * this occurs and another count for how much data is lost).
-			 *
-			 * Note that if writev() returns a 0, this logic considers it an error.
-			 */
-			return -1;
-		}
-
-		count += res;
-
-		while (res > 0) {
-			size_t iov_len = iov->iov_len;
-			size_t from_this = MIN((size_t)res, iov_len);
-			res -= from_this;
-			iov_len -= from_this;
-
-			if (iov_len == 0) {
-				iov++;
-				iovcnt--;
-				/* continue, res still > 0 */
-			} else {
-				iov->iov_len = iov_len;
-				iov->iov_base += from_this;
-				/* break, res is 0 */
-			}
-		}
-	}
-
-	return count;
-}
-
-
-ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *data, ssize_t len)
+ssize_t writev_buffer_append_segment(int fd, writev_iov_t *buf, const void *data, ssize_t len)
 {
 	if (data == NULL)
 		return 1;
 
-	if (buf->iovcnt == WRITEV_BUFFER_N_IOV && writev_buffer_flush(fd, buf) < 0)
+	if (buf->iovcnt == buf->max_iovcnt && writev_all(fd, buf) < 0)
 		return -1;
 
 	if (len > 0) {
@@ -693,12 +635,12 @@ ssize_t writev_buffer_append_segment(int fd, writev_buffer_t *buf, const void *d
 	return 1;
 }
 
-ssize_t writev_buffer_append_segment_no_flush(writev_buffer_t *buf, const void *data, ssize_t len)
+ssize_t writev_buffer_append_segment_no_flush(writev_iov_t *buf, const void *data, ssize_t len)
 {
 	if (data == NULL)
 		return 1;
 
-	if (buf->iovcnt == WRITEV_BUFFER_N_IOV)
+	if (buf->iovcnt == buf->max_iovcnt)
 		return -1;
 
 	if (len > 0) {

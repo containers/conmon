@@ -39,7 +39,7 @@ static char *setup_socket(int *fd, const char *path);
   setup_attach_socket() is responsible for setting the correct remote FD and pushing it onto the queue.
 */
 static struct local_sock_s local_mainfd_stdin = {&mainfd_stdin, true, NULL, "container stdin", NULL};
-struct remote_sock_s remote_attach_sock = {
+static struct remote_sock_s remote_attach_sock = {
 	SOCK_TYPE_CONSOLE,   /* sock_type */
 	-1,		     /* fd */
 	&local_mainfd_stdin, /* dest */
@@ -349,25 +349,40 @@ char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 	return base_path;
 }
 
-
 void schedule_main_stdin_write()
 {
 	schedule_local_sock_write(&local_mainfd_stdin);
 }
 
-void write_back_to_remote_consoles(char *buf, int len)
+struct write_console_sock_user_data {
+	stdpipe_t pipe;
+	char *buf;
+	size_t buflen;
+};
+
+static void write_console_sock(gpointer data, G_GNUC_UNUSED gpointer user_data)
+{
+	struct remote_sock_s *remote_sock = (struct remote_sock_s *)data;
+	if (!remote_sock->writable)
+		return;
+	struct write_console_sock_user_data *wcsud = (struct write_console_sock_user_data *)user_data;
+	struct iovec iov[2] = {{&wcsud->pipe, 1}, {wcsud->buf, wcsud->buflen}};
+	writev_iov_t wviov = {2, 2, iov};
+	if (writev_all(remote_sock->fd, &wviov) < 0) {
+		nwarn("Failed to write to remote console socket");
+		remote_sock_shutdown(remote_sock, SHUT_WR);
+	}
+}
+
+void write_back_to_remote_consoles(stdpipe_t pipe, char *buf, size_t buflen)
 {
 	if (local_mainfd_stdin.readers == NULL)
 		return;
-
-	for (int i = local_mainfd_stdin.readers->len; i > 0; i--) {
-		struct remote_sock_s *remote_sock = g_ptr_array_index(local_mainfd_stdin.readers, i - 1);
-
-		if (remote_sock->writable && write_all(remote_sock->fd, buf, len) < 0) {
-			nwarn("Failed to write to remote console socket");
-			remote_sock_shutdown(remote_sock, SHUT_WR);
-		}
-	}
+	GPtrArray *readers_copy = g_ptr_array_copy(local_mainfd_stdin.readers, NULL, NULL);
+	g_ptr_array_set_free_func(readers_copy, NULL);
+	struct write_console_sock_user_data wcsud = {pipe, buf, buflen};
+	g_ptr_array_foreach(readers_copy, write_console_sock, &wcsud);
+	g_ptr_array_free(readers_copy, true);
 }
 
 /* Internal */

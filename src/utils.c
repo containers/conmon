@@ -62,9 +62,9 @@ static void get_signal_descriptor_mask(sigset_t *set)
 	sigprocmask(SIG_BLOCK, set, NULL);
 }
 
-ssize_t write_all(int fd, const void *buf, size_t count)
+ssize_t write_all(int fd, const void *buf, size_t buflen)
 {
-	size_t remaining = count;
+	size_t remaining = buflen;
 	const char *p = buf;
 	ssize_t res;
 
@@ -78,6 +78,58 @@ ssize_t write_all(int fd, const void *buf, size_t count)
 
 		remaining -= res;
 		p += res;
+	}
+
+	return buflen;
+}
+
+ssize_t writev_all(int fd, writev_iov_t *buf)
+{
+	ssize_t count = 0;
+	size_t iovcnt = buf->iovcnt;
+	struct iovec *iov = buf->iov;
+
+	/*
+	 * By definition, flushing the buffers will either be entirely successful, or will fail at some point
+	 * along the way.  There is no facility to attempt to retry a writev() system call outside of an retryable
+	 * errno.  Therefore, no matter the outcome, always reset the given writev_iov_t data structure.
+	 */
+	buf->iovcnt = 0;
+
+	while (iovcnt > 0) {
+		ssize_t res;
+		do {
+			res = writev(fd, iov, iovcnt);
+		} while (res == -1 && retryable_error(errno));
+
+		if (res <= 0) {
+			/*
+			 * Any unflushed data is lost (this would be a good place to add a counter for how many times
+			 * this occurs and another count for how much data is lost).
+			 *
+			 * Note that if writev() returns a 0, this logic considers it an error.
+			 */
+			return -1;
+		}
+
+		count += res;
+
+		while (res > 0) {
+			size_t iov_len = iov->iov_len;
+			size_t from_this = MIN((size_t)res, iov_len);
+			res -= from_this;
+			iov_len -= from_this;
+
+			if (iov_len == 0) {
+				iov++;
+				iovcnt--;
+				/* continue, res still > 0 */
+			} else {
+				iov->iov_len = iov_len;
+				iov->iov_base += from_this;
+				/* break, res is 0 */
+			}
+		}
 	}
 
 	return count;
