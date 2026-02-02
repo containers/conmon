@@ -92,7 +92,10 @@ teardown() {
     assert "${output}" =~ "\"pid\": $CONTAINER_PID"
 }
 
-@test "runtime: runtime error with _OCI_SYNCPIPE defined" {
+@test "runtime: runc error with _OCI_SYNCPIPE defined" {
+    if [[ $(basename "$RUNTIME_BINARY") != "runc" ]]; then
+        skip "test requires runc"
+    fi
     # This trailing " results in wrong config.json. We expect the runtime
     # failure.
     setup_container_env '"'
