@@ -510,14 +510,14 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 
 		if (writev_buffer_append_segment(k8s_log_fd, &bufv, tsbuf, TSBUFLEN - 1) >= 0) {
 			timestamp_written = true;
-			if (writev_buffer_append_segment(k8s_log_fd, &bufv, "F\n", 2) >= 0) {
+			if (writev_buffer_append_segment(k8s_log_fd, &bufv, "F \n", 3) >= 0) {
 				f_sequence_written = true;
 			}
 		}
 
 		if (timestamp_written && f_sequence_written) {
-			k8s_bytes_written += TSBUFLEN - 1 + 2;
-			k8s_total_bytes_written += TSBUFLEN - 1 + 2;
+			k8s_bytes_written += TSBUFLEN - 1 + 3;
+			k8s_total_bytes_written += TSBUFLEN - 1 + 3;
 		} else {
 			if (!timestamp_written) {
 				nwarn("failed to write timestamp for terminating F-sequence");
