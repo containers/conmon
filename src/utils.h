@@ -255,7 +255,13 @@ static inline void hashtable_free_cleanup(GHashTable **tbl)
 #define _cleanup_gerror_ _cleanup_(gerror_free_cleanup)
 
 
-ssize_t write_all(int fd, const void *buf, size_t count);
+ssize_t write_all(int fd, const void *buf, size_t buflen);
+typedef struct {
+	size_t iovcnt;
+	size_t max_iovcnt;
+	struct iovec *iov;
+} writev_iov_t;
+ssize_t writev_all(int fd, writev_iov_t *iov);
 
 int set_subreaper(gboolean enabled);
 
