@@ -20,6 +20,7 @@
 #include "close_fds.h"
 #include "seccomp_notify.h"
 #include "runtime_args.h"
+#include "healthcheck.h"
 
 #include <sys/stat.h>
 #include <locale.h>
@@ -46,7 +47,6 @@ int main(int argc, char *argv[])
 	_cleanup_close_ int dev_null_r_cleanup = -1;
 	_cleanup_close_ int dev_null_w_cleanup = -1;
 	_cleanup_close_ int dummyfd = -1;
-
 	int initialize_ec = initialize_cli(argc, argv);
 	if (initialize_ec >= 0) {
 		exit(initialize_ec);
@@ -402,7 +402,6 @@ int main(int argc, char *argv[])
 	}
 
 	container_pid = atoi(contents);
-	ndebugf("container PID: %d", container_pid);
 
 	g_hash_table_insert(pid_to_handler, (pid_t *)&container_pid, container_exit_cb);
 
@@ -413,6 +412,87 @@ int main(int argc, char *argv[])
 	 */
 	if ((opt_api_version >= 1 || !opt_exec) && sync_pipe_fd >= 0)
 		write_or_close_sync_fd(&sync_pipe_fd, container_pid, NULL);
+
+	/* Start healthcheck timers if healthcheck command is provided */
+	if (opt_healthcheck_cmd != NULL) {
+
+		healthcheck_config_t config;
+		memset(&config, 0, sizeof(config));
+
+		/* Parse healthcheck command and arguments into array */
+		/* Count total arguments: command + args + NULL terminator */
+		int argc = 1; // At least the command
+		if (opt_healthcheck_args != NULL) {
+			for (int i = 0; opt_healthcheck_args[i] != NULL; i++) {
+				argc++;
+			}
+		}
+
+		/* Allocate array for command and arguments */
+		config.test = calloc(argc + 1, sizeof(char *));
+		if (config.test == NULL) {
+			pexit("Failed to allocate memory for healthcheck command");
+		}
+
+		/* Copy command */
+		config.test[0] = strdup(opt_healthcheck_cmd);
+		if (config.test[0] == NULL) {
+			pexit("Failed to duplicate healthcheck command");
+		}
+
+		/* Copy arguments */
+		if (opt_healthcheck_args != NULL) {
+			for (int i = 0; opt_healthcheck_args[i] != NULL; i++) {
+				config.test[i + 1] = strdup(opt_healthcheck_args[i]);
+				if (config.test[i + 1] == NULL) {
+					/* Clean up on error */
+					for (int j = 0; j <= i; j++) {
+						free(config.test[j]);
+					}
+					free(config.test);
+					pexit("Failed to duplicate healthcheck argument");
+				}
+			}
+		}
+		config.test[argc] = NULL; /* NULL terminator */
+
+		/* Set healthcheck parameters from CLI, using defaults for -1 values */
+		config.enabled = true;
+		config.interval = opt_healthcheck_interval != -1 ? opt_healthcheck_interval : 30;
+		config.timeout = opt_healthcheck_timeout != -1 ? opt_healthcheck_timeout : 30;
+		config.retries = opt_healthcheck_retries != -1 ? opt_healthcheck_retries : 3;
+		/* First healthcheck runs immediately, then after 'interval' seconds.
+		 * Here we give a default of 10 seconds to allow container to fully initialize.
+		 * If the user knows the container will take less time to initialize, they can set the start_period to a lower value.
+		 */
+		config.start_period = opt_healthcheck_start_period != -1 ? opt_healthcheck_start_period : 10;
+
+		/* Validate healthcheck configuration */
+		if (!healthcheck_validate_config(&config)) {
+			nwarnf("Invalid healthcheck configuration for container %s", opt_cid);
+			healthcheck_config_free(&config);
+			return 1;
+		}
+
+		healthcheck_timer_t *timer = healthcheck_timer_new(opt_cid, &config);
+		if (timer != NULL) {
+			/* Start healthcheck with a 3-second delay to allow container to fully initialize in
+			   addition to the default of 10 seconds.
+			*/
+			if (g_timeout_add_seconds(3, healthcheck_delayed_start_callback, timer)) {
+				active_healthcheck_timer = timer;
+				ninfof("Scheduled healthcheck for container %s (will start after 3s delay)", opt_cid);
+			} else {
+				nwarnf("Failed to schedule delayed healthcheck for container %s", opt_cid);
+				healthcheck_timer_free(timer);
+			}
+		} else {
+			nwarnf("Failed to create healthcheck timer for container %s", opt_cid);
+		}
+
+		/* Always free the config, regardless of success or failure */
+		healthcheck_config_free(&config);
+	}
 
 #ifdef __linux__
 	setup_oom_handling(container_pid);
@@ -500,6 +580,9 @@ int main(int argc, char *argv[])
 	/* Close down the signalfd */
 	g_source_remove(signal_fd_tag);
 	close(signal_fd);
+
+	/* Cleanup healthcheck timers */
+	healthcheck_cleanup();
 
 	/*
 	 * Podman injects some fd's into the conmon process so that exposed ports are kept busy while
