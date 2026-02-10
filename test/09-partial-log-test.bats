@@ -80,7 +80,7 @@ teardown() {
             return 1
         }
 
-        echo "$log_content" | grep -q "stdout F $" || {
+        echo "$log_content" | grep -q "stdout F$" || {
             echo "Expected F-sequence not found"
             return 1
         }
@@ -133,7 +133,7 @@ teardown() {
 
     # For normal output with newlines, should NOT have standalone F-sequences
     # (F-sequences should only appear for partial line termination)
-    ! echo "$log_content" | grep -q "stdout F $" || {
+    ! echo "$log_content" | grep -q "stdout F$" || {
         echo "Unexpected standalone F-sequence found for normal output"
         return 1
     }
