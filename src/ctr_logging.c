@@ -481,18 +481,12 @@ static int write_journald(int pipe, char *buf, ssize_t buflen)
  * The CRI requires us to write logs with a (timestamp, stream, line) format
  * for every newline-separated line. write_k8s_log writes said format for every
  * line in buf, and will partially write the final line of the log if buf is
- * not terminated by a newline. A 0 buflen argument forces any buffered partial
- * line to be finalized with an F-sequence.
+ * not terminated by a newline.
  */
 static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 {
-	static bool stdout_has_partial = false;
-	static bool stderr_has_partial = false;
-
 	writev_buffer_t bufv = {0};
 	int64_t bytes_to_be_written = 0;
-
-	bool *has_partial = (pipe == STDOUT_PIPE) ? &stdout_has_partial : &stderr_has_partial;
 
 	/*
 	 * Use the same timestamp for every line of the log in this buffer.
@@ -501,32 +495,6 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 	 */
 	char tsbuf[TSBUFLEN];
 	set_k8s_timestamp(tsbuf, sizeof tsbuf, stdpipe_name(pipe));
-
-	/* If buflen is 0, this is a drain operation. Generate terminating F-sequence if needed. */
-	if (buflen == 0 && *has_partial) {
-		/* Generate terminating F-sequence for previous partial line */
-		bool timestamp_written = false;
-		bool f_sequence_written = false;
-
-		if (writev_buffer_append_segment(k8s_log_fd, &bufv, tsbuf, TSBUFLEN - 1) >= 0) {
-			timestamp_written = true;
-			if (writev_buffer_append_segment(k8s_log_fd, &bufv, "F\n", 2) >= 0) {
-				f_sequence_written = true;
-			}
-		}
-
-		if (timestamp_written && f_sequence_written) {
-			k8s_bytes_written += TSBUFLEN - 1 + 2;
-			k8s_total_bytes_written += TSBUFLEN - 1 + 2;
-		} else {
-			if (!timestamp_written) {
-				nwarn("failed to write timestamp for terminating F-sequence");
-			} else {
-				nwarn("failed to write terminating F-sequence");
-			}
-		}
-		*has_partial = false;
-	}
 
 	ptrdiff_t line_len = 0;
 	while (buflen > 0) {
@@ -591,9 +559,6 @@ static int write_k8s_log(stdpipe_t pipe, const char *buf, ssize_t buflen)
 
 		k8s_bytes_written += bytes_to_be_written;
 		k8s_total_bytes_written += bytes_to_be_written;
-
-		/* Track partial state for this pipe */
-		*has_partial = partial;
 	next:
 		/* Update the head of the buffer remaining to output. */
 		buf += line_len;
