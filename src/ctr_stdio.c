@@ -130,8 +130,8 @@ static bool read_stdio(int fd, stdpipe_t pipe, gboolean *eof)
 		return false;
 	} else if (num_read < 0) {
 		if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			// Non-blocking mode - no data available, return gracefully
-			return true;
+			// Non-blocking mode - no data available, stop draining
+			return false;
 		}
 		/* Ignore EIO if fd is a tty, since this can happen when the tty is closed
 		   while we are reading from it. */
