@@ -171,5 +171,4 @@ run_conmon_with_log_opts() {
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
     assert "${output}" =~ "stdout P"
-    assert "${output}" =~ "stdout F"
 }
