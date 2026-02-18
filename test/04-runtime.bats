@@ -89,7 +89,7 @@ teardown() {
     assert_file_exists $TEST_TMPDIR/syncpipe-output
     run cat $TEST_TMPDIR/syncpipe-output
     CONTAINER_PID=$(cat "$PID_FILE")
-    assert "${output}" =~ "\"pid\": $CONTAINER_PID"
+    assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
 }
 
 @test "runtime: runc error with _OCI_SYNCPIPE defined" {
@@ -121,7 +121,7 @@ teardown() {
     # Check that the error is sent to the sync pipe.
     assert_file_exists $TEST_TMPDIR/syncpipe-output
     run cat $TEST_TMPDIR/syncpipe-output
-    assert "${output}" =~ "\"pid\": -1"
-    assert "${output}" =~ "\"message\":"
-    assert "${output}" =~ "runc create failed"
+    assert_json "${output}" =~ "\"pid\": -1"
+    assert_json "${output}" =~ "\"message\":"
+    assert_json "${output}" =~ "runc create failed"
 }

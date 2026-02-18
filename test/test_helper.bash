@@ -643,3 +643,15 @@ function die() {
     echo "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" >&2
     bail-now
 }
+
+# Helper function wrapping the `assert`. It expects json as a first
+# argument and normalizes it so it is exactly the same no matter what
+# generated it.
+assert_json() {
+    echo "$1"
+    if ! normalized_json=$(printf '%s' "$1" | jq -S .); then
+        die "Invalid JSON passed to assert_json: $normalized_json"
+    fi
+    echo "$normalized_json"
+    assert "$normalized_json" "$2" "$3" "$4"
+}
