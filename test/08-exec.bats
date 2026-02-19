@@ -86,7 +86,7 @@ teardown() {
     # Check that the conmon wrote something back.
     assert_file_exists $TEST_TMPDIR/attachpipe-output
     run cat $TEST_TMPDIR/attachpipe-output
-    assert "${output}" =~ '"data": 0'
+    assert_json "${output}" =~ '"data": 0'
 }
 
 @test "exec: --exec-attach with _OCI_STARTPIPE" {
@@ -156,7 +156,7 @@ teardown() {
     # Check that the conmon wrote something back.
     assert_file_exists $TEST_TMPDIR/syncpipe-output
     run cat $TEST_TMPDIR/syncpipe-output
-    assert "${output}" =~ '"exit_code": 0'
+    assert_json "${output}" =~ '"exit_code": 0'
 }
 
 @test "exec: --exec --api-version=1 with _OCI_SYNCPIPE defined" {
@@ -178,7 +178,7 @@ teardown() {
     assert_file_exists $TEST_TMPDIR/syncpipe-output
     run cat $TEST_TMPDIR/syncpipe-output
     CONTAINER_PID=$(cat "$PID_FILE")
-    assert "${output}" =~ "\"data\": $CONTAINER_PID"
-    assert "${output}" =~ '"data": 0'
+    assert_json "${output}" =~ "\"data\": $CONTAINER_PID"
+    assert_json "${output}" =~ '"data": 0'
 }
 
