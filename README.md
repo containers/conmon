@@ -1,3 +1,7 @@
+<p align="center">
+<img src="logo/conmon_full_color_text.png" alt="conmon logo">
+</p>
+
 # conmon
 
 An OCI container runtime monitor.
