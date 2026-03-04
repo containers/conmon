@@ -2,10 +2,14 @@
 set -euo pipefail
 
 declare -A VERSIONS=(
-    ["cni-plugins"]=v1.3.0
-    ["runc"]=v1.1.14
-    ["crun"]=1.17
-    ["bats"]=v1.9.0
+    # renovate: datasource=github-releases depName=containernetworking/plugins
+    ["cni-plugins"]=v1.9.0
+    # renovate: datasource=github-releases depName=bats-core/bats-core
+    ["bats"]=v1.13.0
+    # renovate: datasource=github-releases depName=opencontainers/runc
+    ["runc"]=v1.4.0
+    # renovate: datasource=github-releases depName=containers/crun
+    ["crun"]=1.26
 )
 
 main() {
@@ -122,26 +126,24 @@ install_cni_plugins() {
 }
 
 install_runc() {
-    URL=https://github.com/opencontainers/runc/releases/download/"${VERSIONS["runc"]}"
-    BINARY=/usr/sbin/runc
-    sudo wget -O "$BINARY" "$URL"/runc.amd64
-    sudo chmod +x "$BINARY"
-
-    # Verify the SHA256
-    SUMFILE=runc.sha256sum
-    wget "$URL"/$SUMFILE
-    grep -qw "$(sha256sum "$BINARY" | awk '{ print $1 }')" $SUMFILE
-    rm $SUMFILE
+    git clone --depth 1 --branch "${VERSIONS["runc"]}" https://github.com/opencontainers/runc
+    pushd runc
+    make
+    sudo install -D -m0755 runc /usr/sbin/runc
+    popd
+    rm -rf runc
 
     runc --version
 }
 
 install_crun() {
-	URL=https://github.com/containers/crun/releases/download/"${VERSIONS["crun"]}"/crun-"${VERSIONS["crun"]}"-linux-amd64
-
-    BINARY=/usr/bin/crun
-    sudo wget -O "$BINARY" "$URL"
-    sudo chmod +x "$BINARY"
+    git clone --depth 1 --branch "${VERSIONS["crun"]}" https://github.com/containers/crun
+    pushd crun
+    ./autogen.sh
+    ./configure
+    sudo make -j "$(nproc)" install prefix=/usr
+    popd
+    sudo rm -rf crun
 
     crun --version
 }

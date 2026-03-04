@@ -45,7 +45,8 @@ jobs:
           CRIO_DIR=$(sudo go env GOPATH)/src/github.com/cri-o/cri-o
           sudo make -C "$CRIO_DIR" all test-binaries
           # skip seccomp tests because they have permission denied issues in a container and accept signed image as they don't use conmon
-          sudo rm -f "$CRIO_DIR"/test/seccomp*.bats "$CRIO_DIR"/test/image.bats "$CRIO_DIR"/test/policy.bats
+          # skip crio-wipe tests as they test cri-o's wipe functionality, not conmon
+          sudo rm -f "$CRIO_DIR"/test/seccomp*.bats "$CRIO_DIR"/test/image.bats "$CRIO_DIR"/test/policy.bats "$CRIO_DIR"/test/crio-wipe.bats
           sudo sh -c "cd $CRIO_DIR; RUN_CRITEST=${{ matrix.critest }} ./test/test_runner.sh"
         env:
           JOBS: '2'
