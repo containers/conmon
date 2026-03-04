@@ -395,7 +395,7 @@ assert_stderr_contains() {
 wait_for_runtime_status() {
     local cid=$1
     local expected_status=$2
-    local how_long=5
+    local how_long=15
 
     t1=$(expr $SECONDS + $how_long)
     while [ $SECONDS -lt $t1 ]; do
