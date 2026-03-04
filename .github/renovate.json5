@@ -49,4 +49,16 @@
   /*************************************************
    *** Repository-specific configuration options ***
    *************************************************/
+
+  // Track dependency versions in hack/github-actions-setup
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["hack/github-actions-setup"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\s+\\[\"[^\"]+\"\\]=(?<currentValue>\\S+)"
+      ],
+      "versioningTemplate": "semver"
+    }
+  ]
 }
