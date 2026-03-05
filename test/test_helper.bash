@@ -410,6 +410,29 @@ wait_for_runtime_status() {
     die "timed out waiting for '$expected_status' from $cid"
 }
 
+start_runtime() {
+    local cid=$1
+    local how_long=5
+
+    t1=$(expr $SECONDS + $how_long)
+    while [ $SECONDS -lt $t1 ]; do
+        run_runtime start "$cid"
+        # There is some weird race condition in runc. Sometimes it returns
+        # "cannot start a container that has stopped" and it gets into
+        # consistent state only after `runc state` command.
+        if expr "$output" : ".*cannot start a container that has stopped.*"; then
+            run_runtime state "$cid"
+            echo "$output"
+        else
+            return
+        fi
+
+        sleep 0.5
+    done
+
+    die "timed out waiting for 'running' from $cid"
+}
+
 # Helper function to start conmon with default arguments.
 # Additional conmon arguments can be passed to this function.
 start_conmon_with_default_args() {
@@ -428,12 +451,15 @@ start_conmon_with_default_args() {
     if [ "$status" -ne 0 ]; then
         return
     fi
+    echo "START:"
+    echo $output
 
     # Do not start the container if it's already running. This can happen
     # when `start_conmon_with_default_args` has already been called and this
     # second call uses option like --exec which connects to already running
     # container.
     run_runtime state "$CTR_ID"
+    echo "STATE:"
     echo "$output"
     if expr "$output" : ".*status\": \"running"; then
         return
@@ -446,7 +472,7 @@ start_conmon_with_default_args() {
     [ -f "$CONMON_PID_FILE" ]
 
     # Start the container and wait until it really starts.
-    run_runtime start "$CTR_ID"
+    start_runtime "$CTR_ID"
 }
 
 # Helper function to run conmon with default arguments and wait until it is stopped.
