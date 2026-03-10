@@ -13,10 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Install BATS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
       - run: sudo hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
@@ -35,10 +31,6 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
           cache: false
-      - name: Install BATS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
       - run: sudo hack/github-actions-setup
       - name: Run CRI-O integration tests (critest=${{ matrix.critest }})
         run: |
