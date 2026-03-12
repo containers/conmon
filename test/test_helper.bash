@@ -447,6 +447,9 @@ start_conmon_with_default_args() {
 
     # Start the container and wait until it really starts.
     run_runtime start "$CTR_ID"
+    if [ "$status" -ne 0 ]; then
+	    die "$RUNTIME_BINARY start failed with $status: $output"
+    fi
 }
 
 # Helper function to run conmon with default arguments and wait until it is stopped.
