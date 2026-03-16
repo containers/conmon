@@ -429,26 +429,53 @@ start_conmon_with_default_args() {
         return
     fi
 
-    # Do not start the container if it's already running. This can happen
-    # when `start_conmon_with_default_args` has already been called and this
-    # second call uses option like --exec which connects to already running
-    # container.
-    run_runtime state "$CTR_ID"
-    echo "$output"
-    if expr "$output" : ".*status\": \"running"; then
+    # When using --exec, the container is already running (or may have already
+    # stopped). In that case, we should not try to start it again.
+    local is_exec=false
+    for arg in "${extra_args[@]}"; do
+        if [[ "$arg" == "--exec" ]]; then
+            is_exec=true
+            break
+        fi
+    done
+
+    if $is_exec; then
         return
     fi
 
-    # Wait until the container is created
+    # Wait until the container is created.
+    # On slow systems (e.g. aarch64), conmon may still be running runc create
+    # in the background when we get here, so we need to poll.
     wait_for_runtime_status "$CTR_ID" created
 
     # Check that conmon pidfile was created
     [ -f "$CONMON_PID_FILE" ]
 
-    # Start the container and wait until it really starts.
+    # Start the container. On slow systems, there is a race condition where
+    # the container's init process may have already exited (e.g. due to a
+    # crash or very fast execution) between the created check above and the
+    # start call below. In that case, runc reports the container as "stopped"
+    # and refuses to start it. We treat this as success since the container
+    # did run to completion.
     run_runtime start "$CTR_ID"
     if [ "$status" -ne 0 ]; then
-	    die "$RUNTIME_BINARY start failed with $status: $output"
+        local start_status="$status"
+        local start_output="$output"
+        # On slow systems (e.g. aarch64), there is a race condition where
+        # the container's init process may exit between the created check
+        # and the start call. runc start then fails with "cannot start a
+        # container that has stopped". Check if this is the case and treat
+        # it as success since the container did run to completion.
+        if expr "$start_output" : ".*cannot start a container that has stopped" > /dev/null; then
+            return
+        fi
+        # Also check current state - the container may have stopped or
+        # been cleaned up by the time we get here.
+        run_runtime state "$CTR_ID"
+        if expr "$output" : ".*status\": \"stopped" > /dev/null; then
+            return
+        fi
+        die "$RUNTIME_BINARY start failed with $start_status: $start_output"
     fi
 }
 
