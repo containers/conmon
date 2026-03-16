@@ -3,7 +3,7 @@ set -euo pipefail
 
 declare -A VERSIONS=(
     # renovate: datasource=github-releases depName=containernetworking/plugins
-    ["cni-plugins"]=v1.9.0
+    ["cni-plugins"]=v1.9.1
     # renovate: datasource=github-releases depName=bats-core/bats-core
     ["bats"]=v1.13.0
     # renovate: datasource=github-releases depName=opencontainers/runc
