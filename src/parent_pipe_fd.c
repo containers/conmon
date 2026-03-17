@@ -39,8 +39,9 @@ void write_or_close_sync_fd(int *fd, int res, const char *message)
 
 	ssize_t len;
 
-	if (*fd == -1)
+	if (*fd == -1) {
 		return;
+	}
 
 	_cleanup_free_ char *json = NULL;
 	if (message && strlen(message) > 0) {
@@ -62,8 +63,10 @@ void write_or_close_sync_fd(int *fd, int res, const char *message)
 	}
 
 	len = strlen(json);
-	if (write_all(*fd, json, len) != len) {
+	ssize_t written = write_all(*fd, json, len);
+	if (written != len) {
 		if (errno == EPIPE) {
+			nwarnf("Got EPIPE when writing to sync_pipe_fd, closing it");
 			close(*fd);
 			*fd = -1;
 			return;
