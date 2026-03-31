@@ -82,6 +82,14 @@ static char *process_cgroup_subsystem_path(int pid, bool cgroup2, const char *su
 		*path = 0;
 		path++;
 		if (cgroup2) {
+			/*
+			 * For cgroup v2, we must find the unified hierarchy entry
+			 * which is identified by "0::". Skip any legacy v1 controller
+			 * lines (e.g. "1:net_cls:/") that may be present on systems
+			 * with mixed cgroup mounts.
+			 */
+			if (line[0] != '0' || line[1] != ':' || *ptr != '\0')
+				continue;
 			char *subsystem_path = g_strdup_printf("%s%s", CGROUP_ROOT, path);
 			subsystem_path[strlen(subsystem_path) - 1] = '\0';
 			return subsystem_path;
