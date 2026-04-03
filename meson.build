@@ -1,10 +1,10 @@
 project('conmon', 'c',
-        version : run_command('cat', files('VERSION'),).stdout().strip(),
+        version : run_command('cat', files('VERSION'), check : true).stdout().strip(),
         license : 'Apache-2.0',
         default_options : [
                 'c_std=c99',
         ],
-        meson_version : '>= 0.46',
+        meson_version : '>= 0.56',
 )
 
 git_commit = ''
@@ -13,12 +13,14 @@ git = find_program('git', required : false)
 if git.found()
         git_commit = run_command(
                 git,
-                ['--git-dir=@0@/.git'.format(meson.source_root()),
-                 'rev-parse', 'HEAD']).stdout().strip()
+                ['--git-dir=@0@/.git'.format(meson.project_source_root()),
+                 'rev-parse', 'HEAD'],
+                check : false).stdout().strip()
         git_dirty = run_command(
                 git,
-                ['--git-dir=@0@/.git'.format(meson.source_root()),
-                 'status', '--porcelain', '--untracked-files=no']).stdout().strip()
+                ['--git-dir=@0@/.git'.format(meson.project_source_root()),
+                 'status', '--porcelain', '--untracked-files=no'],
+                check : false).stdout().strip()
         if git_dirty != ''
                 git_commit = git_commit + '-dirty'
         endif
