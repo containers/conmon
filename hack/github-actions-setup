@@ -7,7 +7,7 @@ declare -A VERSIONS=(
     # renovate: datasource=github-releases depName=bats-core/bats-core
     ["bats"]=v1.13.0
     # renovate: datasource=github-releases depName=opencontainers/runc
-    ["runc"]=v1.4.1
+    ["runc"]=v1.4.2
     # renovate: datasource=github-releases depName=containers/crun
     ["crun"]=1.26
 )
