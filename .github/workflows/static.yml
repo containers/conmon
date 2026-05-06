@@ -1,0 +1,60 @@
+name: static-binary
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:
+permissions: {}
+
+jobs:
+
+  static-binary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: amd64
+            target: default.nix
+          - name: arm64
+            target: default-arm64.nix
+          - name: ppc64le
+            target: default-ppc64le.nix
+          - name: riscv64
+            target: default-riscv64.nix
+          - name: s390x
+            target: default-s390x.nix
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+      - name: Build static ${{ matrix.name }} binary
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          podman run -i --rm \
+            -e CACHIX_AUTH_TOKEN \
+            -v "$PWD:$PWD:Z" \
+            -w "$PWD" \
+            docker.io/nixos/nix:2.15.0 \
+            sh -c \
+            "nix-env -iA cachix -f https://cachix.org/api/v1/install && \
+             cachix use conmon && \
+             nix-build nix/$TARGET && \
+             nix-store -qR --include-outputs \$(nix-instantiate nix/$TARGET) | grep -v conmon | cachix push conmon && \
+             cp -R result/bin ."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conmon-${{ matrix.name }}
+          path: bin/conmon
+
+  all-done:
+    needs:
+      - static-binary
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All jobs completed"
