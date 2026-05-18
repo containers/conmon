@@ -8,6 +8,7 @@
 #include "ctr_logging.h"
 #include "close_fds.h"
 #include "oom.h"
+#include "self_pipe.h"
 
 #include <errno.h>
 #include <glib.h>
@@ -33,8 +34,11 @@ void on_sig_exit(int signal)
 				return;
 		}
 	}
-	/* Just force a check if we get here.  */
-	raise(SIGUSR1);
+	/* Just force a check if we get here.
+	 * Use the self-pipe trick to safely wake up the GLib main loop.
+	 * Calling raise() from a signal handler while the main thread is in ppoll()
+	 * can trigger glibc's __syscall_cancel mechanism, causing SIGABRT (issue #657). */
+	self_pipe_wake();
 }
 
 static void check_child_processes(GHashTable *pid_to_handler, GHashTable *cache)
@@ -103,6 +107,25 @@ gboolean on_signalfd_cb(gint fd, G_GNUC_UNUSED GIOCondition condition, gpointer 
 
 	/* drop the signal from the signalfd */
 	drop_signal_event(fd);
+
+	check_child_processes(data->pid_to_handler, data->exit_status_cache);
+	return G_SOURCE_CONTINUE;
+}
+
+/* Callback for self-pipe: drain all bytes and check child processes.
+ * This is used to safely wake up the main loop from signal handlers
+ * without calling raise() which can trigger glibc __syscall_cancel (issue #657). */
+gboolean self_pipe_cb(G_GNUC_UNUSED gint fd, G_GNUC_UNUSED GIOCondition condition, gpointer user_data)
+{
+	struct pid_check_data *data = (struct pid_check_data *)user_data;
+
+	/* Drain all bytes from the pipe to avoid flooding the event loop. */
+	char buf[256];
+	for (;;) {
+		ssize_t r = read(fd, buf, sizeof(buf));
+		if (r <= 0)
+			break;
+	}
 
 	check_child_processes(data->pid_to_handler, data->exit_status_cache);
 	return G_SOURCE_CONTINUE;

@@ -20,6 +20,7 @@
 #include "close_fds.h"
 #include "seccomp_notify.h"
 #include "runtime_args.h"
+#include "self_pipe.h"
 
 #include <sys/stat.h>
 #include <locale.h>
@@ -322,6 +323,12 @@ int main(int argc, char *argv[])
 		pexit("Failed to create signalfd");
 	int signal_fd_tag = g_unix_fd_add(signal_fd, G_IO_IN, on_signalfd_cb, &data);
 
+	/* Create a self-pipe to safely wake up the main loop from signal handlers.
+	 * This avoids calling raise() from a signal handler while ppoll() is active,
+	 * which can trigger glibc's __syscall_cancel and cause SIGABRT (issue #657). */
+	if (self_pipe_init(self_pipe_cb, &data) < 0)
+		pexit("Failed to create self-pipe");
+
 	if (opt_exit_command)
 		atexit(do_exit_command);
 
@@ -500,6 +507,9 @@ int main(int argc, char *argv[])
 	/* Close down the signalfd */
 	g_source_remove(signal_fd_tag);
 	close(signal_fd);
+
+	/* Clean up the self-pipe */
+	self_pipe_fini();
 
 	/*
 	 * Podman injects some fd's into the conmon process so that exposed ports are kept busy while
