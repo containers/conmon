@@ -26,5 +26,7 @@ extern gboolean timed_out;
 
 extern GMainLoop *main_loop;
 
+/* Self-pipe for safely waking the main loop from signal handlers */
+extern int self_pipe_w;
 
 #endif // GLOBALS_H
