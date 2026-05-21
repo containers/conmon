@@ -1,0 +1,36 @@
+prepare:
+    - when: distro == centos-stream or distro == rhel
+      how: shell
+      script: bash hack/tmt/bats-setup.sh
+      order: 10
+    - when: initiator == packit
+      how: shell
+      script: bash hack/tmt/dnf-repo-setup.sh
+
+provision:
+    how: artemis
+    hardware:
+        memory: ">= 16 GB"
+        cpu:
+            cores: ">= 4"
+            threads: ">=8"
+        disk:
+            - size: ">= 512 GB"
+
+discover:
+    how: fmf
+    url: https://github.com/containers/podman
+    ref: "main"
+
+execute:
+    how: tmt
+
+/system/root-local:
+    summary: Run podman system rootful tests
+    discover+:
+        test: /test/tmt/system/local-root
+
+/system/rootless-oocal:
+    summary: Run podman system rootless tests
+    discover+:
+        filter: /test/tmt/system/local-rootless
