@@ -181,11 +181,11 @@ int main(int argc, char *argv[])
 
 	if (opt_seccomp_notify_socket != NULL) {
 #ifdef USE_SECCOMP
-		pexit("seccomp support not present");
-#else
 		if (opt_seccomp_notify_plugins == NULL)
 			pexit("seccomp notify socket specified without any plugin");
 		seccomp_listener = setup_seccomp_socket(opt_seccomp_notify_socket);
+#else
+		pexit("seccomp support not present");
 #endif
 	}
 
