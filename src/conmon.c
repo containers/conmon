@@ -368,6 +368,7 @@ int main(int argc, char *argv[])
 			}
 			pexitf("Failed to wait for `runtime %s`", opt_exec ? "exec" : "create");
 		}
+		create_pid = -1;
 	}
 
 	/* For exec operations, a non-zero runtime exit status reflects the exit status of the exec'd command,
