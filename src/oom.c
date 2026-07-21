@@ -19,9 +19,12 @@ static void write_oom_adjust(int oom_score, int *old_value)
 		return;
 	}
 	if (old_value) {
-		if (read(oom_score_fd, fmt_oom_score, sizeof(fmt_oom_score)) < 0) {
+		ssize_t nread = read(oom_score_fd, fmt_oom_score, sizeof(fmt_oom_score) - 1);
+		if (nread < 0) {
 			ndebugf("failed to read from /proc/self/oom_score_adj: %m");
+			nread = 0;
 		}
+		fmt_oom_score[nread] = '\0';
 		*old_value = atoi(fmt_oom_score);
 	}
 	snprintf(fmt_oom_score, sizeof(fmt_oom_score), "%d", oom_score);
