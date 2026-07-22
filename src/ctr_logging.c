@@ -1163,6 +1163,7 @@ static void rotate_k8s_file(void)
 	int parent_fd = -1;
 	_cleanup_free_ char *temp_path = NULL;
 	_cleanup_free_ char *backup_path = NULL;
+	struct flock unlock = {.l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0};
 
 	int old_fd = validate_and_lock_rotation(&parent_fd);
 	if (old_fd < 0)
@@ -1178,7 +1179,6 @@ static void rotate_k8s_file(void)
 	}
 
 	/* Atomic state update */
-	struct flock unlock = {.l_type = F_UNLCK};
 	fcntl(old_fd, F_SETLK, &unlock);
 	close(old_fd);
 

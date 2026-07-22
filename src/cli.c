@@ -211,7 +211,7 @@ void process_cli()
 	// for the exec session. the legacy version of exec does not need this
 	// and thus we only override an empty opt_bundle_path when we're not exec
 	if (opt_bundle_path == NULL && !opt_exec) {
-		opt_bundle_path = cwd;
+		opt_bundle_path = g_strdup(cwd);
 	}
 
 	if (opt_exit_delay < 0) {
