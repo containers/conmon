@@ -13,7 +13,7 @@ jobs:
   conmon:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
@@ -27,7 +27,7 @@ jobs:
         go-version: [stable, oldstable]
         critest: [0, 1]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
