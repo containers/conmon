@@ -26,6 +26,10 @@ Summary: OCI container runtime monitor
 URL: https://github.com/containers/%{name}
 # Tarball fetched from upstream
 Source0: %{url}/archive/v%{version}.tar.gz
+
+# available only on golang supported arches
+ExclusiveArch: %{golang_arches_future}
+
 %if %{with docs}
 BuildRequires: go-md2man
 %endif
