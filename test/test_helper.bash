@@ -23,22 +23,15 @@ assert_failure() {
 CONMON_BINARY="${CONMON_BINARY:-/usr/bin/conmon}"
 RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
 
-# UBI10-micro container image for test rootfs
-UBI10_MICRO_IMAGE="registry.access.redhat.com/ubi10/ubi-micro:latest"
+# UBI10-micro container image for test rootfs. Can be overridden to use
+# a local mirror (or to test the failure path).
+UBI10_MICRO_IMAGE="${UBI10_MICRO_IMAGE:-registry.access.redhat.com/ubi10/ubi-micro:latest}"
 VALID_PATH="/tmp"
 INVALID_PATH="/not/a/path"
 
 # Generate a unique container ID for each test
 generate_ctr_id() {
     echo "conmon-test-$(date +%s)-$$-$RANDOM"
-}
-
-# Pull UBI10-micro rootfs for container tests
-pull_ubi10_rootfs() {
-    # Pull UBI10-micro image if not already present
-    if ! podman pull --policy=newer "$UBI10_MICRO_IMAGE" >/dev/null 2>&1; then
-        skip "Failed to pull UBI10-micro image"
-    fi
 }
 
 # Run conmon with given arguments and capture output
@@ -327,22 +320,13 @@ setup_container_env() {
     local use_terminal="$2"
     setup_test_env
 
-    # Pull UBI10-micro image
-    pull_ubi10_rootfs
-
-    # Create the rootfs directory
+    # The rootfs tarball is fetched once per run by setup_suite; give
+    # each test its own extracted copy.
+    if [[ ! -f "${CONMON_TEST_ROOTFS_TAR:-}" ]]; then
+        die "CONMON_TEST_ROOTFS_TAR is not set up (is setup_suite.bash in place?)"
+    fi
     mkdir -p "$ROOTFS"
-
-    # Extract UBI10-micro container filesystem to rootfs
-    local temp_container="conmon-test-ubi10-$$-$RANDOM"
-    if ! podman create --name "$temp_container" "$UBI10_MICRO_IMAGE" >/dev/null 2>&1; then
-        skip "Failed to create UBI10-micro container"
-    fi
-    if ! podman export "$temp_container" | tar -C "$ROOTFS" -xf - 2>/dev/null; then
-        podman rm "$temp_container" >/dev/null 2>&1 || true
-        skip "Failed to export UBI10-micro rootfs"
-    fi
-    podman rm "$temp_container" >/dev/null 2>&1 || true
+    tar -C "$ROOTFS" -xf "$CONMON_TEST_ROOTFS_TAR" || die "failed to extract test rootfs"
 
     # Generate OCI runtime configuration
     generate_runtime_config "$BUNDLE_PATH" "$ROOTFS" "$use_terminal" "$command"

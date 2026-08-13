@@ -42,6 +42,7 @@ EXAMPLES:
 ENVIRONMENT VARIABLES:
     CONMON_BINARY          Path to conmon binary
     RUNTIME_BINARY         Path to runtime binary
+    UBI10_MICRO_IMAGE      Image to take the test rootfs from
     BATS_OPTIONS           Additional options to pass to bats
 EOF
 }
