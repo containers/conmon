@@ -421,13 +421,17 @@ start_conmon_with_default_args() {
         return
     fi
 
-    # Do not start the container if it's already running. This can happen
-    # when `start_conmon_with_default_args` has already been called and this
-    # second call uses option like --exec which connects to already running
-    # container.
+    # Do not try to start the container if it has already been started. This
+    # happens when `start_conmon_with_default_args` has already been called
+    # and this second call uses an option like --exec, which connects to an
+    # already running container.
+    #
+    # Note the container may well be gone by the time we look: an exec that
+    # makes the container's main process exit is racing with us here, so
+    # "stopped" (and "paused") mean "already started", too.
     run_runtime state "$CTR_ID"
     echo "$output"
-    if expr "$output" : ".*status\": \"running"; then
+    if [[ "$output" =~ \"status\":\ *\"(running|stopped|paused)\" ]]; then
         return
     fi
 
