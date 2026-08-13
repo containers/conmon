@@ -11,6 +11,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 CONMON_BINARY="${CONMON_BINARY:-$PROJECT_ROOT/bin/conmon}"
 RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
 BATS_OPTIONS="${BATS_OPTIONS:-}"
+CONMON_TEST_STRICT="${CONMON_TEST_STRICT:-}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -31,6 +32,7 @@ OPTIONS:
     -v, --verbose           Verbose output
     -t, --tap               Output in TAP format
     -j, --jobs N            Run tests in parallel with N jobs
+    -s, --strict            Treat skipped tests as failures (for CI)
     --filter PATTERN        Run only tests matching PATTERN
 
 EXAMPLES:
@@ -42,6 +44,8 @@ EXAMPLES:
 ENVIRONMENT VARIABLES:
     CONMON_BINARY          Path to conmon binary
     RUNTIME_BINARY         Path to runtime binary
+    CONMON_TEST_STRICT     Same as --strict, if set to a non-empty value
+    UBI10_MICRO_IMAGE      Image to take the test rootfs from
     BATS_OPTIONS           Additional options to pass to bats
 EOF
 }
@@ -122,6 +126,10 @@ main() {
                 filter="$2"
                 shift 2
                 ;;
+            -s|--strict)
+                CONMON_TEST_STRICT=1
+                shift
+                ;;
             *.bats)
                 test_files+=("$1")
                 shift
@@ -197,6 +205,7 @@ main() {
     # Export environment variables for tests
     export CONMON_BINARY
     export RUNTIME_BINARY
+    export CONMON_TEST_STRICT
 
     log_info "Running tests with:"
     log_info "  conmon binary: $CONMON_BINARY"
