@@ -29,6 +29,14 @@ UBI10_MICRO_IMAGE="${UBI10_MICRO_IMAGE:-registry.access.redhat.com/ubi10/ubi-mic
 VALID_PATH="/tmp"
 INVALID_PATH="/not/a/path"
 
+# In strict mode (CI), a skipped test is a failed test: a run that skips
+# everything must not be reported as a successful one.
+if [[ -n "${CONMON_TEST_STRICT:-}" ]]; then
+    skip() {
+        die "test skipped in strict mode: $*"
+    }
+fi
+
 # Generate a unique container ID for each test
 generate_ctr_id() {
     echo "conmon-test-$(date +%s)-$$-$RANDOM"
