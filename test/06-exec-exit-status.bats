@@ -46,22 +46,23 @@ teardown() {
     local conmon_path="$(dirname "$CONMON_BINARY")/conmon"
 
     if [ ! -f "$conmon_path" ]; then
-        skip "conmon binary not found for integration testing at $conmon_path"
+        die "conmon binary not found for integration testing at $conmon_path"
     fi
 
-    # Check if we can create a simple container for testing
-    if ! timeout 10 podman --conmon $conmon_path run --rm registry.access.redhat.com/ubi10/ubi-micro:latest true >/dev/null 2>&1; then
-        skip "Cannot create test containers with podman"
+    # Check if we can create a simple container for testing.
+    run timeout 10 podman --conmon $conmon_path run --rm "$UBI10_MICRO_IMAGE" true
+    if [ "$status" -ne 0 ]; then
+        die "cannot create test containers with podman: $output"
     fi
 
     echo "Running integration test with podman..."
 
     # Create a test container
     local container_id
-    container_id=$(podman --conmon $conmon_path run -dt registry.access.redhat.com/ubi10/ubi-micro:latest sleep 30)
+    container_id=$(podman --conmon $conmon_path run -dt "$UBI10_MICRO_IMAGE" sleep 30)
 
     if [ -z "$container_id" ]; then
-        skip "Failed to create test container"
+        die "failed to create test container"
     fi
 
     # Test 1: Success case
