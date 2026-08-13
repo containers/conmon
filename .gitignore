@@ -58,6 +58,9 @@ dkms.conf
 
 bin/
 
+# meson build directory
+/build/
+
 vendor/
 
 result

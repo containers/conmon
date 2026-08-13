@@ -30,9 +30,22 @@ jobs:
         make fmt
         git diff --exit-code
 
+  meson-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v7
+    - name: Build with meson
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y meson ninja-build libglib2.0-dev libseccomp-dev libsystemd-dev pkg-config
+        meson setup build
+        ninja -C build
+
   all-done:
     needs:
       - lint
+      - meson-build
     runs-on: ubuntu-latest
     steps:
     - run: echo "All jobs completed"
