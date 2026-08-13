@@ -32,7 +32,9 @@ setup_suite() {
 
     # Note the lack of output redirection here: when this fails, the
     # reason for the failure is the whole point.
-    if ! podman pull --policy=newer "$UBI10_MICRO_IMAGE"; then
+    # NB: no --policy here, it is not supported by podman < 5.0 (as found
+    # on e.g. Ubuntu 24.04), and plain "podman pull" pulls anyway.
+    if ! podman pull "$UBI10_MICRO_IMAGE"; then
         suite_fail "failed to pull $UBI10_MICRO_IMAGE"
         return 1
     fi
