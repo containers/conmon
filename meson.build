@@ -3,6 +3,9 @@ project('conmon', 'c',
         license : 'Apache-2.0',
         default_options : [
                 'c_std=c99',
+                'optimization=s',
+                'warning_level=1',
+                'werror=true',
         ],
         meson_version : '>= 0.56',
 )
@@ -30,8 +33,7 @@ conf = configuration_data()
 conf.set_quoted('VERSION', meson.project_version())
 conf.set_quoted('GIT_COMMIT', git_commit)
 
-add_project_arguments('-Os', '-Wall', '-Werror',
-                      '-DVERSION=' + conf.get('VERSION'),
+add_project_arguments('-DVERSION=' + conf.get('VERSION'),
                       '-DGIT_COMMIT=' + conf.get('GIT_COMMIT'),
                       language : 'c')
 
