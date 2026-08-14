@@ -128,7 +128,7 @@ install_cni_plugins() {
 install_runc() {
     git clone --depth 1 --branch "${VERSIONS["runc"]}" https://github.com/opencontainers/runc
     pushd runc
-    make
+    make RUNC_BUILDTAGS=-libpathrs
     sudo install -D -m0755 runc /usr/sbin/runc
     popd
     rm -rf runc
