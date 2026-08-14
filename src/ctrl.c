@@ -9,6 +9,7 @@
 #include "cmsg.h"
 #include "cli.h" // opt_bundle_path
 #include "seccomp_notify.h"
+#include "parent_pipe_fd.h"
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -47,7 +48,10 @@ gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC
 	struct file_t console = recvfd(connfd);
 
 	if (console.fd < 0) {
-		pexit("Failed to receive console file descriptor");
+		if (sync_pipe_fd >= 0) {
+			write_or_close_sync_fd(&sync_pipe_fd, -1, "Failed to receive console file descriptor");
+		}
+		nexit("Failed to receive console file descriptor");
 	}
 
 	ndebugf("console = {.name = '%s'; .fd = %d}", console.name, console.fd);
