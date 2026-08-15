@@ -81,11 +81,6 @@ char *setup_console_socket(void)
 	return setup_socket(&console_socket_fd, NULL);
 }
 
-char *setup_seccomp_socket(const char *socket)
-{
-	return setup_socket(&seccomp_socket_fd, socket);
-}
-
 #ifdef __linux__
 static void bind_relative_to_dir(int dir_fd, int sock_fd, const char *path)
 {

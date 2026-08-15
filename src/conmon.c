@@ -18,7 +18,6 @@
 #include "parent_pipe_fd.h"
 #include "ctr_exit.h"
 #include "close_fds.h"
-#include "seccomp_notify.h"
 #include "runtime_args.h"
 #include "self_pipe.h"
 
@@ -142,7 +141,6 @@ int main(int argc, char *argv[])
 	}
 
 	_cleanup_free_ char *csname = NULL;
-	_cleanup_free_ char *seccomp_listener = NULL;
 	int workerfd_stdin = -1;
 	int workerfd_stdout = -1;
 	int workerfd_stderr = -1;
@@ -177,16 +175,6 @@ int main(int argc, char *argv[])
 
 		mainfd_stdout = fds[0];
 		workerfd_stdout = fds[1];
-	}
-
-	if (opt_seccomp_notify_socket != NULL) {
-#ifdef USE_SECCOMP
-		if (opt_seccomp_notify_plugins == NULL)
-			pexit("seccomp notify socket specified without any plugin");
-		seccomp_listener = setup_seccomp_socket(opt_seccomp_notify_socket);
-#else
-		pexit("seccomp support not present");
-#endif
 	}
 
 	/* We always create a stderr pipe, because that way we can capture
@@ -341,9 +329,6 @@ int main(int argc, char *argv[])
 		close(workerfd_stdout);
 	if (workerfd_stderr > -1)
 		close(workerfd_stderr);
-
-	if (seccomp_listener != NULL)
-		g_unix_fd_add(seccomp_socket_fd, G_IO_IN, seccomp_accept_cb, csname);
 
 	if (csname != NULL) {
 		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
@@ -538,9 +523,6 @@ int main(int argc, char *argv[])
 		if (!g_file_set_contents(exit_file_path, status_str, -1, &err))
 			nexitf("Failed to write %s to exit file: %s", status_str, err->message);
 	}
-	if (seccomp_listener != NULL)
-		unlink(seccomp_listener);
-
 	/* Send the command exec exit code back to the parent */
 	if (opt_exec && sync_pipe_fd >= 0)
 		write_or_close_sync_fd(&sync_pipe_fd, exit_status, exit_message);

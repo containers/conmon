@@ -5,7 +5,7 @@ LIBEXECDIR ?= ${PREFIX}/libexec
 PKG_CONFIG ?= pkg-config
 HEADERS := $(wildcard src/*.h)
 
-OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o src/close_fds.o src/seccomp_notify.o src/self_pipe.o
+OBJS := src/conmon.o src/cmsg.o src/ctr_logging.o src/utils.o src/cli.o src/globals.o src/cgroup.o src/conn_sock.o src/oom.o src/ctrl.o src/ctr_stdio.o src/parent_pipe_fd.o src/ctr_exit.o src/runtime_args.o src/close_fds.o src/self_pipe.o
 
 MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -43,11 +43,6 @@ ifeq ($(shell $(PKG_CONFIG) --exists libsystemd && echo "0"), 0)
 	override LIBS += $(shell $(PKG_CONFIG) --libs libsystemd)
 	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libsystemd) -D USE_JOURNALD=1
 endif
-endif
-
-ifeq ($(shell hack/seccomp-notify.sh), 0)
-	override LIBS += $(shell $(PKG_CONFIG) --libs libseccomp) -ldl
-	override CFLAGS += $(shell $(PKG_CONFIG) --cflags libseccomp) -D USE_SECCOMP=1
 endif
 
 # Update nix/nixpkgs.json its latest stable commit

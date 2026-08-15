@@ -48,7 +48,6 @@ sudo yum install -y \
   git \
   glib2-devel \
   glibc-devel \
-  libseccomp-devel \
   systemd-devel \
   make \
   pkgconfig \
@@ -63,7 +62,6 @@ sudo apt-get install \
   git \
   libc6-dev \
   libglib2.0-dev \
-  libseccomp-dev \
   pkg-config \
   make \
   runc
