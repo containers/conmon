@@ -4,8 +4,9 @@ set -euo pipefail
 declare -A VERSIONS=(
     # renovate: datasource=github-releases depName=containernetworking/plugins
     ["cni-plugins"]=v1.9.1
-    # renovate: datasource=github-releases depName=bats-core/bats-core
-    ["bats"]=v1.14.0
+    # NOTE bats is deliberately not auto-updated: bats >= 1.14 errors out when
+    # a test suite ends up being empty, which breaks the cri-o test runner.
+    ["bats"]=v1.13.0
     # renovate: datasource=github-releases depName=opencontainers/runc
     ["runc"]=v1.5.1
     # renovate: datasource=github-releases depName=containers/crun
