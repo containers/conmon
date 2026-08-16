@@ -22,7 +22,6 @@ main() {
     remove_runtimes
     install_conmon
     install_bats
-    install_critools
     install_runc
     install_crun
     install_cni_plugins
@@ -114,10 +113,13 @@ install_bats() {
     touch ~/.parallel/will-cite
 }
 
+# install_critools installs the cri-tools version given as $1. It is called
+# from install_testdeps, as the version to use is defined by cri-o.
 install_critools() {
+    local version=$1
     URL=https://github.com/kubernetes-sigs/cri-tools
 
-    git clone $URL
+    git clone --depth 1 --branch "$version" $URL
     pushd cri-tools
     sudo -E PATH="$PATH" make BINDIR=/usr/bin install
     popd
@@ -176,6 +178,8 @@ check_not_installed() {
 }
 
 install_testdeps() {
+    local critools
+
     CLONE_PATH=$(go env GOPATH)/src/github.com/cri-o
     mkdir -p "$CLONE_PATH"
     pushd "$CLONE_PATH"
@@ -191,8 +195,19 @@ install_testdeps() {
     sudo cp test/policy.json /etc/containers
     sudo cp test/redhat_sigstore.yaml /etc/containers/registries.d/registry.access.redhat.com.yaml
     sudo cp test/registries.conf /etc/containers/registries.conf
+
+    # critest has to match the cri-o version we test against, otherwise it
+    # runs conformance tests for features cri-o does not implement yet, and
+    # those fail. Use the very same version cri-o itself is tested with.
+    critools=$(sed -n 's/^[[:space:]]*\["cri-tools"\]=\(.*\)$/\1/p' scripts/versions)
+    if [ -z "$critools" ]; then
+        echo "ERROR: can't get cri-tools version from cri-o's scripts/versions" >&2
+        return 1
+    fi
     popd
     popd
+
+    install_critools "$critools"
 }
 
 setup_etc_subid() {
