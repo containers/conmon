@@ -21,7 +21,7 @@
 #include <dlfcn.h>
 #include <sys/sysmacros.h>
 #include <linux/seccomp.h>
-#include <seccomp.h>
+#include <asm/unistd.h>
 
 #include "seccomp_notify.h"
 
