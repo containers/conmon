@@ -35,6 +35,29 @@ teardown() {
 }
 
 
+# [test/DNM] Everything we can grab about a hang: who is still running, where
+# in the kernel they are stuck, and what they are holding open. The CI job runs
+# as root, so /proc/PID/stack and the fd list are readable.
+dump_hang_state() {
+    local p
+
+    echo "--- processes ---"
+    ps -eo pid,ppid,stat,wchan:32,etimes,args |
+        grep -E 'conmon|podman|runc|crun|sleep 30' | grep -v grep || true
+    for p in $(pgrep -x conmon || true); do
+        echo "--- conmon $p status ---"
+        grep -E '^(State|Threads|SigBlk|SigIgn|SigCgt)' "/proc/$p/status" || true
+        echo "--- conmon $p kernel stack ---"
+        cat "/proc/$p/stack" 2>/dev/null || echo "(unavailable)"
+        echo "--- conmon $p fds ---"
+        ls -l "/proc/$p/fd" 2>/dev/null || true
+    done
+    echo "--- containers ---"
+    timeout 30 podman ps -a || true
+    echo "--- conmon journal ---"
+    journalctl -t conmon --since '-3 min' --no-pager 2>/dev/null | tail -50 || true
+}
+
 # Integration test that can be run manually or in CI
 @test "integration: exec exit codes work correctly" {
     # This test can only run if podman is available and configured
@@ -67,17 +90,19 @@ teardown() {
     container_id=$(timeout 60 podman --conmon $conmon_path run -dt "$UBI10_MICRO_IMAGE" sleep 30)
 
     if [ -z "$container_id" ]; then
-        # [test/DNM] If the timeout above fired, this is the hang we are
-        # after: dump who is still around before giving up.
-        echo "--- processes ---"
-        ps auxf | grep -E 'conmon|podman|runc|crun' || true
-        echo "--- containers ---"
-        timeout 30 podman ps -a || true
+        dump_hang_state
         die "failed to create test container"
     fi
 
     # Test 1: Success case
     if ! timeout 60 podman --conmon $conmon_path exec "$container_id" true; then
+        # [test/DNM] This is the hang: dump the state before tearing anything
+        # down, then see whether a second exec on the same container hangs
+        # too, and where podman thinks it is.
+        dump_hang_state
+        echo "--- retrying the exec with podman debug logs ---"
+        timeout 60 podman --log-level=debug --conmon $conmon_path \
+            exec "$container_id" true 2>&1 | tail -40 || true
         timeout 60 podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
         echo "FAIL: true command should succeed"
         return 1
@@ -85,6 +110,7 @@ teardown() {
 
     # Test 2: Failure case - this would fail with the regression
     if timeout 60 podman --conmon $conmon_path exec "$container_id" false; then
+        dump_hang_state
         timeout 60 podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
         echo "FAIL: false command should fail (regression detected!)"
         echo "This indicates the fc0a342 regression where all exec commands return 0"
@@ -93,6 +119,7 @@ teardown() {
 
     # Test 3: Custom exit code - this would return 0 with the regression
     if timeout 60 podman --conmon $conmon_path exec "$container_id" sh -c 'exit 42'; then
+        dump_hang_state
         timeout 60 podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
         echo "FAIL: 'exit 42' should fail with code 42 (regression detected!)"
         echo "This indicates the fc0a342 regression where all exec commands return 0"
