@@ -245,6 +245,11 @@ install_testdeps() {
     sudo cp test/redhat_sigstore.yaml /etc/containers/registries.d/registry.access.redhat.com.yaml
     sudo cp test/registries.conf /etc/containers/registries.conf
 
+    # Remove the container configuration files shipped by the runner image, so
+    # cri-o uses its own defaults rather than the ones tailored for the
+    # pre-installed rootless podman. Same as cri-o's install_files does.
+    sudo rm -f /usr/share/containers/containers.conf /etc/containers/storage.conf
+
     # critest has to match the cri-o version we test against, otherwise it
     # runs conformance tests for features cri-o does not implement yet, and
     # those fail. Use the very same version cri-o itself is tested with.
