@@ -310,6 +310,8 @@ setup_test_env() {
     export CTR_ID
     CTR_ID=$(generate_ctr_id)
     export LOG_PATH="$TEST_TMPDIR/container.log"
+    # For tests that run conmon directly; conmons started by
+    # start_conmon_with_default_args each get their own, in $CONTAINER_PIDFILE.
     export PID_FILE="$TEST_TMPDIR/pidfile"
     # For tests that run conmon directly; conmons started by
     # start_conmon_with_default_args each get their own pidfile.
@@ -409,8 +411,12 @@ wait_for_runtime_status() {
 start_conmon_with_default_args() {
     local extra_args=("$@")
     # A test may start more than one conmon (an --exec one, say), so give
-    # each one its own pidfile rather than having them clobber a shared one.
-    local pidfile="$TEST_TMPDIR/conmon-pidfile.$((++CONMON_STARTED))"
+    # each one its own pidfiles rather than having them clobber shared ones.
+    # $CONTAINER_PIDFILE is left set for the caller: the tests that read the
+    # pid want the one from the conmon started last.
+    ((++CONMON_STARTED))
+    local pidfile="$TEST_TMPDIR/conmon-pidfile.$CONMON_STARTED"
+    CONTAINER_PIDFILE="$TEST_TMPDIR/pidfile.$CONMON_STARTED"
 
     run timeout 10s "$CONMON_BINARY" \
         --cid "$CTR_ID" \
@@ -419,7 +425,7 @@ start_conmon_with_default_args() {
         --bundle "$BUNDLE_PATH" \
         --socket-dir-path "$SOCKET_PATH" \
         --log-level trace \
-        --container-pidfile "$PID_FILE" \
+        --container-pidfile "$CONTAINER_PIDFILE" \
         --syslog \
         --conmon-pidfile "$pidfile" "${extra_args[@]}"
 
