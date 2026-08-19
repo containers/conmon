@@ -88,6 +88,34 @@ check_dependencies() {
     fi
 }
 
+# Print what the tests are about to run with. The versions vary a lot --
+# across the Ubuntu 22.04/24.04/26.04 runner images, across architectures,
+# and between this repo's CI and runc's, which runs this suite as well --
+# and a failure report is worth little without them.
+show_environment() {
+    local p
+
+    log_info "Running tests with:"
+    log_info "  kernel:  $(uname -srm)"
+    if [[ -r /etc/os-release ]]; then
+        log_info "  distro:  $(. /etc/os-release && echo "$PRETTY_NAME")"
+    fi
+    log_info "  conmon:  $CONMON_BINARY: $("$CONMON_BINARY" --version 2>&1 | tr '\n' ' ' | sed 's/  *$//')"
+    log_info "  runtime: $RUNTIME_BINARY: $("$RUNTIME_BINARY" --version 2>&1 | head -1)"
+    log_info "  bats:    $(command -v bats): $(bats --version 2>&1)"
+
+    # The suite uses podman to prepare the test rootfs and to run
+    # containers, and a runner may well have more than one -- list them all,
+    # first in PATH wins.
+    if ! command -v podman >/dev/null 2>&1; then
+        log_warn "  podman:  not found, container tests will not run"
+    else
+        for p in $(type -a -P podman); do
+            log_info "  podman:  $p: $("$p" --version 2>&1)"
+        done
+    fi
+}
+
 main() {
     local verbose=false
     local tap=false
@@ -207,9 +235,7 @@ main() {
     export RUNTIME_BINARY
     export CONMON_TEST_STRICT
 
-    log_info "Running tests with:"
-    log_info "  conmon binary: $CONMON_BINARY"
-    log_info "  runtime binary: $RUNTIME_BINARY"
+    show_environment
     log_info "  test files: ${test_files[*]}"
 
     # Run the tests
