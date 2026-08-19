@@ -404,6 +404,23 @@ wait_for_runtime_status() {
     die "timed out waiting for '$expected_status' from $cid"
 }
 
+# Helper function to wait until the conmon process $pid has exited.
+#
+# The container reaching the "stopped" state does not mean its output has made
+# it to the log yet; conmon having exited does.
+wait_for_conmon_exit() {
+    local pid=$1
+    local how_long=${2:-10}
+
+    local t1=$((SECONDS + how_long))
+    while [ "$SECONDS" -lt "$t1" ]; do
+        kill -0 "$pid" 2>/dev/null || return 0
+        sleep 0.1
+    done
+
+    die "timed out waiting for conmon (pid $pid) to exit"
+}
+
 # Helper function to start conmon with default arguments.
 # Additional conmon arguments can be passed to this function.
 start_conmon_with_default_args() {
