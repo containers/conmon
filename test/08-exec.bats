@@ -158,7 +158,7 @@ teardown() {
     wait_for_runtime_status "$CTR_ID" stopped
 
     # Check that the conmon wrote something back.
-    assert_file_exists $TEST_TMPDIR/syncpipe-output
+    wait_for_syncpipe_output 1
     run cat $TEST_TMPDIR/syncpipe-output
     assert_json "${output}" =~ '"exit_code": 0'
 }
@@ -179,7 +179,7 @@ teardown() {
 
     # There should be two values with "data" key. The first one is the PID and
     # the second one is the exit code.
-    assert_file_exists $TEST_TMPDIR/syncpipe-output
+    wait_for_syncpipe_output 2
     run cat $TEST_TMPDIR/syncpipe-output
     CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"data\": $CONTAINER_PID"

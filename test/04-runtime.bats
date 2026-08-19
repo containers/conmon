@@ -86,7 +86,7 @@ teardown() {
         --log-path "k8s-file:$LOG_PATH" 6>"$OCI_SYNCPIPE_PATH"
 
     # Check that the pid is sent to the sync pipe.
-    assert_file_exists $TEST_TMPDIR/syncpipe-output
+    wait_for_syncpipe_output 1
     run cat $TEST_TMPDIR/syncpipe-output
     CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
@@ -119,7 +119,7 @@ teardown() {
     wait_for_conmon_exit "$CONMON_PID"
 
     # Check that the error is sent to the sync pipe.
-    assert_file_exists $TEST_TMPDIR/syncpipe-output
+    wait_for_syncpipe_output 1
     run cat $TEST_TMPDIR/syncpipe-output
     assert_json "${output}" =~ "\"pid\": -1"
     assert_json "${output}" =~ "\"message\":"
