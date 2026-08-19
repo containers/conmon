@@ -1,10 +1,13 @@
 project('conmon', 'c',
-        version : run_command('cat', files('VERSION'),).stdout().strip(),
+        version : run_command('cat', files('VERSION'), check : true).stdout().strip(),
         license : 'Apache-2.0',
         default_options : [
                 'c_std=c99',
+                'optimization=s',
+                'warning_level=1',
+                'werror=true',
         ],
-        meson_version : '>= 0.46',
+        meson_version : '>= 0.56',
 )
 
 git_commit = ''
@@ -13,12 +16,14 @@ git = find_program('git', required : false)
 if git.found()
         git_commit = run_command(
                 git,
-                ['--git-dir=@0@/.git'.format(meson.source_root()),
-                 'rev-parse', 'HEAD']).stdout().strip()
+                ['--git-dir=@0@/.git'.format(meson.project_source_root()),
+                 'rev-parse', 'HEAD'],
+                check : false).stdout().strip()
         git_dirty = run_command(
                 git,
-                ['--git-dir=@0@/.git'.format(meson.source_root()),
-                 'status', '--porcelain', '--untracked-files=no']).stdout().strip()
+                ['--git-dir=@0@/.git'.format(meson.project_source_root()),
+                 'status', '--porcelain', '--untracked-files=no'],
+                check : false).stdout().strip()
         if git_dirty != ''
                 git_commit = git_commit + '-dirty'
         endif
@@ -28,24 +33,11 @@ conf = configuration_data()
 conf.set_quoted('VERSION', meson.project_version())
 conf.set_quoted('GIT_COMMIT', git_commit)
 
-add_project_arguments('-Os', '-Wall', '-Werror',
-                      '-DVERSION=' + conf.get('VERSION'),
+add_project_arguments('-DVERSION=' + conf.get('VERSION'),
                       '-DGIT_COMMIT=' + conf.get('GIT_COMMIT'),
                       language : 'c')
 
 glib = dependency('glib-2.0')
-seccomp = dependency('libseccomp', version : '>= 2.5.2')
-if seccomp.found()
-  add_project_arguments('-DUSE_SECCOMP=1', language : 'c')
-endif
-
-cc = meson.get_compiler('c')
-null_dep = dependency('', required : false)
-if cc.has_function('dlopen')
-  libdl = null_dep
-else
-  libdl = cc.find_library('dl')
-endif
 
 sd_journal = dependency('libsystemd', required : false)
 if sd_journal.found()
@@ -69,8 +61,6 @@ executable('conmon',
             'src/ctr_exit.h',
             'src/ctrl.c',
             'src/ctrl.h',
-            'src/ctr_logging.c',
-            'src/ctr_logging.h',
             'src/ctr_stdio.c',
             'src/ctr_stdio.h',
             'src/globals.c',
@@ -85,11 +75,9 @@ executable('conmon',
             'src/runtime_args.h',
             'src/utils.c',
             'src/utils.h',
-            'src/seccomp_notify.c',
-            'src/seccomp_notify.h',
             'src/self_pipe.c',
             'src/self_pipe.h'],
-           dependencies : [glib, libdl, sd_journal, seccomp],
+           dependencies : [glib, sd_journal],
            install : true,
            install_dir : get_option('bindir'),
 )
