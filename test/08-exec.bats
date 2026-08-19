@@ -44,7 +44,7 @@ teardown() {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
 
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --sync \
         --exec \
@@ -59,7 +59,7 @@ teardown() {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
 
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --api-version 1 \
         --sync \

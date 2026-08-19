@@ -78,7 +78,7 @@ run_conmon_with_log_opts() {
 }
 
 @test "ctr logs: journald with --log-label, no '=' in label" {
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "journald:" \
         --log-label "CONMON_TEST_LABEL1"
 
@@ -86,7 +86,7 @@ run_conmon_with_log_opts() {
 }
 
 @test "ctr logs: journald with --log-label, multiple '=' in label" {
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "journald:" \
         --log-label "CONMON_TEST_LABEL1=FOO=$CTR_ID"
 
@@ -94,7 +94,7 @@ run_conmon_with_log_opts() {
 }
 
 @test "ctr logs: journald with --log-label, no label name" {
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "journald:" \
         --log-label "=$CTR_ID"
 
@@ -102,7 +102,7 @@ run_conmon_with_log_opts() {
 }
 
 @test "ctr logs: journald with --log-label, invalid character" {
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "journald:" \
         --log-label "MY%LABEL=$CTR_ID"
 
@@ -110,7 +110,7 @@ run_conmon_with_log_opts() {
 }
 
 @test "ctr logs: k8s-file with --log-label" {
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH" \
         --log-label "CONMON_TEST_LABEL1=$CTR_ID"
 
@@ -134,7 +134,7 @@ run_conmon_with_log_opts() {
 }
 
 @test "ctr logs: k8s-file with --log-tag" {
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH" \
         --log-tag "CONMON_TEST_LABEL1"
 

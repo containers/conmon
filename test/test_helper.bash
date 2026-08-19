@@ -424,13 +424,14 @@ wait_for_conmon_exit() {
     die "timed out waiting for conmon (pid $pid) to exit"
 }
 
-# Helper function to start conmon with default arguments.
-# Additional conmon arguments can be passed to this function.
-start_conmon_with_default_args() {
-    local extra_args=("$@")
-    # A test may start more than one conmon (an --exec one, say), so give
-    # each one its own pidfile rather than having them clobber a shared one.
-    local pidfile="$TEST_TMPDIR/conmon-pidfile.$((++CONMON_STARTED))"
+# _run_conmon runs conmon with the default arguments plus the ones given,
+# leaving the result in $status and $output as `run` does. $CONMON_PIDFILE is
+# set to the pidfile this conmon was told to write.
+#
+# A test may start more than one conmon (an --exec one, say), so each gets a
+# pidfile of its own rather than having them clobber a shared one.
+_run_conmon() {
+    CONMON_PIDFILE="$TEST_TMPDIR/conmon-pidfile.$((++CONMON_STARTED))"
 
     run timeout 10s "$CONMON_BINARY" \
         --cid "$CTR_ID" \
@@ -441,10 +442,25 @@ start_conmon_with_default_args() {
         --log-level trace \
         --container-pidfile "$PID_FILE" \
         --syslog \
-        --conmon-pidfile "$pidfile" "${extra_args[@]}"
+        --conmon-pidfile "$CONMON_PIDFILE" "$@"
+}
+
+# Helper function to run conmon with default arguments where conmon is
+# expected to fail, leaving $status and $output for the caller to assert on.
+run_conmon_expecting_failure() {
+    _run_conmon "$@"
+}
+
+# Helper function to start conmon with default arguments.
+# Additional conmon arguments can be passed to this function.
+start_conmon_with_default_args() {
+    local pidfile
+
+    _run_conmon "$@"
+    pidfile=$CONMON_PIDFILE
 
     if [ "$status" -ne 0 ]; then
-        return
+        die "conmon failed with status $status: $output"
     fi
 
     # The pid of the conmon just started. A test starting more than one has
