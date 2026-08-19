@@ -38,18 +38,6 @@ add_project_arguments('-DVERSION=' + conf.get('VERSION'),
                       language : 'c')
 
 glib = dependency('glib-2.0')
-seccomp = dependency('libseccomp', version : '>= 2.5.2')
-if seccomp.found()
-  add_project_arguments('-DUSE_SECCOMP=1', language : 'c')
-endif
-
-cc = meson.get_compiler('c')
-null_dep = dependency('', required : false)
-if cc.has_function('dlopen')
-  libdl = null_dep
-else
-  libdl = cc.find_library('dl')
-endif
 
 sd_journal = dependency('libsystemd', required : false)
 if sd_journal.found()
@@ -87,11 +75,9 @@ executable('conmon',
             'src/runtime_args.h',
             'src/utils.c',
             'src/utils.h',
-            'src/seccomp_notify.c',
-            'src/seccomp_notify.h',
             'src/self_pipe.c',
             'src/self_pipe.h'],
-           dependencies : [glib, libdl, sd_journal, seccomp],
+           dependencies : [glib, sd_journal],
            install : true,
            install_dir : get_option('bindir'),
 )

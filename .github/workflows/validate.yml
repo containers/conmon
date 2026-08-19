@@ -38,7 +38,7 @@ jobs:
     - name: Build with meson
       run: |
         sudo apt-get update
-        sudo apt-get install -y meson ninja-build libglib2.0-dev libseccomp-dev libsystemd-dev pkg-config
+        sudo apt-get install -y meson ninja-build libglib2.0-dev libsystemd-dev pkg-config
         meson setup --fatal-meson-warnings build
         ninja -C build
 
