@@ -21,6 +21,7 @@
 #include "runtime_args.h"
 #include "self_pipe.h"
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <locale.h>
 
@@ -391,6 +392,32 @@ int main(int argc, char *argv[])
 	_cleanup_free_ char *contents = NULL;
 	if (!g_file_get_contents(opt_container_pid_file, &contents, NULL, &err)) {
 		nwarnf("Failed to read pidfile: %s", err->message);
+		/*
+		 * [test/DNM] No pidfile means the runtime never started the
+		 * process, so say what the runtime had to say about it. For exec
+		 * the branch above skips reading its stderr (a non-zero exit
+		 * there is the exec'd command's own status), so at this point
+		 * nobody has looked at it yet.
+		 *
+		 * Do not block: if the runtime said nothing there is nothing to
+		 * wait for.
+		 */
+		nwarnf("runtime exit status: %d (exited: %d, signaled: %d)", get_exit_status(runtime_status), WIFEXITED(runtime_status),
+		       WIFSIGNALED(runtime_status));
+		if (mainfd_stderr >= 0) {
+			int flags = fcntl(mainfd_stderr, F_GETFL, 0);
+			if (flags >= 0 && fcntl(mainfd_stderr, F_SETFL, flags | O_NONBLOCK) < 0)
+				nwarnf("Failed to set the runtime stderr pipe non-blocking: %s", strerror(errno));
+			num_read = read(mainfd_stderr, buf, BUF_SIZE - 1);
+			if (num_read > 0) {
+				buf[num_read] = '\0';
+				nwarnf("runtime stderr: %s", buf);
+			} else {
+				nwarnf("runtime stderr: nothing to read (%s)", num_read == 0 ? "EOF" : strerror(errno));
+			}
+		} else {
+			nwarnf("runtime stderr: no pipe to read from");
+		}
 		exit(1);
 	}
 
