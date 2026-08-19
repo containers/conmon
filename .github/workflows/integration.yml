@@ -36,6 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
+      # Let the other job finish: these two take about half an hour each, and
+      # one of them failing is no reason to throw the other one's result away.
+      fail-fast: false
       matrix:
         critest: [0, 1]
     steps:
@@ -49,9 +52,51 @@ jobs:
         run: |
           CRIO_DIR=$(go env GOPATH)/src/github.com/cri-o/cri-o
           make -C "$CRIO_DIR" all test-binaries
-          # skip seccomp tests because they have permission denied issues in a container and accept signed image as they don't use conmon
-          # skip crio-wipe tests as they test cri-o's wipe functionality, not conmon
-          sudo rm -f "$CRIO_DIR"/test/seccomp*.bats "$CRIO_DIR"/test/image.bats "$CRIO_DIR"/test/policy.bats "$CRIO_DIR"/test/crio-wipe.bats
+          # These test files do not exercise conmon, so skip them: that is
+          # about a third of the suite's run time.
+          skip=(
+              # images, registries, and the artifacts served from them
+              artifact_additional_stores
+              cert
+              image
+              image_remove
+              image_volume
+              imagefsinfo
+              inspecti
+              namespaced_auth_dir
+              oci_artifacts
+              policy
+              seccomp_oci_artifacts
+              tls_config
+
+              # security profiles: handled by cri-o and the runtime, not conmon
+              apparmor
+              seccomp_notifier
+              seccomp_runtime_handler
+
+              # cri-o's own configuration, status and storage
+              annotation_migration
+              crio-check
+              crio-wipe
+              inject_gomaxprocs
+              profile
+              reload_config
+              reload_system
+              status
+              workloads
+
+              # cri-o's metrics endpoints
+              cri-metrics
+              metrics
+
+              # device and plugin plumbing
+              cdi
+              nri
+          )
+          for t in "${skip[@]}"; do
+              # No -f: a file cri-o renames must fail the job, not be skipped.
+              rm "$CRIO_DIR/test/$t.bats"
+          done
           sudo sh -c "cd $CRIO_DIR; RUN_CRITEST=${{ matrix.critest }} ./test/test_runner.sh"
 
   all-done:
