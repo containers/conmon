@@ -390,8 +390,27 @@ int main(int argc, char *argv[])
 	/* Read the pid so we can wait for the process to exit */
 	_cleanup_free_ char *contents = NULL;
 	if (!g_file_get_contents(opt_container_pid_file, &contents, NULL, &err)) {
-		nwarnf("Failed to read pidfile: %s", err->message);
-		exit(1);
+		/*
+		 * The runtime did not write the pid file, so the process was never started.
+		 * For exec this is the only way to tell "the runtime failed" from "the command
+		 * exited with a non-zero status", as the latter is a legitimate non-zero exit
+		 * of the runtime, checked (and skipped for exec) above. Report the failure to
+		 * the parent, which would otherwise see a successful exec, and pass along
+		 * whatever the runtime has to say about it.
+		 */
+		const char *error_msg = err->message;
+		if (mainfd_stderr >= 0) {
+			g_unix_set_fd_nonblocking(mainfd_stderr, TRUE, NULL);
+			num_read = read(mainfd_stderr, buf, BUF_SIZE - 1);
+			if (num_read > 0) {
+				buf[num_read] = '\0';
+				nwarnf("runtime stderr: %s", buf);
+				error_msg = buf;
+			}
+		}
+		if (sync_pipe_fd >= 0)
+			write_or_close_sync_fd(&sync_pipe_fd, -1, error_msg);
+		nexitf("Failed to read pidfile: %s", err->message);
 	}
 
 	container_pid = atoi(contents);

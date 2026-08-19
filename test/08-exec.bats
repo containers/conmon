@@ -186,3 +186,27 @@ teardown() {
     assert_json "${output}" =~ '"data": 0'
 }
 
+
+@test "exec: runtime failure is reported to the sync pipe" {
+    start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
+    wait_for_runtime_status "$CTR_ID" running
+    start_oci_sync_pipe_reader
+
+    # A process spec the runtime can not start, so it never writes a pidfile.
+    generate_process_spec "true"
+    sed -i 's|"/bin/sh"|"/no/such/binary"|' "$BUNDLE_PATH/process.json"
+
+    start_conmon_with_default_args \
+        --log-path "k8s-file:$LOG_PATH.exec" \
+        --api-version 1 \
+        --exec \
+        --exec-process-spec "${BUNDLE_PATH}/process.json" 6>"$OCI_SYNCPIPE_PATH"
+    wait_for_conmon_exit "$CONMON_PID"
+
+    # The failure has to be reported rather than silently swallowed, and the
+    # report has to carry what the runtime said about it.
+    wait_for_syncpipe_output 1
+    run cat $TEST_TMPDIR/syncpipe-output
+    assert_json "${output}" =~ '"data": -1'
+    assert "${output}" =~ "exec failed"
+}
