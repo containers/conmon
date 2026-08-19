@@ -14,25 +14,38 @@ declare -A VERSIONS=(
 )
 
 main() {
-    set -x
     # None of the git clones below has a timeout of its own, and a stalled
     # one hangs this script until the job times out. Make git give up on a
     # connection that transfers less than 1 KiB/s for a minute.
     export GIT_HTTP_LOW_SPEED_LIMIT=1024 GIT_HTTP_LOW_SPEED_TIME=60
 
-    prepare_system
+    step prepare_system
 
-    install_packages
+    step install_packages
     # NOTE this has to run after install_packages, which may install runtimes
     # as podman dependencies.
-    remove_runtimes
-    install_conmon
-    install_bats
-    install_runc
-    install_crun
-    install_cni_plugins
-    install_testdeps
-    setup_etc_subid
+    step remove_runtimes
+    step install_conmon
+    step install_bats
+    step install_runc
+    step install_crun
+    step install_cni_plugins
+    step install_testdeps
+    step setup_etc_subid
+}
+
+# step runs the given function with its output folded into a collapsible
+# GitHub Actions log group [1], so that this script's very verbose output can
+# be navigated at all. Outside of GitHub Actions the markers are just a couple
+# of harmless extra lines.
+#
+# [1] https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#grouping-log-lines
+step() {
+    echo "::group::$1"
+    set -x
+    "$@"
+    { set +x; } 2>/dev/null
+    echo "::endgroup::"
 }
 
 prepare_system() {
