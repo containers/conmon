@@ -56,8 +56,6 @@ gboolean opt_sync = FALSE;
 gboolean opt_no_sync_log = FALSE;
 char *opt_sdnotify_socket = NULL;
 gboolean opt_full_attach_path = FALSE;
-char *opt_seccomp_notify_socket = NULL;
-char *opt_seccomp_notify_plugins = NULL;
 gboolean opt_log_rotate = FALSE;
 int opt_log_max_files = 1;
 gchar **opt_log_allowlist_dirs = NULL;
@@ -117,10 +115,6 @@ GOptionEntry opt_entries[] = {
 	{"version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print the version and exit", NULL},
 	{"full-attach", 0, 0, G_OPTION_ARG_NONE, &opt_full_attach_path,
 	 "Don't truncate the path to the attach socket. This option causes conmon to ignore --socket-dir-path", NULL},
-	{"seccomp-notify-socket", 0, 0, G_OPTION_ARG_STRING, &opt_seccomp_notify_socket,
-	 "Path to the socket where the seccomp notification fd is received", NULL},
-	{"seccomp-notify-plugins", 0, 0, G_OPTION_ARG_STRING, &opt_seccomp_notify_plugins,
-	 "Plugins to use for managing the seccomp notifications", NULL},
 	{"log-rotate", 0, 0, G_OPTION_ARG_NONE, &opt_log_rotate, "Enable log rotation instead of truncation when log-size-max is reached",
 	 NULL},
 	{"log-max-files", 0, 0, G_OPTION_ARG_INT, &opt_log_max_files, "Number of backup log files to keep (default: 1)", NULL},
@@ -189,9 +183,6 @@ void process_cli()
 	/* The old exec API did not require opt_cuuid */
 	if (opt_cuuid == NULL && (!opt_exec || opt_api_version >= 1))
 		nexit("Container UUID not provided. Use --cuuid");
-
-	if (opt_seccomp_notify_plugins == NULL)
-		opt_seccomp_notify_plugins = getenv("CONMON_SECCOMP_NOTIFY_PLUGINS");
 
 	if (opt_runtime_path == NULL)
 		nexit("Runtime path not provided. Use --runtime");

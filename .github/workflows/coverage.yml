@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcovr libglib2.0-dev libseccomp-dev libsystemd-dev pkg-config bats socat
+          sudo apt-get install -y gcovr libglib2.0-dev libsystemd-dev pkg-config bats socat
       - name: Run coverage
         run: |
           sudo mkdir -p /var/run/crio

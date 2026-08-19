@@ -18,7 +18,6 @@ with pkgs; stdenv.mkDerivation rec {
     glibc.static
   ] ++ [
     pkgsStatic.glib
-    libseccomp
   ] ++ lib.optionals enableSystemd [
     # Only include systemd for dynamic builds, not static builds
     # Static builds will use PKG_CONFIG_PATH approach instead

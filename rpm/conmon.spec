@@ -34,7 +34,6 @@ BuildRequires: git-core
 BuildRequires: make
 BuildRequires: pkgconfig(libsystemd)
 BuildRequires: pkgconfig(glib-2.0)
-BuildRequires: pkgconfig(libseccomp)
 
 %description
 %{summary}.
