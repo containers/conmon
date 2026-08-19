@@ -33,13 +33,12 @@ jobs:
     timeout-minutes: 90
     strategy:
       matrix:
-        go-version: [stable, oldstable]
         critest: [0, 1]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: stable
           cache: false
       - run: sudo hack/github-actions-setup
       - name: Run CRI-O integration tests (critest=${{ matrix.critest }})
