@@ -149,7 +149,7 @@ static void set_socket_buffers(int fd)
 
 char *setup_console_socket(void)
 {
-	_cleanup_free_ const char *tmpdir = g_get_tmp_dir();
+	const char *tmpdir = g_get_tmp_dir();
 
 	char *csname = g_build_filename(tmpdir, "conmon-term.XXXXXX", NULL);
 	/*
