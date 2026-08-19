@@ -310,7 +310,11 @@ setup_test_env() {
     export CTR_ID
     CTR_ID=$(generate_ctr_id)
     export LOG_PATH="$TEST_TMPDIR/container.log"
+    # For tests that run conmon directly; conmons started by _run_conmon each
+    # get their own, in $CONTAINER_PIDFILE.
     export PID_FILE="$TEST_TMPDIR/pidfile"
+    # For tests that run conmon directly; conmons started by _run_conmon each
+    # get their own, in $CONMON_PIDFILE.
     export CONMON_PID_FILE="$TEST_TMPDIR/conmon-pidfile"
     export BUNDLE_PATH="$TEST_TMPDIR"
     export ROOTFS="$TEST_TMPDIR/rootfs"
@@ -387,7 +391,10 @@ assert_stderr_contains() {
 wait_for_runtime_status() {
     local cid=$1
     local expected_status=$2
-    local how_long=5
+    # Generous on purpose: this polls, so on a healthy machine it returns on
+    # the first iteration, and the only thing a low limit buys is flakes on a
+    # loaded CI runner.
+    local how_long=30
 
     t1=$(expr $SECONDS + $how_long)
     while [ $SECONDS -lt $t1 ]; do
@@ -402,10 +409,34 @@ wait_for_runtime_status() {
     die "timed out waiting for '$expected_status' from $cid"
 }
 
-# Helper function to start conmon with default arguments.
-# Additional conmon arguments can be passed to this function.
-start_conmon_with_default_args() {
-    local extra_args=("$@")
+# Helper function to wait until the conmon process $pid has exited.
+#
+# The container reaching the "stopped" state does not mean its output has made
+# it to the log yet; conmon having exited does.
+wait_for_conmon_exit() {
+    local pid=$1
+    local how_long=${2:-10}
+
+    local t1=$((SECONDS + how_long))
+    while [ "$SECONDS" -lt "$t1" ]; do
+        kill -0 "$pid" 2>/dev/null || return 0
+        sleep 0.1
+    done
+
+    die "timed out waiting for conmon (pid $pid) to exit"
+}
+
+# _run_conmon runs conmon with the default arguments plus the ones given,
+# leaving the result in $status and $output as `run` does. $CONMON_PIDFILE and
+# $CONTAINER_PIDFILE are set to the pidfiles this conmon was told to write.
+#
+# A test may start more than one conmon (an --exec one, say), so each gets
+# pidfiles of its own rather than having them clobber shared ones.
+_run_conmon() {
+    ((++CONMON_STARTED))
+    CONMON_PIDFILE="$TEST_TMPDIR/conmon-pidfile.$CONMON_STARTED"
+    CONTAINER_PIDFILE="$TEST_TMPDIR/pidfile.$CONMON_STARTED"
+
     run timeout 10s "$CONMON_BINARY" \
         --cid "$CTR_ID" \
         --cuuid "$CTR_ID" \
@@ -413,13 +444,34 @@ start_conmon_with_default_args() {
         --bundle "$BUNDLE_PATH" \
         --socket-dir-path "$SOCKET_PATH" \
         --log-level trace \
-        --container-pidfile "$PID_FILE" \
+        --container-pidfile "$CONTAINER_PIDFILE" \
         --syslog \
-        --conmon-pidfile "$CONMON_PID_FILE" "${extra_args[@]}"
+        --conmon-pidfile "$CONMON_PIDFILE" "$@"
+}
+
+# Helper function to run conmon with default arguments where conmon is
+# expected to fail. That it did is asserted here, so the caller is left to
+# check $output for the particular complaint it is after.
+run_conmon_expecting_failure() {
+    _run_conmon "$@"
+    assert_failure
+}
+
+# Helper function to start conmon with default arguments.
+# Additional conmon arguments can be passed to this function.
+start_conmon_with_default_args() {
+    local pidfile
+
+    _run_conmon "$@"
+    pidfile=$CONMON_PIDFILE
 
     if [ "$status" -ne 0 ]; then
-        return
+        die "conmon failed with status $status: $output"
     fi
+
+    # The pid of the conmon just started. A test starting more than one has
+    # to save this before starting the next.
+    CONMON_PID=$(cat "$pidfile")
 
     # Do not try to start the container if it has already been started. This
     # happens when `start_conmon_with_default_args` has already been called
@@ -439,7 +491,7 @@ start_conmon_with_default_args() {
     wait_for_runtime_status "$CTR_ID" created
 
     # Check that conmon pidfile was created
-    [ -f "$CONMON_PID_FILE" ]
+    [ -f "$pidfile" ]
 
     # Start the container and wait until it really starts.
     run_runtime start "$CTR_ID"
@@ -453,6 +505,8 @@ start_conmon_with_default_args() {
 run_conmon_with_default_args() {
     start_conmon_with_default_args "$@"
     wait_for_runtime_status "$CTR_ID" stopped
+    # Every caller reads a log written by this conmon afterwards.
+    wait_for_conmon_exit "$CONMON_PID"
 }
 
 # Generic helper function to create pipe and read from it.

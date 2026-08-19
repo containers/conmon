@@ -34,8 +34,11 @@ setup_suite() {
     # reason for the failure is the whole point.
     # NB: no --policy here, it is not supported by podman < 5.0 (as found
     # on e.g. Ubuntu 24.04), and plain "podman pull" pulls anyway.
-    if ! podman pull "$UBI10_MICRO_IMAGE"; then
-        suite_fail "failed to pull $UBI10_MICRO_IMAGE"
+    # The pull is the one thing here that talks to the network, and podman
+    # has no timeout of its own, so a stalled registry hangs the whole suite
+    # before a single test runs. Five minutes is plenty for a ~15 MB image.
+    if ! timeout 300 podman pull "$UBI10_MICRO_IMAGE"; then
+        suite_fail "failed to pull $UBI10_MICRO_IMAGE (timed out?)"
         return 1
     fi
 

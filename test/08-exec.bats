@@ -16,13 +16,18 @@ teardown() {
 @test "exec: simple --exec --exec-process-spec" {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
+    local main_conmon_pid=$CONMON_PID
 
     start_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --exec \
         --exec-process-spec "${BUNDLE_PATH}/process.json"
+    local exec_conmon_pid=$CONMON_PID
 
     wait_for_runtime_status "$CTR_ID" stopped
+    # Both logs are read below, so wait for both conmons to write them out.
+    wait_for_conmon_exit "$main_conmon_pid"
+    wait_for_conmon_exit "$exec_conmon_pid"
 
     # Check that the main process noticed the /tmp/test.txt.
     assert_file_exists "$LOG_PATH"
@@ -39,14 +44,13 @@ teardown() {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
 
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --sync \
         --exec \
         --exec-process-spec "${BUNDLE_PATH}/process.json" \
         --exec-attach
 
-    assert_failure
     assert "${output}" =~ "Attach can only be specified for a non-legacy exec session"
 }
 
@@ -54,7 +58,7 @@ teardown() {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
 
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --api-version 1 \
         --sync \
@@ -62,7 +66,6 @@ teardown() {
         --exec-process-spec "${BUNDLE_PATH}/process.json" \
         --exec-attach
 
-    assert_failure
     assert "${output}" =~ "--attach specified but _OCI_ATTACHPIPE was not"
 }
 
@@ -135,6 +138,7 @@ teardown() {
 
     # The exec should start now.
     wait_for_runtime_status "$CTR_ID" stopped
+    wait_for_conmon_exit "$CONMON_PID"
     assert_file_exists "$LOG_PATH.exec"
     run cat "$LOG_PATH.exec"
     assert "${output}" =~ "Hello from exec!"
@@ -177,7 +181,7 @@ teardown() {
     # the second one is the exit code.
     assert_file_exists $TEST_TMPDIR/syncpipe-output
     run cat $TEST_TMPDIR/syncpipe-output
-    CONTAINER_PID=$(cat "$PID_FILE")
+    CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"data\": $CONTAINER_PID"
     assert_json "${output}" =~ '"data": 0'
 }
