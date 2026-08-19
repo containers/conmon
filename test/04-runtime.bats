@@ -116,7 +116,7 @@ teardown() {
 
     assert_file_exists $CONMON_PID_FILE
     CONMON_PID=$(cat "$CONMON_PID_FILE")
-    wait $CONMON_PID_FILE 2>/dev/null || true
+    wait_for_conmon_exit "$CONMON_PID"
 
     # Check that the error is sent to the sync pipe.
     assert_file_exists $TEST_TMPDIR/syncpipe-output
