@@ -509,6 +509,25 @@ run_conmon_with_default_args() {
     wait_for_conmon_exit "$CONMON_PID"
 }
 
+# wait_for_syncpipe_output waits until the sync pipe reader has written the
+# given number of lines. The reader runs in the background, so it lags behind
+# the conmon that wrote to the pipe, and asserting right away is a race.
+wait_for_syncpipe_output() {
+    local how_many=${1:-1}
+    local how_long=${2:-10}
+    local file="$TEST_TMPDIR/syncpipe-output"
+
+    local t1=$((SECONDS + how_long))
+    while [ "$SECONDS" -lt "$t1" ]; do
+        if [ -e "$file" ] && [ "$(wc -l <"$file")" -ge "$how_many" ]; then
+            return 0
+        fi
+        sleep 0.1
+    done
+
+    die "timed out waiting for $how_many line(s) in $file: $(cat "$file" 2>&1)"
+}
+
 # Generic helper function to create pipe and read from it.
 _start_pipe_reader() {
     local pipe_path=$1
