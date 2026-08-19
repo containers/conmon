@@ -66,9 +66,36 @@ remove_runtimes() {
     sudo rm -f /usr/{local/,}{s,}bin/{runc,crun}
 }
 
-# Retry and time out apt's network access rather than waiting forever on a
-# stalled mirror.
-APT_OPTS=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+APT_OPTS=(
+    -o Acquire::Retries=3
+    -o Acquire::http::Timeout=60
+    -o Acquire::https::Timeout=60
+    # Fail rather than wait for a lock a timed out run may have left behind.
+    -o DPkg::Lock::Timeout=60
+)
+
+# apt_get runs apt-get with the options above, under a timeout, retrying a few
+# times.
+#
+# The Acquire::*::Timeout settings apply to individual requests of the
+# acquisition method, and are not enough on their own: a run has been seen
+# printing a few "Get:" lines and then sitting there for 19 minutes, until the
+# job timed out. Bounding the whole command is the only thing that reliably
+# helps, and since a stalled mirror is a transient thing, retrying it is
+# usually all it takes.
+apt_get() {
+    local try
+
+    for try in 1 2 3; do
+        if sudo timeout 180 apt-get "${APT_OPTS[@]}" "$@"; then
+            return 0
+        fi
+        echo "apt-get $1: failed or timed out, attempt $try of 3" >&2
+        sleep 10
+    done
+
+    return 1
+}
 
 install_packages() {
     . /etc/os-release
@@ -79,8 +106,8 @@ install_packages() {
         sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/criu.gpg
     echo "deb $CRIU_REPO/ /" | sudo tee /etc/apt/sources.list.d/criu.list
 
-    sudo apt "${APT_OPTS[@]}" update
-    sudo apt "${APT_OPTS[@]}" install -y \
+    apt_get update
+    apt_get install -y \
         autoconf \
         automake \
         conntrack \
