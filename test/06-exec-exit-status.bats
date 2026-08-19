@@ -67,6 +67,12 @@ teardown() {
     container_id=$(timeout 60 podman --conmon $conmon_path run -dt "$UBI10_MICRO_IMAGE" sleep 30)
 
     if [ -z "$container_id" ]; then
+        # [test/DNM] If the timeout above fired, this is the hang we are
+        # after: dump who is still around before giving up.
+        echo "--- processes ---"
+        ps auxf | grep -E 'conmon|podman|runc|crun' || true
+        echo "--- containers ---"
+        timeout 30 podman ps -a || true
         die "failed to create test container"
     fi
 
