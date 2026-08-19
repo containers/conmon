@@ -183,7 +183,7 @@ teardown() {
     # the second one is the exit code.
     assert_file_exists $TEST_TMPDIR/syncpipe-output
     run cat $TEST_TMPDIR/syncpipe-output
-    CONTAINER_PID=$(cat "$PID_FILE")
+    CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"data\": $CONTAINER_PID"
     assert_json "${output}" =~ '"data": 0'
 }
