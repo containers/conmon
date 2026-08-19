@@ -15,6 +15,11 @@ declare -A VERSIONS=(
 
 main() {
     set -x
+    # None of the git clones below has a timeout of its own, and a stalled
+    # one hangs this script until the job times out. Make git give up on a
+    # connection that transfers less than 1 KiB/s for a minute.
+    export GIT_HTTP_LOW_SPEED_LIMIT=1024 GIT_HTTP_LOW_SPEED_TIME=60
+
     prepare_system
 
     install_packages
@@ -61,15 +66,21 @@ remove_runtimes() {
     sudo rm -f /usr/{local/,}{s,}bin/{runc,crun}
 }
 
+# Retry and time out apt's network access rather than waiting forever on a
+# stalled mirror.
+APT_OPTS=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+
 install_packages() {
     . /etc/os-release
     CRIU_REPO="https://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu_$VERSION_ID"
 
-    curl -fSsL $CRIU_REPO/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/criu.gpg
+    # curl has no total timeout by default, and no retries at all.
+    curl -fSsL --retry 5 --retry-delay 3 --max-time 120 "$CRIU_REPO"/Release.key |
+        sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/criu.gpg
     echo "deb $CRIU_REPO/ /" | sudo tee /etc/apt/sources.list.d/criu.list
 
-    sudo apt update
-    sudo apt install -y \
+    sudo apt "${APT_OPTS[@]}" update
+    sudo apt "${APT_OPTS[@]}" install -y \
         autoconf \
         automake \
         conntrack \
@@ -134,7 +145,9 @@ install_cni_plugins() {
     TARBALL=cni-plugins-linux-amd64-${VERSIONS["cni-plugins"]}.tgz
     CNI_DIR=/opt/cni/bin
     sudo mkdir -p "$CNI_DIR"
-    wget -O "$TARBALL" $URL/"${VERSIONS["cni-plugins"]}"/"$TARBALL"
+    # wget defaults to 20 tries and a 900 second read timeout; that is a lot
+    # of patience for a job that should take seconds.
+    wget --timeout=60 --tries=3 -O "$TARBALL" $URL/"${VERSIONS["cni-plugins"]}"/"$TARBALL"
     sudo tar xf "$TARBALL" -C "$CNI_DIR"
     rm "$TARBALL"
     ls -lah "$CNI_DIR"
