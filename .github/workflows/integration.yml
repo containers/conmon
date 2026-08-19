@@ -10,18 +10,30 @@ permissions: {}
 
 jobs:
 
-  # [test/DNM] Ten parallel attempts, to see how often the suite hangs.
+  # [test/DNM] Ten parallel attempts, to see how often the suite hangs, times
+  # the two podman builds available on the runner: the image's own bundle
+  # under /usr/local (5.8.4, statically built without the systemd tag, see
+  # actions/runner-images#14569) and Ubuntu's package in /usr/bin (4.9.3).
+  # The hang is inside "podman container cleanup", so which podman runs it is
+  # the question of the day.
   conmon:
-    name: conmon (attempt ${{ matrix.attempt }})
+    name: conmon (${{ matrix.podman }}, attempt ${{ matrix.attempt }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         attempt: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        podman: [bundle, apt]
     steps:
       - uses: actions/checkout@v7
       - run: sudo hack/github-actions-setup
+      - name: Drop the bundled podman, leaving Ubuntu's
+        if: ${{ matrix.podman == 'apt' }}
+        run: |
+          sudo rm -f /usr/local/bin/podman
+          command -v podman
+          podman --version
       - name: Run conmon integration tests
         run: |
           sudo mkdir -p /var/run/crio
