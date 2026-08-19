@@ -17,24 +17,13 @@ concurrency:
 
 jobs:
 
-  conmon:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - run: sudo hack/github-actions-setup
-      - name: Run conmon integration tests
-        run: |
-          sudo mkdir -p /var/run/crio
-          sudo make test-binary
-
   cri-o:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       matrix:
-        go-version: [stable, oldstable]
-        critest: [0, 1]
+        go-version: [stable]
+        critest: [0]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -49,13 +38,15 @@ jobs:
           # skip seccomp tests because they have permission denied issues in a container and accept signed image as they don't use conmon
           # skip crio-wipe tests as they test cri-o's wipe functionality, not conmon
           sudo rm -f "$CRIO_DIR"/test/seccomp*.bats "$CRIO_DIR"/test/image.bats "$CRIO_DIR"/test/policy.bats "$CRIO_DIR"/test/crio-wipe.bats
+          # DNM: ask bats for per-test durations.
+          sudo sed -i 's/execute bats /execute bats --timing /' "$CRIO_DIR"/test/test_runner.sh
+          sudo grep -n 'execute bats' "$CRIO_DIR"/test/test_runner.sh
           sudo sh -c "cd $CRIO_DIR; RUN_CRITEST=${{ matrix.critest }} ./test/test_runner.sh"
         env:
           JOBS: '2'
 
   all-done:
     needs:
-      - conmon
       - cri-o
     runs-on: ubuntu-24.04
     steps:
