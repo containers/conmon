@@ -28,6 +28,7 @@ main() {
     install_cni_plugins
     install_testdeps
     setup_etc_subid
+    show_podman
 }
 
 prepare_system() {
@@ -209,6 +210,32 @@ install_testdeps() {
     popd
 
     install_critools "$critools"
+}
+
+# show_podman is a temporary diagnostic: the test suite uses podman to
+# prepare the test rootfs (test/setup_suite.bash) and to run containers
+# (test/06-exec-exit-status.bats), and it looks like there are two of them
+# -- the runner image ships podman 5.x under /usr/local, while our own
+# "apt install podman" adds Ubuntu's 4.x to /usr/bin -- so it is not
+# obvious which one actually runs. Print the facts.
+show_podman() {
+    set +x
+
+    echo "=== podman binaries in PATH ==="
+    command -v -a podman || echo "none found"
+    echo "=== their versions ==="
+    for p in $(command -v -a podman); do
+        echo -n "$p: "
+        "$p" --version || true
+    done
+    echo "=== what the tests get (they run under sudo) ==="
+    sudo sh -c 'echo "PATH=$PATH"; command -v podman; podman --version' || true
+    echo "=== the runtime that podman picks ==="
+    sudo podman info --format '{{.Host.OCIRuntime.Name}} {{.Host.OCIRuntime.Path}}' || true
+    echo "=== conmon binaries in PATH ==="
+    command -v -a conmon || echo "none found"
+
+    set -x
 }
 
 setup_etc_subid() {
