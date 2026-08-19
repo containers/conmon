@@ -57,13 +57,18 @@ remove_packages() {
         containernetworking-plugins
 }
 
-# remove_runtimes removes all the pre-installed OCI runtimes, so they can't
-# shadow the ones we install. The runner image ships a static podman bundle in
-# /usr/local/bin (which comes first in PATH) containing its own runc and crun
-# -- notably a crun built without systemd support, which breaks all the cri-o
-# tests -- and docker brings its own /usr/bin/runc.
+# remove_runtimes removes the pre-installed OCI runtimes and podman, so they
+# can't shadow the ones we install. The runner image ships a static podman
+# bundle in /usr/local/bin (which comes first in PATH) with its own runc and
+# crun, all built without systemd support (actions/runner-images#14569): that
+# crun breaks the cri-o tests, and that podman deadlocks in "podman container
+# cleanup". Docker brings its own /usr/bin/runc.
 remove_runtimes() {
     sudo rm -f /usr/{local/,}{s,}bin/{runc,crun}
+    # The bundled podman only: unlike the runtimes it is not reinstalled
+    # below, install_packages having already put Ubuntu's in /usr/bin.
+    sudo rm -f /usr/local/bin/podman
+    podman --version
 }
 
 APT_OPTS=(
