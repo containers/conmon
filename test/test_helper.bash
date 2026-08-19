@@ -311,6 +311,8 @@ setup_test_env() {
     CTR_ID=$(generate_ctr_id)
     export LOG_PATH="$TEST_TMPDIR/container.log"
     export PID_FILE="$TEST_TMPDIR/pidfile"
+    # For tests that run conmon directly; conmons started by
+    # start_conmon_with_default_args each get their own pidfile.
     export CONMON_PID_FILE="$TEST_TMPDIR/conmon-pidfile"
     export BUNDLE_PATH="$TEST_TMPDIR"
     export ROOTFS="$TEST_TMPDIR/rootfs"
@@ -406,6 +408,10 @@ wait_for_runtime_status() {
 # Additional conmon arguments can be passed to this function.
 start_conmon_with_default_args() {
     local extra_args=("$@")
+    # A test may start more than one conmon (an --exec one, say), so give
+    # each one its own pidfile rather than having them clobber a shared one.
+    local pidfile="$TEST_TMPDIR/conmon-pidfile.$((++CONMON_STARTED))"
+
     run timeout 10s "$CONMON_BINARY" \
         --cid "$CTR_ID" \
         --cuuid "$CTR_ID" \
@@ -415,11 +421,15 @@ start_conmon_with_default_args() {
         --log-level trace \
         --container-pidfile "$PID_FILE" \
         --syslog \
-        --conmon-pidfile "$CONMON_PID_FILE" "${extra_args[@]}"
+        --conmon-pidfile "$pidfile" "${extra_args[@]}"
 
     if [ "$status" -ne 0 ]; then
         return
     fi
+
+    # The pid of the conmon just started. A test starting more than one has
+    # to save this before starting the next.
+    CONMON_PID=$(cat "$pidfile")
 
     # Do not try to start the container if it has already been started. This
     # happens when `start_conmon_with_default_args` has already been called
@@ -439,7 +449,7 @@ start_conmon_with_default_args() {
     wait_for_runtime_status "$CTR_ID" created
 
     # Check that conmon pidfile was created
-    [ -f "$CONMON_PID_FILE" ]
+    [ -f "$pidfile" ]
 
     # Start the container and wait until it really starts.
     run_runtime start "$CTR_ID"
