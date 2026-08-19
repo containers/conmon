@@ -1,0 +1,178 @@
+.nh
+.TH conmon 8 "User Commands"
+
+.SH NAME
+conmon \- container monitor utility
+
+
+.SH SYNOPSIS
+conmon [options]
+
+
+.SH DESCRIPTION
+conmon is a command-line program for monitoring and managing the lifecycle of
+Linux containers that follow the Open Container Initiative (OCI) format.
+
+
+.SH APPLICATION OPTIONS
+\fB--api-version\fP
+Conmon API version to use.
+
+.PP
+\fB-b\fP, \fB--bundle\fP
+Location of the OCI Bundle path.
+
+.PP
+\fB-c\fP, \fB--cid\fP
+Identification of Container.
+
+.PP
+\fB--exec-attach\fP
+Attach to an exec session.
+
+.PP
+\fB-e\fP, \fB--exec\fP
+Exec a command into a running container.
+
+.PP
+\fB--exec-process-spec\fP
+Path to the process spec for execution.
+
+.PP
+\fB--exit-command\fP
+Path to the program to execute when the container terminates its execution.
+
+.PP
+\fB--exit-command-arg\fP
+Additional arguments to pass to the exit command.  Can be specified multiple times.
+
+.PP
+\fB--exit-delay\fP
+Delay before invoking the exit command (in seconds).
+
+.PP
+\fB--exit-dir\fP
+Path to the directory where exit files are written.
+
+.PP
+\fB-h\fP, \fB--help\fP
+Show help options.
+
+.PP
+\fB-i\fP, \fB--stdin\fP
+Open up a pipe to pass stdin to the container.
+
+.PP
+This option tells conmon to setup the pipe regardless of whether there is a terminal connection.
+
+.PP
+\fB-l\fP, \fB--log-path\fP
+Path to store all stdout and stderr messages from the container.
+
+.PP
+\fB--leave-stdin-open\fP
+Leave stdin open when the attached client disconnects.
+
+.PP
+\fB--log-level\fP
+Print debug logs based on the log level.
+
+.PP
+\fB--log-size-max\fP
+Maximum size of the log file (in bytes).
+
+.PP
+\fB--log-tag\fP
+Additional tag to use for logging.
+
+.PP
+\fB-n\fP, \fB--name\fP
+Container name.
+
+.PP
+\fB--no-new-keyring\fP
+Do not create a new session keyring for the container.
+
+.PP
+\fB--no-pivot\fP
+Do not use pivot_root.
+
+.PP
+\fB--no-sync-log\fP
+Do not manually call sync on logs after container shutdown.
+
+.PP
+\fB-0\fP, \fB--persist-dir\fP
+Persistent directory for a container that can be used for storing container data.
+
+.PP
+\fB-p\fP, \fB--container-pidfile\fP
+PID file for the initial pid inside of the container.
+
+.PP
+\fB-P\fP, \fB--conmon-pidfile\fP
+PID file for the conmon process.
+
+.PP
+\fB-r\fP, \fB--runtime\fP
+Path to store runtime data for the container.
+
+.PP
+\fB--replace-listen-pid\fP
+Replace listen PID if set for oci-runtime PID.
+
+.PP
+\fB--restore\fP
+Restore a container from a checkpoint.
+
+.PP
+\fB--runtime-arg\fP
+Additional arguments to pass to the runtime. Can be specified multiple times.
+
+.PP
+\fB--runtime-opt\fP
+Additional options to pass to the restore or exec command. Can be specified multiple times.
+
+.PP
+\fB-s\fP, \fB--systemd-cgroup\fP
+Enable systemd cgroup manager, rather than use the cgroupfs directly.
+
+.PP
+\fB--socket-dir-path\fP
+Location of container attach sockets.
+
+.PP
+\fB--sync\fP
+Keep the main conmon process as its child by only forking once.
+
+.PP
+\fB--syslog\fP
+Log to syslog (use with cgroupfs cgroup manager).
+
+.PP
+\fB-t\fP, \fB--terminal\fP
+Allocate a pseudo-TTY. The default is false.
+
+.PP
+When set to true, conmon will allocate a pseudo-tty and attach  to  the
+standard  input of the container. This can be used, for example, to run
+a throwaway interactive shell. The default is false.
+
+.PP
+\fB-T\fP, \fB--timeout\fP
+Kill container after specified timeout in seconds.
+
+.PP
+\fB-u\fP, \fB--cuuid\fP
+Specify the Container UUID to use.
+
+.PP
+\fB--version\fP
+Print the version and exit.
+
+.SH SEE ALSO
+podman(1), buildah(1), cri-o(1), crun(8), runc(8)
+
+.SH HISTORY
+October 2020, Originally compiled by Dan Walsh dwalsh@redhat.com
+\[la]mailto:dwalsh@redhat.com\[ra]

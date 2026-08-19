@@ -1,0 +1,30 @@
+commit daaa672
+Author: Kir Kolyshkin <kolyshkin@gmail.com>
+Date:   Thu May 1 18:00:56 2025 -0700
+
+    Remove hack/tree_status.sh
+    
+    The sole reason of having this was to produce a nice informative error
+    message in case of failure (and because the message was not explicitly
+    specified, it was entirely wrong in 1 of 2 use cases).
+    
+    Let's drop it and just use git to fail the job if a tree is dirty.
+    
+    Signed-off-by: Kir Kolyshkin <kolyshkin@gmail.com>
+
+diff --git a/Makefile b/Makefile
+index 4baa97b..18db076 100644
+--- a/Makefile
++++ b/Makefile
+@@ -121,9 +121,8 @@ install.podman: bin/conmon
+ 
+ .PHONY: fmt
+ fmt:
+-	find . '(' -name '*.h' -o -name '*.c' ! -path './vendor/*' ')' -exec clang-format -i {} \+
+-	find . -name '*.go' ! -path './vendor/*' -exec gofmt -s -w {} \+
+-	git diff --exit-code
++	git ls-files -z \*.c \*.h | xargs -0 clang-format -i
++	gofmt -s -w .
+ 
+ 
+ .PHONY: dbuild

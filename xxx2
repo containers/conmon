@@ -1,0 +1,1898 @@
+CONMON_BINARY="/home/kir/git/containers/conmon/bin/conmon" test/run-tests.sh
+[0;32m[INFO][0m Checking dependencies...
+[0;32m[INFO][0m Running tests with:
+[0;32m[INFO][0m   conmon binary: /home/kir/git/containers/conmon/bin/conmon
+[0;32m[INFO][0m   runtime binary: /usr/bin/runc
+[0;32m[INFO][0m   test files: /home/kir/git/containers/conmon/test/01-basic.bats /home/kir/git/containers/conmon/test/02-ctr-logs.bats /home/kir/git/containers/conmon/test/03-k8s-log-rotation.bats /home/kir/git/containers/conmon/test/04-runtime.bats /home/kir/git/containers/conmon/test/05-oom-detection.bats /home/kir/git/containers/conmon/test/06-exec-exit-status.bats /home/kir/git/containers/conmon/test/06-log-management.bats /home/kir/git/containers/conmon/test/06-priority-parsing.bats /home/kir/git/containers/conmon/test/07-attach.bats /home/kir/git/containers/conmon/test/08-exec.bats /home/kir/git/containers/conmon/test/10-ctrl.bats
+[0;32m[INFO][0m Starting test execution...
+1..119
+ok 1 conmon version
+ok 2 no container ID should fail
+ok 3 no container UUID should fail
+ok 4 no runtime path should fail
+ok 5 invalid runtime path should fail
+ok 6 no log driver should fail
+ok 7 empty log driver should fail
+ok 8 empty log driver and path should fail
+ok 9 k8s-file requires a filename
+ok 10 k8s-file: requires a filename
+ok 11 log driver as path should pass
+ok 12 log driver as k8s-file:path should pass
+ok 13 log driver as :path should pass
+ok 14 log driver as none should pass
+ok 15 log driver as off should pass
+ok 16 log driver as null should pass
+ok 17 log driver as journald should pass
+ok 18 log driver as :journald should pass
+ok 19 log driver as journald with short cid should fail
+ok 20 log driver as k8s-file with path should pass
+ok 21 log driver as k8s-file with invalid path should fail
+ok 22 log driver as invalid driver should fail
+ok 23 log driver as invalid driver with blank path should fail
+ok 24 multiple log drivers should pass
+ok 25 multiple log drivers with one invalid should fail
+ok 26 ctr logs: no log driver should fail
+ok 27 ctr logs: log driver as path should pass
+ok 28 ctr logs: log driver as journald should pass
+ok 29 ctr logs: log driver as passthrough should pass
+ok 30 ctr logs: log driver as k8s-file with invalid path should fail
+ok 31 ctr logs: log driver as invalid driver should fail
+ok 32 ctr logs: multiple log drivers should pass
+ok 33 ctr logs: --no-container-partial-message option should pass with journald
+ok 34 ctr logs: --no-container-partial-message should warn without journald
+ok 35 ctr logs: multiple log drivers with one invalid should fail
+ok 36 ctr logs: journald with --log-label, no '=' in label
+ok 37 ctr logs: journald with --log-label, multiple '=' in label
+ok 38 ctr logs: journald with --log-label, no label name
+ok 39 ctr logs: journald with --log-label, invalid character
+ok 40 ctr logs: k8s-file with --log-label
+not ok 41 ctr logs: journald with --log-label
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `run_conmon_with_default_args' in file test/test_helper.bash, line 456,
+#  in test file test/02-ctr-logs.bats, line 121)
+#   `run_conmon_with_default_args \' failed
+# time="2026-03-05T16:23:04-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460109,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756583-459992-28417",
+#   "pid": 460124,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LMQ4y4",
+#   "rootfs": "/tmp/conmon-test-LMQ4y4/rootfs",
+#   "created": "2026-03-06T00:23:05.013117892Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'stopped' from conmon-test-1772756583-459992-28417
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 42 ctr logs: k8s-file with --log-tag
+ok 43 ctr logs: journald with --log-tag
+ok 44 ctr logs: journald partial message
+not ok 45 ctr logs: k8s partial message
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `run_conmon_with_default_args' in file test/test_helper.bash, line 456,
+#  in test file test/02-ctr-logs.bats, line 168)
+#   `run_conmon_with_default_args \' failed
+# time="2026-03-05T16:23:19-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 460991,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 110
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756598-460784-9381",
+#   "pid": 461004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-lrHWJm",
+#   "rootfs": "/tmp/conmon-test-lrHWJm/rootfs",
+#   "created": "2026-03-06T00:23:19.164048577Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'stopped' from conmon-test-1772756598-460784-9381
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 46 k8s log rotation: should create valid k8s log format
+ok 47 k8s log rotation: should accept log-size-max option
+ok 48 k8s log rotation: should handle k8s format content correctly
+not ok 49 runtime: simple runtime test
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `run_conmon_with_default_args' in file test/test_helper.bash, line 456,
+#  in test file test/04-runtime.bats, line 16)
+#   `run_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"' failed
+# time="2026-03-05T16:23:26-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461319,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756605-461200-12395",
+#   "pid": 461332,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-cFsQm1",
+#   "rootfs": "/tmp/conmon-test-cFsQm1/rootfs",
+#   "created": "2026-03-06T00:23:26.335028439Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'stopped' from conmon-test-1772756605-461200-12395
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+not ok 50 runtime: container execution with different log drivers
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `run_conmon_with_default_args' in file test/test_helper.bash, line 456,
+#  in test file test/04-runtime.bats, line 26)
+#   `run_conmon_with_default_args --log-path "journald:"' failed
+# time="2026-03-05T16:23:32-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461562,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756611-461448-27092",
+#   "pid": 461581,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-8MOjV5",
+#   "rootfs": "/tmp/conmon-test-8MOjV5/rootfs",
+#   "created": "2026-03-06T00:23:32.709110718Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'stopped' from conmon-test-1772756611-461448-27092
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 51 runtime: container execution with multiple log drivers
+ok 52 runtime: container with log size limit
+ok 53 runtime: invalid runtime binary should fail
+ok 54 runtime: configuration validation works
+ok 55 runtime: simple test with _OCI_SYNCPIPE defined
+ok 56 runtime: runc error with _OCI_SYNCPIPE defined
+ok 57 OOM detection: conmon binary exists and has OOM detection code
+ok 58 OOM detection: memory.events file format is correctly parsed
+ok 59 OOM detection: separate counter logic validation
+ok 60 OOM detection: race condition handling validation
+ok 61 OOM detection: malformed memory.events handling
+ok 62 OOM detection: zero counter handling
+ok 63 OOM detection: counter increment scenarios
+ok 64 OOM detection: file permissions and accessibility
+ok 65 OOM detection: cgroup v2 detection logic
+ok 66 conmon help contains exec option
+ok 67 exec requires proper arguments
+ok 68 integration: exec exit codes work correctly
+ok 69 log management: should validate log-max-files bounds
+ok 70 log management: should default to truncation behavior
+ok 71 log management: should enable rotation with proper flags
+ok 72 log management: should preserve k8s log format
+ok 73 log management: should work with multiple log drivers
+ok 74 log management: should handle various size limits
+ok 75 log management: should handle edge case parameters
+ok 76 log management: should handle secure file permissions
+ok 77 log management: should reject unsafe log paths
+ok 78 log management: should maintain backward compatibility
+ok 79 log management: should handle file system errors gracefully
+ok 80 log management: should work with log allowlist
+ok 81 log management: should work with multiple log allowlist directories
+ok 82 priority parsing: valid priority prefixes are parsed correctly
+ok 83 priority parsing: messages without prefix use default priority
+ok 84 priority parsing: invalid priority prefixes are treated as regular text
+ok 85 priority parsing: stderr vs stdout default priorities
+ok 86 priority parsing: multiline messages with priority prefix only on first line
+ok 87 priority parsing: edge cases with very short buffers
+ok 88 priority parsing: all valid priority levels 0-7
+ok 89 priority parsing: works with other log drivers simultaneously
+ok 90 priority parsing: error handling with invalid log path
+ok 91 attach: attach to container and send string to stdin
+not ok 92 attach: container finishes immediately without --stdin
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  in test file test/07-attach.bats, line 32)
+#   `wait_for_runtime_status "$CTR_ID" stopped' failed
+# time="2026-03-05T16:24:22-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464866,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756661-464749-20272",
+#   "pid": 464879,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-ZaqzPM",
+#   "rootfs": "/tmp/conmon-test-ZaqzPM/rootfs",
+#   "created": "2026-03-06T00:24:22.626785122Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'stopped' from conmon-test-1772756661-464749-20272
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+not ok 93 attach: unix socket remains open with --leave-stdin-open
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  in test file test/07-attach.bats, line 42)
+#   `wait_for_runtime_status "$CTR_ID" running' failed
+# time="2026-03-05T16:24:28-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465113,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756668-464997-30728",
+#   "pid": 465127,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-NcnSmR",
+#   "rootfs": "/tmp/conmon-test-NcnSmR/rootfs",
+#   "created": "2026-03-06T00:24:29.006274559Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756668-464997-30728
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 94 exec: simple --exec --exec-process-spec
+not ok 95 exec: --exec-attach without no --api-version
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  in test file test/08-exec.bats, line 40)
+#   `wait_for_runtime_status "$CTR_ID" running' failed
+# time="2026-03-05T16:24:38-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465598,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756677-465481-22511",
+#   "pid": 465611,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-orkmCy",
+#   "rootfs": "/tmp/conmon-test-orkmCy/rootfs",
+#   "created": "2026-03-06T00:24:38.360830738Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756677-465481-22511
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 96 exec: --exec-attach without _OCI_ATTACHPIPE env variable
+not ok 97 exec: --exec-attach
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  in test file test/08-exec.bats, line 71)
+#   `wait_for_runtime_status "$CTR_ID" running' failed
+# time="2026-03-05T16:24:47-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466034,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756686-465916-25401",
+#   "pid": 466048,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-GCnuah",
+#   "rootfs": "/tmp/conmon-test-GCnuah/rootfs",
+#   "created": "2026-03-06T00:24:47.055899456Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756686-465916-25401
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 98 exec: --exec-attach with _OCI_STARTPIPE
+ok 99 exec: --exec with _OCI_SYNCPIPE defined
+ok 100 exec: --exec --api-version=1 with _OCI_SYNCPIPE defined
+not ok 101 ctrl: resize the terminal, negative width and height
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `test_ctl_command' in file test/10-ctrl.bats, line 20,
+#  from function `test_resize_command_fail' in file test/10-ctrl.bats, line 36,
+#  in test file test/10-ctrl.bats, line 60)
+#   `test_resize_command_fail "1 -1 -1"' failed
+# time="2026-03-05T16:25:02-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467004,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756701-466888-27053",
+#   "pid": 467016,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-9PK5q6",
+#   "rootfs": "/tmp/conmon-test-9PK5q6/rootfs",
+#   "created": "2026-03-06T00:25:02.176369202Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756701-466888-27053
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 102 ctrl: resize the terminal, not enough variables
+ok 103 ctrl: resize the terminal, no variables
+not ok 104 ctrl: resize the terminal, too many variables
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `test_ctl_command' in file test/10-ctrl.bats, line 20,
+#  from function `test_resize_command_ok' in file test/10-ctrl.bats, line 51,
+#  in test file test/10-ctrl.bats, line 74)
+#   `test_resize_command_ok "1 2 2 3" "2 2"' failed
+# time="2026-03-05T16:25:14-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467715,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 109
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756713-467599-374",
+#   "pid": 467730,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-hwJQqB",
+#   "rootfs": "/tmp/conmon-test-hwJQqB/rootfs",
+#   "created": "2026-03-06T00:25:14.364116378Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756713-467599-374
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 105 ctrl: resize the terminal, too long line
+ok 106 ctrl: resize the terminal
+not ok 107 ctrl: rotate logs
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  in test file test/10-ctrl.bats, line 89)
+#   `wait_for_runtime_status "$CTR_ID" running' failed
+# time="2026-03-05T16:25:25-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468408,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756724-468293-12284",
+#   "pid": 468422,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-LKImCK",
+#   "rootfs": "/tmp/conmon-test-LKImCK/rootfs",
+#   "created": "2026-03-06T00:25:25.487861672Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756724-468293-12284
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 108 ctrl: unknown message 'foo'
+ok 109 ctrl: unknown message '999'
+not ok 110 ctrl: unknown message '999 2 2'
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `test_ctl_command' in file test/10-ctrl.bats, line 20,
+#  from function `test_resize_command_fail' in file test/10-ctrl.bats, line 36,
+#  in test file test/10-ctrl.bats, line 119)
+#   `test_resize_command_fail "999 2 2"' failed
+# time="2026-03-05T16:25:37-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469108,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756735-468991-19778",
+#   "pid": 469121,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-uQcchV",
+#   "rootfs": "/tmp/conmon-test-uQcchV/rootfs",
+#   "created": "2026-03-06T00:25:37.043745533Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756735-468991-19778
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 111 ctrl: resize with floating point dimensions
+not ok 112 ctrl: resize with hex numbers
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `test_ctl_command' in file test/10-ctrl.bats, line 20,
+#  from function `test_resize_command_fail' in file test/10-ctrl.bats, line 36,
+#  in test file test/10-ctrl.bats, line 127)
+#   `test_resize_command_fail "1 0x10 0x20"' failed
+# time="2026-03-05T16:25:46-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469582,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756745-469462-21137",
+#   "pid": 469593,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-zaYZ4X",
+#   "rootfs": "/tmp/conmon-test-zaYZ4X/rootfs",
+#   "created": "2026-03-06T00:25:46.352251975Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756745-469462-21137
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 113 ctrl: resize overflow rejected
+ok 114 ctrl: resize with leading zeros
+ok 115 ctrl: maximum valid size
+ok 116 ctrl: size exceeding maximum - height too large
+ok 117 ctrl: size exceeding maximum - width too large
+not ok 118 ctrl: size exceeding maximum - both too large
+# (from function `bail-now' in file test/test_helper.bash, line 520,
+#  from function `die' in file test/test_helper.bash, line 644,
+#  from function `wait_for_runtime_status' in file test/test_helper.bash, line 410,
+#  from function `test_ctl_command' in file test/10-ctrl.bats, line 20,
+#  from function `test_resize_command_fail' in file test/10-ctrl.bats, line 36,
+#  in test file test/10-ctrl.bats, line 158)
+#   `test_resize_command_fail "1 65535 65535"' failed
+# time="2026-03-05T16:26:05-08:00" level=error msg="container does not exist"
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470932,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "0001-01-01T00:00:00Z",
+#   "owner": ""
+# }
+# 111
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# {
+#   "ociVersion": "1.3.0",
+#   "id": "conmon-test-1772756764-470820-18697",
+#   "pid": 470944,
+#   "status": "created",
+#   "bundle": "/tmp/conmon-test-AQ0TQc",
+#   "rootfs": "/tmp/conmon-test-AQ0TQc/rootfs",
+#   "created": "2026-03-06T00:26:05.051863734Z",
+#   "owner": ""
+# }
+# 0
+# #/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# #| FAIL: timed out waiting for 'running' from conmon-test-1772756764-470820-18697
+# #\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ok 119 ctrl: rotate logs with --log-rotate

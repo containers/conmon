@@ -1,0 +1,28 @@
+From 66483c7b47bfea4a34cb9a8f554aeb8c62cf8c57 Mon Sep 17 00:00:00 2001
+From: Kir Kolyshkin <kolyshkin@gmail.com>
+Date: Tue, 22 Apr 2025 15:08:18 -0700
+Subject: [PATCH] sock_try_write_to_local_sock: improve a warning
+
+Make sure we show errno, and tell if the write was to a socket.
+
+Signed-off-by: Kir Kolyshkin <kolyshkin@gmail.com>
+---
+ src/conn_sock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/conn_sock.c b/src/conn_sock.c
+index 3b854e3..f2a0b43 100644
+--- a/src/conn_sock.c
++++ b/src/conn_sock.c
+@@ -563,7 +563,7 @@ static void sock_try_write_to_local_sock(struct remote_sock_s *sock)
+ 			   (struct sockaddr *)local_sock->addr, sizeof(*(local_sock->addr)));
+ 	}
+ 	if (w < 0) {
+-		nwarnf("Failed to write %s", local_sock->label);
++		nwarnf("Failed to %s %s: %m", (local_sock->is_stream) ? "write" : "sendto", local_sock->label);
+ 	} else {
+ 		sock->off += w;
+ 		sock->remaining -= w;
+-- 
+2.49.0
+

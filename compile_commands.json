@@ -1,0 +1,56 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-std=c99",
+      "-Os",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib64/glib-2.0/include",
+      "-I/usr/include/sysprof-6",
+      "-pthread",
+      "-DVERSION=\"2.1.13\"",
+      "-DGIT_COMMIT=\"c98f91dba22b72998ea47c7118da680513d01355-dirty\"",
+      "-D",
+      "USE_JOURNALD=1",
+      "-D",
+      "USE_SECCOMP=1",
+      "-c",
+      "-o",
+      "src/ctr_logging.o",
+      "src/ctr_logging.c"
+    ],
+    "directory": "/home/kir/git/containers/conmon",
+    "file": "/home/kir/git/containers/conmon/src/ctr_logging.c",
+    "output": "/home/kir/git/containers/conmon/src/ctr_logging.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-std=c99",
+      "-Os",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib64/glib-2.0/include",
+      "-I/usr/include/sysprof-6",
+      "-pthread",
+      "-DVERSION=\"2.1.13\"",
+      "-DGIT_COMMIT=\"c98f91dba22b72998ea47c7118da680513d01355-dirty\"",
+      "-D",
+      "USE_JOURNALD=1",
+      "-D",
+      "USE_SECCOMP=1",
+      "-c",
+      "-o",
+      "src/oom.o",
+      "src/oom.c"
+    ],
+    "directory": "/home/kir/git/containers/conmon",
+    "file": "/home/kir/git/containers/conmon/src/oom.c",
+    "output": "/home/kir/git/containers/conmon/src/oom.o"
+  }
+]

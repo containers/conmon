@@ -1,0 +1,27 @@
+From 4072bdf7c795749913e536b3f353a1d737b1b2a6 Mon Sep 17 00:00:00 2001
+From: Kir Kolyshkin <kolyshkin@gmail.com>
+Date: Tue, 22 Apr 2025 14:25:29 -0700
+Subject: [PATCH] seccomp_accept_cb: fix memory leak
+
+Users of recvfd are expected to free the .name.
+
+Signed-off-by: Kir Kolyshkin <kolyshkin@gmail.com>
+---
+ src/seccomp_notify.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/seccomp_notify.c b/src/seccomp_notify.c
+index bf738ea..7e1a5ac 100644
+--- a/src/seccomp_notify.c
++++ b/src/seccomp_notify.c
+@@ -79,6 +79,7 @@ gboolean seccomp_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_
+ 	if (listener.fd < 0) {
+ 		pexit("Failed to receive socket listener file descriptor");
+ 	}
++	free(listener.name);
+ 
+ 	_cleanup_free_ char *oci_config_path = g_strdup_printf("%s/config.json", opt_bundle_path);
+ 	if (oci_config_path == NULL) {
+-- 
+2.49.0
+

@@ -1,0 +1,36 @@
+From c571c74e393a9f129128b2fa7b794e3b228efbee Mon Sep 17 00:00:00 2001
+From: Kir Kolyshkin <kolyshkin@gmail.com>
+Date: Tue, 22 Apr 2025 14:59:14 -0700
+Subject: [PATCH] recvfd: don't save errno around free
+
+Since glibc 2.33, free() preserves errno.
+
+Signed-off-by: Kir Kolyshkin <kolyshkin@gmail.com>
+---
+ src/cmsg.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/src/cmsg.c b/src/cmsg.c
+index 7200353..43040dd 100644
+--- a/src/cmsg.c
++++ b/src/cmsg.c
+@@ -109,7 +109,6 @@ struct file_t recvfd(int sockfd)
+ 	struct cmsghdr *cmsg;
+ 	struct file_t file = {0};
+ 	int *fdptr;
+-	int olderrno;
+ 
+ 	union {
+ 		char buf[CMSG_SPACE(sizeof(file.fd))];
+@@ -159,8 +158,6 @@ struct file_t recvfd(int sockfd)
+ 	return file;
+ 
+ err:
+-	olderrno = errno;
+ 	free(file.name);
+-	errno = olderrno;
+ 	return (struct file_t){.name = NULL, .fd = -1};
+ }
+-- 
+2.49.0
+

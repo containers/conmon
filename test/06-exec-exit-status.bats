@@ -52,6 +52,29 @@ dump_hang_state() {
         echo "--- conmon $p fds ---"
         ls -l "/proc/$p/fd" 2>/dev/null || true
     done
+    # The hang seen so far is conmon in wait4() on a "podman container cleanup"
+    # child stuck in futex_do_wait, i.e. a deadlock inside podman. Its stderr
+    # goes to /dev/null (conmon's own fds do), so SIGQUIT would dump the
+    # goroutines into nowhere -- use gdb from the outside instead.
+    for p in $(pgrep -x podman || true); do
+        echo "--- podman $p status ---"
+        grep -E '^(State|Threads)' "/proc/$p/status" || true
+        echo "--- podman $p kernel stacks, per thread ---"
+        for t in "/proc/$p/task/"*; do
+            echo "[tid ${t##*/}]"
+            cat "$t/stack" 2>/dev/null || echo "(unavailable)"
+        done
+        echo "--- podman $p fds ---"
+        ls -l "/proc/$p/fd" 2>/dev/null || true
+        echo "--- podman $p backtraces ---"
+        timeout 120 gdb -p "$p" -batch \
+            -ex 'set pagination off' \
+            -ex 'thread apply all bt' 2>&1 | tail -100 || true
+    done
+    # A cleanup deadlock is quite likely to be about a lock on the podman
+    # database or the storage.
+    echo "--- file locks ---"
+    cat /proc/locks || true
     echo "--- containers ---"
     timeout 30 podman ps -a || true
     echo "--- conmon journal ---"

@@ -112,6 +112,7 @@ install_packages() {
         automake \
         conntrack \
         criu \
+        gdb \
         jq \
         libaio-dev \
         libapparmor-dev \
