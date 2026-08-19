@@ -4,8 +4,9 @@ set -euo pipefail
 declare -A VERSIONS=(
     # renovate: datasource=github-releases depName=containernetworking/plugins
     ["cni-plugins"]=v1.9.1
-    # renovate: datasource=github-releases depName=bats-core/bats-core
-    ["bats"]=v1.14.0
+    # NOTE bats is deliberately not auto-updated: bats >= 1.14 errors out when
+    # a test suite ends up being empty, which breaks the cri-o test runner.
+    ["bats"]=v1.13.0
     # renovate: datasource=github-releases depName=opencontainers/runc
     ["runc"]=v1.5.1
     # renovate: datasource=github-releases depName=containers/crun
@@ -17,9 +18,11 @@ main() {
     prepare_system
 
     install_packages
+    # NOTE this has to run after install_packages, which may install runtimes
+    # as podman dependencies.
+    remove_runtimes
     install_conmon
     install_bats
-    install_critools
     install_runc
     install_crun
     install_cni_plugins
@@ -47,6 +50,15 @@ remove_packages() {
     sudo apt-get remove \
         conmon \
         containernetworking-plugins
+}
+
+# remove_runtimes removes all the pre-installed OCI runtimes, so they can't
+# shadow the ones we install. The runner image ships a static podman bundle in
+# /usr/local/bin (which comes first in PATH) containing its own runc and crun
+# -- notably a crun built without systemd support, which breaks all the cri-o
+# tests -- and docker brings its own /usr/bin/runc.
+remove_runtimes() {
+    sudo rm -f /usr/{local/,}{s,}bin/{runc,crun}
 }
 
 install_packages() {
@@ -102,10 +114,13 @@ install_bats() {
     touch ~/.parallel/will-cite
 }
 
+# install_critools installs the cri-tools version given as $1. It is called
+# from install_testdeps, as the version to use is defined by cri-o.
 install_critools() {
+    local version=$1
     URL=https://github.com/kubernetes-sigs/cri-tools
 
-    git clone $URL
+    git clone --depth 1 --branch "$version" $URL
     pushd cri-tools
     sudo -E PATH="$PATH" make BINDIR=/usr/bin install
     popd
@@ -126,10 +141,12 @@ install_cni_plugins() {
 }
 
 install_runc() {
+    check_not_installed runc
+
     git clone --depth 1 --branch "${VERSIONS["runc"]}" https://github.com/opencontainers/runc
     pushd runc
     make RUNC_BUILDTAGS=-libpathrs
-    sudo install -D -m0755 runc /usr/sbin/runc
+    sudo install -D -m0755 runc /usr/bin/runc
     popd
     rm -rf runc
 
@@ -137,6 +154,8 @@ install_runc() {
 }
 
 install_crun() {
+    check_not_installed crun
+
     git clone --depth 1 --branch "${VERSIONS["crun"]}" https://github.com/containers/crun
     pushd crun
     ./autogen.sh
@@ -148,7 +167,20 @@ install_crun() {
     crun --version
 }
 
+# check_not_installed makes sure $1 is not available in PATH, so that the
+# binary we're about to install is not shadowed by a pre-installed one (those
+# are removed by remove_runtimes).
+check_not_installed() {
+    local path
+    if path=$(command -v "$1"); then
+        echo "ERROR: $1 is already installed at $path, please remove it in remove_runtimes" >&2
+        return 1
+    fi
+}
+
 install_testdeps() {
+    local critools
+
     CLONE_PATH=$(go env GOPATH)/src/github.com/cri-o
     mkdir -p "$CLONE_PATH"
     pushd "$CLONE_PATH"
@@ -164,8 +196,19 @@ install_testdeps() {
     sudo cp test/policy.json /etc/containers
     sudo cp test/redhat_sigstore.yaml /etc/containers/registries.d/registry.access.redhat.com.yaml
     sudo cp test/registries.conf /etc/containers/registries.conf
+
+    # critest has to match the cri-o version we test against, otherwise it
+    # runs conformance tests for features cri-o does not implement yet, and
+    # those fail. Use the very same version cri-o itself is tested with.
+    critools=$(sed -n 's/^[[:space:]]*\["cri-tools"\]=\(.*\)$/\1/p' scripts/versions)
+    if [ -z "$critools" ]; then
+        echo "ERROR: can't get cri-tools version from cri-o's scripts/versions" >&2
+        return 1
+    fi
     popd
     popd
+
+    install_critools "$critools"
 }
 
 setup_etc_subid() {
