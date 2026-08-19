@@ -387,6 +387,79 @@ assert_stderr_contains() {
     fi
 }
 
+# [test/DNM] Everything we can grab about a hang: who is still running, where
+# in the kernel they are stuck, and what they are holding open. The CI job runs
+# as root, so /proc/PID/stack and the fd list are readable.
+dump_hang_state() {
+    local cid=${1:-}
+    local p pid n
+
+    # A wedged run can fail a dozen tests in a row, and this is not a cheap
+    # thing to do -- gdb alone is allowed a minute. Dump the first few and
+    # then keep quiet, the first ones are the interesting ones anyway.
+    local counter=${BATS_SUITE_TMPDIR:-/tmp}/hang-dumps
+    n=$(cat "$counter" 2>/dev/null || echo 0)
+    if [ "$n" -ge 3 ]; then
+        echo "(hang state already dumped $n times, skipping)"
+        return 0
+    fi
+    echo $((n + 1)) >"$counter"
+
+    if [ -n "$cid" ]; then
+        echo "--- runtime state of $cid ---"
+        timeout 30 "$RUNTIME_BINARY" state "$cid" || true
+        pid=$(timeout 30 "$RUNTIME_BINARY" state "$cid" 2>/dev/null |
+            sed -n 's/.*"pid": *\([0-9]*\).*/\1/p')
+        if [ -n "$pid" ] && [ "$pid" != 0 ]; then
+            echo "--- container init $pid ---"
+            ps -o pid,ppid,stat,wchan:32,etimes,args -p "$pid" || true
+            cat "/proc/$pid/stack" 2>/dev/null || true
+        fi
+    fi
+    if [ -n "${CONMON_PID:-}" ]; then
+        echo "--- \$CONMON_PID is $CONMON_PID ---"
+    fi
+
+    echo "--- processes ---"
+    ps -eo pid,ppid,stat,wchan:32,etimes,args |
+        grep -E 'conmon|podman|runc|crun|sleep 30' | grep -v grep || true
+    for p in $(pgrep -x conmon || true); do
+        echo "--- conmon $p status ---"
+        grep -E '^(State|Threads|SigBlk|SigIgn|SigCgt)' "/proc/$p/status" || true
+        echo "--- conmon $p kernel stack ---"
+        cat "/proc/$p/stack" 2>/dev/null || echo "(unavailable)"
+        echo "--- conmon $p fds ---"
+        ls -l "/proc/$p/fd" 2>/dev/null || true
+    done
+    # The hang seen so far is conmon in wait4() on a "podman container cleanup"
+    # child stuck in futex_do_wait, i.e. a deadlock inside podman. Its stderr
+    # goes to /dev/null (conmon's own fds do), so SIGQUIT would dump the
+    # goroutines into nowhere -- use gdb from the outside instead.
+    for p in $(pgrep -x podman || true); do
+        echo "--- podman $p status ---"
+        grep -E '^(State|Threads)' "/proc/$p/status" || true
+        echo "--- podman $p kernel stacks, per thread ---"
+        for t in "/proc/$p/task/"*; do
+            echo "[tid ${t##*/}]"
+            cat "$t/stack" 2>/dev/null || echo "(unavailable)"
+        done
+        echo "--- podman $p fds ---"
+        ls -l "/proc/$p/fd" 2>/dev/null || true
+        echo "--- podman $p backtraces ---"
+        timeout 60 gdb -p "$p" -batch \
+            -ex 'set pagination off' \
+            -ex 'thread apply all bt' 2>&1 | tail -100 || true
+    done
+    # A cleanup deadlock is quite likely to be about a lock on the podman
+    # database or the storage.
+    echo "--- file locks ---"
+    cat /proc/locks || true
+    echo "--- containers ---"
+    timeout 30 podman ps -a || true
+    echo "--- conmon journal ---"
+    journalctl -t conmon --since '-3 min' --no-pager 2>/dev/null | tail -50 || true
+}
+
 # Helper function to wait until "runc state $cid" returns expected status.
 wait_for_runtime_status() {
     local cid=$1
@@ -406,6 +479,8 @@ wait_for_runtime_status() {
         sleep 0.5
     done
 
+    echo "### timed out waiting for '$expected_status' from $cid"
+    dump_hang_state "$cid"
     die "timed out waiting for '$expected_status' from $cid"
 }
 

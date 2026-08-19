@@ -35,52 +35,6 @@ teardown() {
 }
 
 
-# [test/DNM] Everything we can grab about a hang: who is still running, where
-# in the kernel they are stuck, and what they are holding open. The CI job runs
-# as root, so /proc/PID/stack and the fd list are readable.
-dump_hang_state() {
-    local p
-
-    echo "--- processes ---"
-    ps -eo pid,ppid,stat,wchan:32,etimes,args |
-        grep -E 'conmon|podman|runc|crun|sleep 30' | grep -v grep || true
-    for p in $(pgrep -x conmon || true); do
-        echo "--- conmon $p status ---"
-        grep -E '^(State|Threads|SigBlk|SigIgn|SigCgt)' "/proc/$p/status" || true
-        echo "--- conmon $p kernel stack ---"
-        cat "/proc/$p/stack" 2>/dev/null || echo "(unavailable)"
-        echo "--- conmon $p fds ---"
-        ls -l "/proc/$p/fd" 2>/dev/null || true
-    done
-    # The hang seen so far is conmon in wait4() on a "podman container cleanup"
-    # child stuck in futex_do_wait, i.e. a deadlock inside podman. Its stderr
-    # goes to /dev/null (conmon's own fds do), so SIGQUIT would dump the
-    # goroutines into nowhere -- use gdb from the outside instead.
-    for p in $(pgrep -x podman || true); do
-        echo "--- podman $p status ---"
-        grep -E '^(State|Threads)' "/proc/$p/status" || true
-        echo "--- podman $p kernel stacks, per thread ---"
-        for t in "/proc/$p/task/"*; do
-            echo "[tid ${t##*/}]"
-            cat "$t/stack" 2>/dev/null || echo "(unavailable)"
-        done
-        echo "--- podman $p fds ---"
-        ls -l "/proc/$p/fd" 2>/dev/null || true
-        echo "--- podman $p backtraces ---"
-        timeout 120 gdb -p "$p" -batch \
-            -ex 'set pagination off' \
-            -ex 'thread apply all bt' 2>&1 | tail -100 || true
-    done
-    # A cleanup deadlock is quite likely to be about a lock on the podman
-    # database or the storage.
-    echo "--- file locks ---"
-    cat /proc/locks || true
-    echo "--- containers ---"
-    timeout 30 podman ps -a || true
-    echo "--- conmon journal ---"
-    journalctl -t conmon --since '-3 min' --no-pager 2>/dev/null | tail -50 || true
-}
-
 # Integration test that can be run manually or in CI
 @test "integration: exec exit codes work correctly" {
     # This test can only run if podman is available and configured
