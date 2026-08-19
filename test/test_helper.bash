@@ -391,7 +391,10 @@ assert_stderr_contains() {
 wait_for_runtime_status() {
     local cid=$1
     local expected_status=$2
-    local how_long=5
+    # Generous on purpose: this polls, so on a healthy machine it returns on
+    # the first iteration, and the only thing a low limit buys is flakes on a
+    # loaded CI runner.
+    local how_long=30
 
     t1=$(expr $SECONDS + $how_long)
     while [ $SECONDS -lt $t1 ]; do
