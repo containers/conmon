@@ -39,14 +39,13 @@ teardown() {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
 
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --sync \
         --exec \
         --exec-process-spec "${BUNDLE_PATH}/process.json" \
         --exec-attach
 
-    assert_failure
     assert "${output}" =~ "Attach can only be specified for a non-legacy exec session"
 }
 
@@ -54,7 +53,7 @@ teardown() {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
 
-    start_conmon_with_default_args \
+    run_conmon_expecting_failure \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --api-version 1 \
         --sync \
@@ -62,7 +61,6 @@ teardown() {
         --exec-process-spec "${BUNDLE_PATH}/process.json" \
         --exec-attach
 
-    assert_failure
     assert "${output}" =~ "--attach specified but _OCI_ATTACHPIPE was not"
 }
 

@@ -310,11 +310,11 @@ setup_test_env() {
     export CTR_ID
     CTR_ID=$(generate_ctr_id)
     export LOG_PATH="$TEST_TMPDIR/container.log"
-    # For tests that run conmon directly; conmons started by
-    # start_conmon_with_default_args each get their own, in $CONTAINER_PIDFILE.
+    # For tests that run conmon directly; conmons started by _run_conmon each
+    # get their own, in $CONTAINER_PIDFILE.
     export PID_FILE="$TEST_TMPDIR/pidfile"
-    # For tests that run conmon directly; conmons started by
-    # start_conmon_with_default_args each get their own pidfile.
+    # For tests that run conmon directly; conmons started by _run_conmon each
+    # get their own, in $CONMON_PIDFILE.
     export CONMON_PID_FILE="$TEST_TMPDIR/conmon-pidfile"
     export BUNDLE_PATH="$TEST_TMPDIR"
     export ROOTFS="$TEST_TMPDIR/rootfs"
@@ -406,16 +406,15 @@ wait_for_runtime_status() {
     die "timed out waiting for '$expected_status' from $cid"
 }
 
-# Helper function to start conmon with default arguments.
-# Additional conmon arguments can be passed to this function.
-start_conmon_with_default_args() {
-    local extra_args=("$@")
-    # A test may start more than one conmon (an --exec one, say), so give
-    # each one its own pidfiles rather than having them clobber shared ones.
-    # $CONTAINER_PIDFILE is left set for the caller: the tests that read the
-    # pid want the one from the conmon started last.
+# _run_conmon runs conmon with the default arguments plus the ones given,
+# leaving the result in $status and $output as `run` does. $CONMON_PIDFILE and
+# $CONTAINER_PIDFILE are set to the pidfiles this conmon was told to write.
+#
+# A test may start more than one conmon (an --exec one, say), so each gets
+# pidfiles of its own rather than having them clobber shared ones.
+_run_conmon() {
     ((++CONMON_STARTED))
-    local pidfile="$TEST_TMPDIR/conmon-pidfile.$CONMON_STARTED"
+    CONMON_PIDFILE="$TEST_TMPDIR/conmon-pidfile.$CONMON_STARTED"
     CONTAINER_PIDFILE="$TEST_TMPDIR/pidfile.$CONMON_STARTED"
 
     run timeout 10s "$CONMON_BINARY" \
@@ -427,10 +426,27 @@ start_conmon_with_default_args() {
         --log-level trace \
         --container-pidfile "$CONTAINER_PIDFILE" \
         --syslog \
-        --conmon-pidfile "$pidfile" "${extra_args[@]}"
+        --conmon-pidfile "$CONMON_PIDFILE" "$@"
+}
+
+# Helper function to run conmon with default arguments where conmon is
+# expected to fail. That it did is asserted here, so the caller is left to
+# check $output for the particular complaint it is after.
+run_conmon_expecting_failure() {
+    _run_conmon "$@"
+    assert_failure
+}
+
+# Helper function to start conmon with default arguments.
+# Additional conmon arguments can be passed to this function.
+start_conmon_with_default_args() {
+    local pidfile
+
+    _run_conmon "$@"
+    pidfile=$CONMON_PIDFILE
 
     if [ "$status" -ne 0 ]; then
-        return
+        die "conmon failed with status $status: $output"
     fi
 
     # The pid of the conmon just started. A test starting more than one has
