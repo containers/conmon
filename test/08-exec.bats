@@ -16,13 +16,18 @@ teardown() {
 @test "exec: simple --exec --exec-process-spec" {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
     wait_for_runtime_status "$CTR_ID" running
+    local main_conmon_pid=$CONMON_PID
 
     start_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH.exec" \
         --exec \
         --exec-process-spec "${BUNDLE_PATH}/process.json"
+    local exec_conmon_pid=$CONMON_PID
 
     wait_for_runtime_status "$CTR_ID" stopped
+    # Both logs are read below, so wait for both conmons to write them out.
+    wait_for_conmon_exit "$main_conmon_pid"
+    wait_for_conmon_exit "$exec_conmon_pid"
 
     # Check that the main process noticed the /tmp/test.txt.
     assert_file_exists "$LOG_PATH"
@@ -133,6 +138,7 @@ teardown() {
 
     # The exec should start now.
     wait_for_runtime_status "$CTR_ID" stopped
+    wait_for_conmon_exit "$CONMON_PID"
     assert_file_exists "$LOG_PATH.exec"
     run cat "$LOG_PATH.exec"
     assert "${output}" =~ "Hello from exec!"

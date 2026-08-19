@@ -502,6 +502,8 @@ start_conmon_with_default_args() {
 run_conmon_with_default_args() {
     start_conmon_with_default_args "$@"
     wait_for_runtime_status "$CTR_ID" stopped
+    # Every caller reads a log written by this conmon afterwards.
+    wait_for_conmon_exit "$CONMON_PID"
 }
 
 # Generic helper function to create pipe and read from it.
