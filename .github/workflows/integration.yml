@@ -36,6 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
+      # Let the other job finish: these two take about half an hour each, and
+      # one of them failing is no reason to throw the other one's result away.
+      fail-fast: false
       matrix:
         critest: [0, 1]
     steps:
