@@ -176,6 +176,9 @@ install_bats() {
     rm -rf bats-core
     mkdir -p ~/.parallel
     touch ~/.parallel/will-cite
+    # The test suites run bats under sudo, so root needs it as well.
+    sudo mkdir -p /root/.parallel
+    sudo touch /root/.parallel/will-cite
 }
 
 # install_critools installs the cri-tools version given as $1. It is called

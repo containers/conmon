@@ -22,7 +22,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - run: sudo hack/github-actions-setup
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+      - run: hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
           sudo mkdir -p /var/run/crio
@@ -40,11 +44,11 @@ jobs:
         with:
           go-version: stable
           cache: false
-      - run: sudo hack/github-actions-setup
+      - run: hack/github-actions-setup
       - name: Run CRI-O integration tests (critest=${{ matrix.critest }})
         run: |
-          CRIO_DIR=$(sudo go env GOPATH)/src/github.com/cri-o/cri-o
-          sudo make -C "$CRIO_DIR" all test-binaries
+          CRIO_DIR=$(go env GOPATH)/src/github.com/cri-o/cri-o
+          make -C "$CRIO_DIR" all test-binaries
           # skip seccomp tests because they have permission denied issues in a container and accept signed image as they don't use conmon
           # skip crio-wipe tests as they test cri-o's wipe functionality, not conmon
           sudo rm -f "$CRIO_DIR"/test/seccomp*.bats "$CRIO_DIR"/test/image.bats "$CRIO_DIR"/test/policy.bats "$CRIO_DIR"/test/crio-wipe.bats
