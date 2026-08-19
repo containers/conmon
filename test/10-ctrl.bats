@@ -18,6 +18,7 @@ test_ctl_command() {
     local command="$1"
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH" -t
     wait_for_runtime_status "$CTR_ID" running
+    local main_conmon_pid=$CONMON_PID
 
     echo "$command" > ${CTL_PATH}
 
@@ -27,6 +28,8 @@ test_ctl_command() {
         --exec-process-spec "${BUNDLE_PATH}/process.json"
 
     wait_for_runtime_status "$CTR_ID" stopped
+    # Callers read $LOG_PATH, written by the container's conmon.
+    wait_for_conmon_exit "$main_conmon_pid"
 }
 
 # Helper function to send the resize command. Fails if the resize command
@@ -87,6 +90,7 @@ test_resize_command_ok() {
 @test "ctrl: rotate logs" {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH" -t
     wait_for_runtime_status "$CTR_ID" running
+    local main_conmon_pid=$CONMON_PID
 
     # Remove the log.
     rm -f $LOG_PATH
@@ -99,6 +103,7 @@ test_resize_command_ok() {
         --exec-process-spec "${BUNDLE_PATH}/process.json"
 
     wait_for_runtime_status "$CTR_ID" stopped
+    wait_for_conmon_exit "$main_conmon_pid"
 
     # Check that the log exists now.
     assert_file_exists "$LOG_PATH"
