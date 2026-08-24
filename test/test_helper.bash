@@ -543,6 +543,22 @@ _file_has_lines() {
     [ -e "$1" ] && [ "$(wc -l <"$1")" -ge "$2" ]
 }
 
+_file_has_line() {
+    [ -e "$1" ] && grep -q -- "$2" "$1"
+}
+
+# wait_for_log_line waits until the pattern given as $2 shows up in the log
+# file $1. Conmon writes the log as the container's output arrives, so a test
+# acting on a line right after starting the container is racing it.
+wait_for_log_line() {
+    local file=$1
+    local pattern=$2
+    local how_long=${3:-10}
+
+    retry "$how_long" 0.1 _file_has_line "$file" "$pattern" ||
+        die "timed out waiting for '$pattern' in $file: $(cat "$file" 2>&1)"
+}
+
 # Generic helper function to create pipe and read from it.
 _start_pipe_reader() {
     local pipe_path=$1

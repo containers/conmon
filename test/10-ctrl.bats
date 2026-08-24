@@ -173,6 +173,11 @@ test_resize_command_ok() {
     wait_for_runtime_status "$CTR_ID" running
     local main_conmon_pid=$CONMON_PID
 
+    # The container being up does not mean its first line has been logged
+    # yet, and rotating before it is written leaves it in the new log rather
+    # than the rotated one, which is what the test checks for below.
+    wait_for_log_line "$LOG_PATH" "before rotation"
+
     # The control message should rotate the log
     echo "2 1 1" > ${CTL_PATH}
 
