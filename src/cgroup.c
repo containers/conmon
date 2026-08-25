@@ -190,11 +190,10 @@ static void setup_oom_handling_cgroup_v1(int pid)
 
 static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
-	const size_t events_size = sizeof(struct inotify_event) + NAME_MAX + 1;
-	char events[events_size];
+	char events[sizeof(struct inotify_event) + NAME_MAX + 1];
 
 	/* Drop the inotify events.  */
-	ssize_t num_read = read(fd, &events, events_size);
+	ssize_t num_read = read(fd, &events, sizeof(events));
 	if (num_read < 0) {
 		nwarn("Failed to read oom event from eventfd in v2");
 		/* On non-recoverable errors, remove the source */

@@ -36,7 +36,10 @@ WARN_CFLAGS := -Wall -Wextra -Werror \
 	-Wstrict-prototypes -Wold-style-definition -Wredundant-decls \
 	-Wmissing-prototypes -Wmissing-declarations \
 	-Wformat=2 -Wundef -Winit-self -Wshadow \
+	-Wvla -Wpointer-arith -Wswitch-default \
 	-Wnull-dereference -Wfloat-equal -Wdouble-promotion -Walloca \
+	$(call cc-option,-Wformat-signedness) \
+	$(call cc-option,-Wjump-misses-init) \
 	$(call cc-option,-Wduplicated-cond) \
 	$(call cc-option,-Wduplicated-branches) \
 	$(call cc-option,-Wtrampolines)

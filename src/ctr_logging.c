@@ -631,7 +631,7 @@ static ssize_t writev_buffer_flush(int fd, writev_buffer_t *buf)
 				/* continue, res still > 0 */
 			} else {
 				iov->iov_len = iov_len;
-				iov->iov_base += from_this;
+				iov->iov_base = (char *)iov->iov_base + from_this;
 				/* break, res is 0 */
 			}
 		}
@@ -986,7 +986,7 @@ static int secure_validate_log_path(const char *path)
 		if (parent_stat.st_uid == 0 || parent_stat.st_uid == getuid() || parent_stat.st_uid == geteuid()) {
 			/* Acceptable ownership */
 		} else {
-			nwarnf("Parent directory owned by unexpected UID %d: %s", parent_stat.st_uid, parent_dir);
+			nwarnf("Parent directory owned by unexpected UID %u: %s", (unsigned)parent_stat.st_uid, parent_dir);
 			goto cleanup;
 		}
 

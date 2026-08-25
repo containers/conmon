@@ -486,6 +486,8 @@ static void remote_sock_shutdown(struct remote_sock_s *sock, int how)
 		sock->readable = false;
 		sock->writable = false;
 		break;
+	default:
+		break;
 	}
 	if (!sock->writable && !sock->readable) {
 		ndebugf("Closing %d", sock->fd);

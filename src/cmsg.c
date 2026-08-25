@@ -106,6 +106,7 @@ struct file_t recvfd(int sockfd)
 	void *new_name;
 	int *fdptr;
 	int olderrno;
+	ssize_t ret;
 
 	union {
 		char buf[CMSG_SPACE(sizeof(file.fd))];
@@ -132,7 +133,7 @@ struct file_t recvfd(int sockfd)
 	msg.msg_control = u.buf;
 	msg.msg_controllen = sizeof(u.buf);
 
-	ssize_t ret = recvmsg(sockfd, &msg, 0);
+	ret = recvmsg(sockfd, &msg, 0);
 	if (ret < 0) {
 		/* Add specific error information for debugging console fd issues */
 		fprintf(stderr, "recvfd: recvmsg failed: %m (sockfd=%d)\n", sockfd);
