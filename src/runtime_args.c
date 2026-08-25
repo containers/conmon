@@ -4,7 +4,6 @@
 #include "utils.h"
 
 static void add_argv(GPtrArray *argv_array, ...) G_GNUC_NULL_TERMINATED;
-static void add_argv(GPtrArray *argv_array, ...);
 static void end_argv(GPtrArray *argv_array);
 
 static void print_argv(GPtrArray *argv);
@@ -108,8 +107,6 @@ static void append_argv(gpointer data, gpointer user_data)
 	g_string_append_c(args, ' ');
 }
 
-
-static void add_argv(GPtrArray *argv_array, ...) G_GNUC_NULL_TERMINATED;
 
 static void add_argv(GPtrArray *argv_array, ...)
 {
