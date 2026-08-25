@@ -1,0 +1,36 @@
+# This is deliberately a separate workflow -- so that it still runs when
+# another workflow file is broken.
+name: actionlint
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+      - release-*
+  pull_request:
+  workflow_dispatch:
+permissions: {}
+
+# Cancel a PR's older runs when it is pushed to again. github.head_ref is set
+# for pull_request events only, so pushes to main and tags fall back to the
+# unique run_id and are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v7
+    - uses: devops-actions/actionlint@ec02b36684b2f574f1d219ad0a43b082e46bf3e4 # v0.1.13
+
+  all-done:
+    needs:
+      - actionlint
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo "All jobs completed"
