@@ -1,6 +1,6 @@
 # This is deliberately a separate workflow -- so that it still runs when
 # another workflow file is broken.
-name: actionlint
+name: zizmor
 on:
   push:
     tags:
@@ -21,18 +21,22 @@ concurrency:
 
 jobs:
 
-  actionlint:
+  zizmor:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
-    - uses: devops-actions/actionlint@ec02b36684b2f574f1d219ad0a43b082e46bf3e4 # v0.1.13
+    - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+      with:
+        # Report findings by failing this job, rather than uploading them to
+        # the repository's security tab.
+        advanced-security: false
 
   all-done:
     needs:
-      - actionlint
+      - zizmor
     runs-on: ubuntu-latest
     steps:
     - run: echo "All jobs completed"
