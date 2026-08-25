@@ -27,7 +27,7 @@ jobs:
           # TODO: switch back to stable once cri-o vendors golang.org/x/net
           # v0.55.0 or newer; until then it does not build with go 1.27.
           # See https://github.com/cri-o/cri-o/pull/10103#issuecomment-5400108050
-          go-version: '1.26'
+          go-version: '1.27'
           cache: false
       - run: hack/github-actions-setup
       - name: Run conmon integration tests
@@ -51,7 +51,7 @@ jobs:
           # TODO: switch back to stable once cri-o vendors golang.org/x/net
           # v0.55.0 or newer; until then it does not build with go 1.27.
           # See https://github.com/cri-o/cri-o/pull/10103#issuecomment-5400108050
-          go-version: '1.26'
+          go-version: '1.27'
           cache: false
       - run: hack/github-actions-setup
       - name: Run CRI-O integration tests (critest=${{ matrix.critest }})
