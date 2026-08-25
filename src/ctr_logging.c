@@ -42,7 +42,7 @@ static int64_t log_global_size_max = -1;
 
 /* k8s log file parameters */
 static int k8s_log_fd = -1;
-static char *k8s_log_path = NULL;
+static const char *k8s_log_path = NULL;
 static int64_t k8s_bytes_written;
 static int64_t k8s_total_bytes_written;
 
@@ -248,8 +248,8 @@ void configure_log_drivers(gchar **log_drivers, int64_t log_size_max_, int64_t l
 static void parse_log_path(char *log_config)
 {
 	const char *delim = strchr(log_config, ':');
-	char *driver = strtok(log_config, ":");
-	char *path = strtok(NULL, ":");
+	const char *driver = strtok(log_config, ":");
+	const char *path = strtok(NULL, ":");
 
 	if (path == NULL && driver == NULL) {
 		nexitf("log-path must not be empty");
@@ -259,7 +259,7 @@ static void parse_log_path(char *log_config)
 	// we check the delim here though, because we DO want to match "none" as the none driver
 	if (path == NULL && delim == log_config) {
 		path = driver;
-		driver = (char *)K8S_FILE_STRING;
+		driver = K8S_FILE_STRING;
 	}
 
 	if (!strcmp(driver, "off") || !strcmp(driver, "null") || !strcmp(driver, "none")) {

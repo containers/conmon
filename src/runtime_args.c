@@ -28,7 +28,7 @@ GPtrArray *configure_runtime_args(const char *const csname)
 	if (opt_exec) {
 		add_argv(runtime_argv, "exec", "--pid-file", opt_container_pid_file, "--process", opt_exec_process_spec, "--detach", NULL);
 	} else {
-		char *command;
+		const char *command;
 		if (opt_restore_path)
 			command = "restore";
 		else

@@ -23,7 +23,7 @@ static void remote_sock_shutdown(struct remote_sock_s *sock, int how);
 static void schedule_local_sock_write(struct local_sock_s *local_sock);
 static void sock_try_write_to_local_sock(struct remote_sock_s *sock);
 static gboolean local_sock_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
-static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
+static char *bind_unix_socket(const char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
 			      gboolean use_full_attach_path);
 static char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len);
 /*
@@ -217,7 +217,7 @@ static size_t max_socket_path_len(void)
 }
 
 /* REMEMBER to g_free() the return value! */
-static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
+static char *bind_unix_socket(const char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
 			      gboolean use_full_attach_path)
 {
 	int socket_fd = -1;

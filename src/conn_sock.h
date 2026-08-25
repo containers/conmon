@@ -43,7 +43,7 @@ struct local_sock_s {
 	int *fd;
 	gboolean is_stream;
 	GPtrArray *readers;
-	char *label;
+	const char *label;
 	struct sockaddr_un *addr;
 };
 
