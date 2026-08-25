@@ -124,6 +124,47 @@ install.podman: bin/conmon
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(LIBEXECDIR)/podman
 	install ${SELINUXOPT} -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/podman/conmon
 
+# Clang's static analyzer. The disabled checkers below are all false positives
+# on this code base: none of them models __attribute__((cleanup)), so every
+# _cleanup_free_ / _cleanup_close_ / _cleanup_fclose_ variable looks either
+# leaked (unix.Malloc, unix.Stream) or assigned but never read
+# (deadcode.DeadStores).
+#
+# For a browsable HTML report of everything, including the above, run
+# "scan-build make" by hand.
+#
+# Naming a checker the compiler does not know about is a hard error, and the
+# set moves between releases (unix.Stream is alpha, and thus off by default,
+# before clang 19), so the list is intersected with what this clang has.
+CLANG ?= clang
+ANALYZER_OFF := deadcode.DeadStores unix.Malloc unix.Stream
+ANALYZER_CFLAGS := --analyze -Werror $(foreach c,\
+	$(shell $(CLANG) -cc1 -analyzer-checker-help 2>/dev/null \
+		| awk '{ print $$1 }' | grep -xF $(foreach c,$(ANALYZER_OFF),-e $(c))),\
+	-Xclang -analyzer-disable-checker -Xclang $(c))
+
+SRCS := $(OBJS:.o=.c)
+
+.PHONY: analyze
+analyze: $(SRCS) $(HEADERS)
+	@for src in $(SRCS); do \
+		echo "  ANALYZE $$src"; \
+		$(CLANG) $(CFLAGS) $(ANALYZER_CFLAGS) -o /dev/null $$src || exit 1; \
+	done
+
+# cppcheck only understands -D, -U and -I, so the flags are built separately
+# from CFLAGS. GIT_COMMIT is only there to make src/cli.c preprocess.
+CPPCHECK ?= cppcheck
+CPPCHECK_FLAGS := $(shell $(PKG_CONFIG) --cflags-only-I glib-2.0) \
+	-DVERSION=\"$(VERSION)\" -DGIT_COMMIT=\"\" -DUSE_JOURNALD=1
+
+.PHONY: cppcheck
+cppcheck:
+	$(CPPCHECK) --quiet --error-exitcode=1 --std=c99 --inline-suppr \
+		--enable=warning,performance,portability \
+		--suppress=missingIncludeSystem --suppress=checkersReport \
+		$(CPPCHECK_FLAGS) src/
+
 .PHONY: fmt
 fmt:
 	git ls-files -z \*.c \*.h | xargs -0 clang-format -i
