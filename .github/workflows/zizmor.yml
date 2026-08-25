@@ -1,0 +1,42 @@
+# This is deliberately a separate workflow -- so that it still runs when
+# another workflow file is broken.
+name: zizmor
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+      - release-*
+  pull_request:
+  workflow_dispatch:
+permissions: {}
+
+# Cancel a PR's older runs when it is pushed to again. github.head_ref is set
+# for pull_request events only, so pushes to main and tags fall back to the
+# unique run_id and are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+
+  zizmor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+      with:
+        # Report findings by failing this job, rather than uploading them to
+        # the repository's security tab.
+        advanced-security: false
+
+  all-done:
+    needs:
+      - zizmor
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo "All jobs completed"
