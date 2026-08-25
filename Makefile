@@ -35,7 +35,7 @@ cc-option = $(shell $(CC) -Werror $(1) -x c /dev/null -c -o /dev/null 2>/dev/nul
 WARN_CFLAGS := -Wall -Wextra -Werror \
 	-Wstrict-prototypes -Wold-style-definition -Wredundant-decls \
 	-Wmissing-prototypes -Wmissing-declarations \
-	-Wformat=2 -Wundef -Winit-self \
+	-Wformat=2 -Wundef -Winit-self -Wshadow \
 	-Wnull-dereference -Wfloat-equal -Wdouble-promotion -Walloca \
 	$(call cc-option,-Wduplicated-cond) \
 	$(call cc-option,-Wduplicated-branches) \

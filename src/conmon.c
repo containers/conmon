@@ -135,8 +135,7 @@ int main(int argc, char *argv[])
 	 * Set self as subreaper so we can wait for container process
 	 * and return its exit code.
 	 */
-	int ret = set_subreaper(true);
-	if (ret != 0) {
+	if (set_subreaper(true) != 0) {
 		pexit("Failed to set as subreaper");
 	}
 
