@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
     - name: Check C code formatting
       run: |
         sudo apt-get update
@@ -35,6 +37,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
     - name: Build with meson
       run: |
         sudo apt-get update

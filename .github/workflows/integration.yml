@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7
         with:
           # TODO: switch back to stable once cri-o vendors golang.org/x/net
@@ -46,6 +48,8 @@ jobs:
         critest: [0, 1]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7
         with:
           # TODO: switch back to stable once cri-o vendors golang.org/x/net
