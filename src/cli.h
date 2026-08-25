@@ -52,6 +52,6 @@ extern GOptionEntry opt_entries[];
 extern gboolean opt_full_attach_path;
 
 int initialize_cli(int argc, char *argv[]);
-void process_cli();
+void process_cli(void);
 
 #endif // CLI_H

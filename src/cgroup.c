@@ -34,7 +34,7 @@ static void setup_oom_handling_cgroup_v2(int pid);
 static void setup_oom_handling_cgroup_v1(int pid);
 static gboolean oom_cb_cgroup_v2(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
 static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
-static int create_oom_files();
+static int create_oom_files(void);
 static int create_oom_file(const char *base_path);
 
 void setup_oom_handling(int pid)
@@ -286,7 +286,7 @@ static gboolean oom_cb_cgroup_v1(int fd, GIOCondition condition, gpointer user_d
 	return G_SOURCE_CONTINUE;
 }
 
-gboolean check_cgroup2_oom()
+gboolean check_cgroup2_oom(void)
 {
 	static long int last_oom_counter = 0;
 	static long int last_oom_kill_counter = 0;
@@ -361,7 +361,7 @@ gboolean check_cgroup2_oom()
  * this can be used for v1 and v2 OOMs
  * returns 0 on success, negative value on failure
  */
-static int create_oom_files()
+static int create_oom_files(void)
 {
 	ninfo("OOM received");
 	int r = 0;

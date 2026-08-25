@@ -250,13 +250,13 @@ static void resize_winsz(int height, int width)
 }
 
 
-void setup_console_fifo()
+void setup_console_fifo(void)
 {
 	setup_fifo(&winsz_fd_r, &winsz_fd_w, "winsz", "window resize control fifo");
 	ndebugf("winsz read side: %d, winsz write side: %d", winsz_fd_r, winsz_fd_w);
 }
 
-int setup_terminal_control_fifo()
+int setup_terminal_control_fifo(void)
 {
 	/*
 	 * Open a dummy writer to prevent getting flood of POLLHUPs when

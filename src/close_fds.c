@@ -31,7 +31,7 @@
 static int open_files_max_fd;
 static fd_set *open_files_set;
 
-static void __attribute__((constructor)) init()
+static void __attribute__((constructor)) init(void)
 {
 	struct dirent *ent;
 	ssize_t size = 0;
@@ -74,7 +74,7 @@ static void __attribute__((constructor)) init()
 	closedir(d);
 }
 
-void close_other_fds()
+void close_other_fds(void)
 {
 	int fd;
 

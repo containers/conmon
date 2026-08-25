@@ -175,7 +175,7 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 	g_main_loop_quit(main_loop);
 }
 
-void do_exit_command()
+void do_exit_command(void)
 {
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
 		_pexit("Failed to reset signal for SIGCHLD");
@@ -250,7 +250,7 @@ void do_exit_command()
 	_exit(EXIT_FAILURE);
 }
 
-void reap_children()
+void reap_children(void)
 {
 	/* We need to reap any zombies (from an OCI runtime that errored) before
 	   exiting */
@@ -258,7 +258,7 @@ void reap_children()
 		;
 }
 
-void cleanup_socket_dir_symlink()
+void cleanup_socket_dir_symlink(void)
 {
 	/* A symbolic link might be created at {opt_socket_path}/{opt_cuuid} if the container
 	   is created successfully.

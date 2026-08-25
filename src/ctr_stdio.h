@@ -5,6 +5,6 @@
 #include <stdint.h> /* int64_t */
 
 gboolean stdio_cb(int fd, GIOCondition condition, gpointer user_data);
-void drain_stdio();
+void drain_stdio(void);
 
 #endif // CTR_STDIO_H

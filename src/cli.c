@@ -163,7 +163,7 @@ int initialize_cli(int argc, char *argv[])
 	return -1;
 }
 
-void process_cli()
+void process_cli(void)
 {
 	/* Command line parameters */
 	set_conmon_logs(opt_log_level, opt_cid, opt_syslog, opt_log_tag);

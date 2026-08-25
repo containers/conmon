@@ -210,7 +210,7 @@ void setup_notify_socket(char *socket_path)
 	g_free(symlink_dir_path);
 }
 
-static size_t max_socket_path_len()
+static size_t max_socket_path_len(void)
 {
 	struct sockaddr_un addr;
 	return sizeof(addr.sun_path);
@@ -307,7 +307,7 @@ char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 }
 
 
-void schedule_main_stdin_write()
+void schedule_main_stdin_write(void)
 {
 	schedule_local_sock_write(&local_mainfd_stdin);
 }
@@ -585,7 +585,7 @@ static void close_sock(gpointer data, G_GNUC_UNUSED gpointer user_data)
 	sock->fd = -1;
 }
 
-void close_all_readers()
+void close_all_readers(void)
 {
 	if (local_mainfd_stdin.readers == NULL)
 		return;
