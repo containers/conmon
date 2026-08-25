@@ -387,6 +387,34 @@ assert_stderr_contains() {
     fi
 }
 
+# Usage: retry <how_long> <interval> <command ...>
+#
+# Runs the command until it succeeds, for at most <how_long> seconds, waiting
+# <interval> seconds between the attempts. Returns non-zero if the command
+# never succeeded, leaving it to the caller to report that: the caller is the
+# one that knows what it was waiting for.
+retry() {
+    local how_long=$1
+    local interval=$2
+    shift 2
+
+    local t1=$((SECONDS + how_long))
+    while [ "$SECONDS" -lt "$t1" ]; do
+        if "$@"; then
+            return 0
+        fi
+        sleep "$interval"
+    done
+
+    return 1
+}
+
+_runtime_status_is() {
+    run_runtime state "$1"
+    echo "$output"
+    expr "$output" : ".*status\": \"$2" >/dev/null
+}
+
 # Helper function to wait until "runc state $cid" returns expected status.
 wait_for_runtime_status() {
     local cid=$1
@@ -396,17 +424,12 @@ wait_for_runtime_status() {
     # loaded CI runner.
     local how_long=30
 
-    t1=$(expr $SECONDS + $how_long)
-    while [ $SECONDS -lt $t1 ]; do
-        run_runtime state "$cid"
-        echo "$output"
-        if expr "$output" : ".*status\": \"$expected_status"; then
-            return
-        fi
-        sleep 0.5
-    done
+    retry "$how_long" 0.5 _runtime_status_is "$cid" "$expected_status" ||
+        die "timed out waiting for '$expected_status' from $cid"
+}
 
-    die "timed out waiting for '$expected_status' from $cid"
+_pid_is_gone() {
+    ! kill -0 "$1" 2>/dev/null
 }
 
 # Helper function to wait until the conmon process $pid has exited.
@@ -417,13 +440,8 @@ wait_for_conmon_exit() {
     local pid=$1
     local how_long=${2:-10}
 
-    local t1=$((SECONDS + how_long))
-    while [ "$SECONDS" -lt "$t1" ]; do
-        kill -0 "$pid" 2>/dev/null || return 0
-        sleep 0.1
-    done
-
-    die "timed out waiting for conmon (pid $pid) to exit"
+    retry "$how_long" 0.1 _pid_is_gone "$pid" ||
+        die "timed out waiting for conmon (pid $pid) to exit"
 }
 
 # _run_conmon runs conmon with the default arguments plus the ones given,
@@ -517,15 +535,28 @@ wait_for_syncpipe_output() {
     local how_long=${2:-10}
     local file="$TEST_TMPDIR/syncpipe-output"
 
-    local t1=$((SECONDS + how_long))
-    while [ "$SECONDS" -lt "$t1" ]; do
-        if [ -e "$file" ] && [ "$(wc -l <"$file")" -ge "$how_many" ]; then
-            return 0
-        fi
-        sleep 0.1
-    done
+    retry "$how_long" 0.1 _file_has_lines "$file" "$how_many" ||
+        die "timed out waiting for $how_many line(s) in $file: $(cat "$file" 2>&1)"
+}
 
-    die "timed out waiting for $how_many line(s) in $file: $(cat "$file" 2>&1)"
+_file_has_lines() {
+    [ -e "$1" ] && [ "$(wc -l <"$1")" -ge "$2" ]
+}
+
+_file_has_line() {
+    [ -e "$1" ] && grep -q -- "$2" "$1"
+}
+
+# wait_for_log_line waits until the pattern given as $2 shows up in the log
+# file $1. Conmon writes the log as the container's output arrives, so a test
+# acting on a line right after starting the container is racing it.
+wait_for_log_line() {
+    local file=$1
+    local pattern=$2
+    local how_long=${3:-10}
+
+    retry "$how_long" 0.1 _file_has_line "$file" "$pattern" ||
+        die "timed out waiting for '$pattern' in $file: $(cat "$file" 2>&1)"
 }
 
 # Generic helper function to create pipe and read from it.
