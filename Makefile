@@ -27,7 +27,21 @@ endif
 
 override LIBS += $(shell $(PKG_CONFIG) --libs glib-2.0)
 
-CFLAGS ?= -std=c99 -Os -Wall -Wextra -Werror -Wstrict-prototypes -Wold-style-definition -Wredundant-decls
+# Returns $(1) if $(CC) understands it, nothing otherwise. Used for warnings
+# that only some compilers have, so that the build works with both gcc and
+# clang without keeping two lists in sync.
+cc-option = $(shell $(CC) -Werror $(1) -x c /dev/null -c -o /dev/null 2>/dev/null && echo $(1))
+
+WARN_CFLAGS := -Wall -Wextra -Werror \
+	-Wstrict-prototypes -Wold-style-definition -Wredundant-decls \
+	-Wmissing-prototypes -Wmissing-declarations \
+	-Wformat=2 -Wundef -Winit-self \
+	-Wnull-dereference -Wfloat-equal -Wdouble-promotion -Walloca \
+	$(call cc-option,-Wduplicated-cond) \
+	$(call cc-option,-Wduplicated-branches) \
+	$(call cc-option,-Wtrampolines)
+
+CFLAGS ?= -std=c99 -Os $(WARN_CFLAGS)
 override CFLAGS += $(shell $(PKG_CONFIG) --cflags glib-2.0) -DVERSION=\"$(VERSION)\" -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
 # Conditionally compile journald logging code if the libraries can be found
@@ -138,7 +152,7 @@ install.podman: bin/conmon
 # before clang 19), so the list is intersected with what this clang has.
 CLANG ?= clang
 ANALYZER_OFF := deadcode.DeadStores unix.Malloc unix.Stream
-ANALYZER_CFLAGS := --analyze -Werror $(foreach c,\
+ANALYZER_CFLAGS := --analyze -Werror -Wno-unknown-warning-option $(foreach c,\
 	$(shell $(CLANG) -cc1 -analyzer-checker-help 2>/dev/null \
 		| awk '{ print $$1 }' | grep -xF $(foreach c,$(ANALYZER_OFF),-e $(c))),\
 	-Xclang -analyzer-disable-checker -Xclang $(c))
