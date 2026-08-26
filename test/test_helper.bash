@@ -716,12 +716,14 @@ function assert() {
     # bash %q is really nice, except for the way it backslashes spaces
     local -a expect_split_q
     for line in "${expect_split[@]}"; do
-        local q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
+        local q
+        q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
         expect_split_q+=("$q")
     done
     local -a actual_split_q
     for line in "${actual_split[@]}"; do
-        local q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
+        local q
+        q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
         actual_split_q+=("$q")
     done
 

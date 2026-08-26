@@ -42,7 +42,8 @@ teardown() {
     fi
 
     # Use the conmon binary from the build (using absolute path)
-    local conmon_path="$(dirname "$CONMON_BINARY")/conmon"
+    local conmon_path
+    conmon_path="$(dirname "$CONMON_BINARY")/conmon"
 
     if [ ! -f "$conmon_path" ]; then
         die "conmon binary not found for integration testing at $conmon_path"

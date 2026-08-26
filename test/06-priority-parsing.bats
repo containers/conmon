@@ -37,7 +37,8 @@ update_container_args() {
             mv "$BUNDLE_PATH/config.json.tmp" "$BUNDLE_PATH/config.json"
     else
         # Fallback: recreate config with new args
-        local temp_config=$(mktemp)
+        local temp_config
+        temp_config=$(mktemp)
         sed "s|\"args\": \[.*\]|\"args\": [\"$script_path\"]|" "$BUNDLE_PATH/config.json" >"$temp_config"
         mv "$temp_config" "$BUNDLE_PATH/config.json"
     fi
