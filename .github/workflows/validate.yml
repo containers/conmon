@@ -68,6 +68,16 @@ jobs:
     - name: Check shell script formatting
       run: make shfmt
 
+  shellcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Lint shell scripts
+      run: make shellcheck
+
   meson-build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -88,6 +98,7 @@ jobs:
       - cppcheck
       - lint
       - meson-build
+      - shellcheck
       - shfmt
     runs-on: ubuntu-latest
     steps:

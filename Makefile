@@ -199,6 +199,23 @@ shfmt:
 localshfmt:
 	shfmt -d -w .
 
+# Shell script linting, run the same way as shfmt above. .bats files have no
+# shebang, hence -s bash.
+SHELLCHECK_IMAGE ?= docker.io/koalaman/shellcheck:v0.11.0
+# The last entry is a shell script with a shebang and no extension, which
+# git ls-files cannot match by pattern.
+SHELL_SRC := $(shell git ls-files '*.bash' '*.bats' '*.sh') hack/github-actions-setup
+
+.PHONY: shellcheck
+shellcheck:
+	$(CONTAINER_ENGINE) run $(CONTAINER_ENGINE_RUN_FLAGS) \
+		--rm -v $(CURDIR):/src:z -w /src \
+		$(SHELLCHECK_IMAGE) -s bash $(SHELL_SRC)
+
+.PHONY: localshellcheck
+localshellcheck:
+	shellcheck -s bash $(SHELL_SRC)
+
 .PHONY: fmt
 fmt:
 	git ls-files -z \*.c \*.h | xargs -0 clang-format -i
