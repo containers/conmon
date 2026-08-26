@@ -62,12 +62,12 @@ get_conmon_journal_output() {
         return 0
     fi
 
-    local level_filter=""
+    local level_filter=()
     if [[ "$level" != "-1" ]]; then
-        level_filter="-p $level"
+        level_filter=(-p "$level")
     fi
 
-    journalctl -q --no-pager $level_filter _COMM=conmon _PID="$pid" 2>/dev/null || echo ""
+    journalctl -q --no-pager "${level_filter[@]}" _COMM=conmon _PID="$pid" 2>/dev/null || echo ""
 }
 
 # Create a temporary directory for test
@@ -575,7 +575,7 @@ _start_pipe_reader() {
     {
         exec {r}<"$pipe_path"
         while IFS= read -r -u "$r" line; do
-            echo "$line" >>$output_file
+            echo "$line" >>"$output_file"
         done
     } &
 }

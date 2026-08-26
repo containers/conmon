@@ -87,8 +87,8 @@ teardown() {
     wait_for_runtime_status "$CTR_ID" stopped
 
     # Check that the conmon wrote something back.
-    assert_file_exists $TEST_TMPDIR/attachpipe-output
-    run cat $TEST_TMPDIR/attachpipe-output
+    assert_file_exists "$TEST_TMPDIR/attachpipe-output"
+    run cat "$TEST_TMPDIR/attachpipe-output"
     assert_json "${output}" =~ '"data": 0'
 }
 
@@ -134,7 +134,7 @@ teardown() {
     assert "${output}" !~ "Hello from exec!"
 
     # Trigger second write to startpipeline.
-    touch $TEST_TMPDIR/startpipe-continue
+    touch "$TEST_TMPDIR/startpipe-continue"
 
     # The exec should start now.
     wait_for_runtime_status "$CTR_ID" stopped
@@ -159,7 +159,7 @@ teardown() {
 
     # Check that the conmon wrote something back.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     assert_json "${output}" =~ '"exit_code": 0'
 }
 
@@ -180,7 +180,7 @@ teardown() {
     # There should be two values with "data" key. The first one is the PID and
     # the second one is the exit code.
     wait_for_syncpipe_output 2
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"data\": $CONTAINER_PID"
     assert_json "${output}" =~ '"data": 0'
@@ -205,7 +205,7 @@ teardown() {
     # The failure has to be reported rather than silently swallowed, and the
     # report has to carry what the runtime said about it.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     assert_json "${output}" =~ '"data": -1'
     assert "${output}" =~ "exec failed"
 }

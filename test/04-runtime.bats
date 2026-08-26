@@ -87,7 +87,7 @@ teardown() {
 
     # Check that the pid is sent to the sync pipe.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
 }
@@ -114,13 +114,13 @@ teardown() {
     # Give conmon some time to run the runtime and fail.
     sleep 1
 
-    assert_file_exists $CONMON_PID_FILE
+    assert_file_exists "$CONMON_PID_FILE"
     CONMON_PID=$(cat "$CONMON_PID_FILE")
     wait_for_conmon_exit "$CONMON_PID"
 
     # Check that the error is sent to the sync pipe.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     assert_json "${output}" =~ "\"pid\": -1"
     assert_json "${output}" =~ "\"message\":"
     assert_json "${output}" =~ "runc create failed"
