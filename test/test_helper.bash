@@ -2,6 +2,11 @@
 
 # Common test helper functions for conmon BATS tests
 
+# status and output are set by bats' run, and several variables defined here
+# are only referenced by the .bats files that load this one, so shellcheck
+# cannot see either when it looks at this file on its own.
+# shellcheck disable=SC2034,SC2154
+
 # Provide basic assertion functions if not available
 assert_success() {
     if [ "$status" -ne 0 ]; then
@@ -62,12 +67,12 @@ get_conmon_journal_output() {
         return 0
     fi
 
-    local level_filter=""
+    local level_filter=()
     if [[ "$level" != "-1" ]]; then
-        level_filter="-p $level"
+        level_filter=(-p "$level")
     fi
 
-    journalctl -q --no-pager $level_filter _COMM=conmon _PID="$pid" 2>/dev/null || echo ""
+    journalctl -q --no-pager "${level_filter[@]}" _COMM=conmon _PID="$pid" 2>/dev/null || echo ""
 }
 
 # Create a temporary directory for test
@@ -99,11 +104,11 @@ generate_process_spec() {
     fi
     if [[ -z "$BUNDLE_PATH" || ! -e "$BUNDLE_PATH" ]]; then
         die "The BUNDLE_PATH directory does not exist. Ensure 'generate_process_spec'" \
-        " is called after the 'setup_test_env'"
+            " is called after the 'setup_test_env'"
     fi
     local config_path="$BUNDLE_PATH/process.json"
 
-    cat > "$config_path" << EOF
+    cat >"$config_path" <<EOF
 {
     "terminal": false,
     "user": {
@@ -161,7 +166,7 @@ generate_runtime_config() {
     host_uid=$(id -u)
     host_gid=$(id -g)
 
-    cat > "$config_path" << EOF
+    cat >"$config_path" <<EOF
 {
     "ociVersion": "1.0.0",
     "process": {
@@ -514,7 +519,7 @@ start_conmon_with_default_args() {
     # Start the container and wait until it really starts.
     run_runtime start "$CTR_ID"
     if [ "$status" -ne 0 ]; then
-	    die "$RUNTIME_BINARY start failed with $status: $output"
+        die "$RUNTIME_BINARY start failed with $status: $output"
     fi
 }
 
@@ -575,7 +580,7 @@ _start_pipe_reader() {
     {
         exec {r}<"$pipe_path"
         while IFS= read -r -u "$r" line; do
-            echo "$line" >>$output_file
+            echo "$line" >>"$output_file"
         done
     } &
 }
@@ -651,14 +656,15 @@ function assert() {
     local testname="$2"
 
     case "${#*}" in
-        0)   die "Internal error: 'assert' requires one or more arguments" ;;
-        1|2) ;;
-        3|4) actual_string="$1"
-             operator="$2"
-             expect_string="$3"
-             testname="$4"
-             ;;
-        *)   die "Internal error: too many arguments to 'assert'" ;;
+    0) die "Internal error: 'assert' requires one or more arguments" ;;
+    1 | 2) ;;
+    3 | 4)
+        actual_string="$1"
+        operator="$2"
+        expect_string="$3"
+        testname="$4"
+        ;;
+    *) die "Internal error: too many arguments to 'assert'" ;;
     esac
 
     # Comparisons.
@@ -715,34 +721,36 @@ function assert() {
     # bash %q is really nice, except for the way it backslashes spaces
     local -a expect_split_q
     for line in "${expect_split[@]}"; do
-        local q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
+        local q
+        q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
         expect_split_q+=("$q")
     done
     local -a actual_split_q
     for line in "${actual_split[@]}"; do
-        local q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
+        local q
+        q=$(printf "%q" "$line" | sed -e 's/\\ / /g')
         actual_split_q+=("$q")
     done
 
-    printf "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n"    >&2
-    printf "#|     FAIL: %s\n" "$testname"                        >&2
-    printf "#| expected: %s%s\n" "$op" "${expect_split_q[0]}"     >&2
+    printf "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n" >&2
+    printf "#|     FAIL: %s\n" "$testname" >&2
+    printf "#| expected: %s%s\n" "$op" "${expect_split_q[0]}" >&2
     local line
     for line in "${expect_split_q[@]:1}"; do
-        printf "#|         > %s%s\n" "$ws" "$line"                >&2
+        printf "#|         > %s%s\n" "$ws" "$line" >&2
     done
-    printf "#|   actual: %s%s\n" "$ws" "${actual_split_q[0]}"     >&2
+    printf "#|   actual: %s%s\n" "$ws" "${actual_split_q[0]}" >&2
     for line in "${actual_split_q[@]:1}"; do
-        printf "#|         > %s%s\n" "$ws" "$line"                >&2
+        printf "#|         > %s%s\n" "$ws" "$line" >&2
     done
-    printf "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"   >&2
+    printf "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n" >&2
     bail-now
 }
 
 function die() {
     # FIXME: handle multi-line output
-    echo "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"  >&2
-    echo "#| FAIL: $*"                                           >&2
+    echo "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv" >&2
+    echo "#| FAIL: $*" >&2
     echo "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" >&2
     bail-now
 }

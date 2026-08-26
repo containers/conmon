@@ -34,7 +34,6 @@ teardown() {
     assert_failure
 }
 
-
 # Integration test that can be run manually or in CI
 @test "integration: exec exit codes work correctly" {
     # This test can only run if podman is available and configured
@@ -43,7 +42,8 @@ teardown() {
     fi
 
     # Use the conmon binary from the build (using absolute path)
-    local conmon_path="$(dirname "$CONMON_BINARY")/conmon"
+    local conmon_path
+    conmon_path="$(dirname "$CONMON_BINARY")/conmon"
 
     if [ ! -f "$conmon_path" ]; then
         die "conmon binary not found for integration testing at $conmon_path"
@@ -55,7 +55,7 @@ teardown() {
     # of them has any business taking long, and an unbounded one hangs the
     # whole suite -- bats runs tests serially, and a command substitution
     # waits for stdout to be closed, which a misbehaving conmon may never do.
-    run timeout 10 podman --conmon $conmon_path run --rm "$UBI10_MICRO_IMAGE" true
+    run timeout 10 podman --conmon "$conmon_path" run --rm "$UBI10_MICRO_IMAGE" true
     if [ "$status" -ne 0 ]; then
         die "cannot create test containers with podman: $output"
     fi
@@ -64,37 +64,37 @@ teardown() {
 
     # Create a test container
     local container_id
-    container_id=$(timeout 60 podman --conmon $conmon_path run -dt "$UBI10_MICRO_IMAGE" sleep 30)
+    container_id=$(timeout 60 podman --conmon "$conmon_path" run -dt "$UBI10_MICRO_IMAGE" sleep 30)
 
     if [ -z "$container_id" ]; then
         die "failed to create test container"
     fi
 
     # Test 1: Success case
-    if ! timeout 60 podman --conmon $conmon_path exec "$container_id" true; then
-        timeout 60 podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+    if ! timeout 60 podman --conmon "$conmon_path" exec "$container_id" true; then
+        timeout 60 podman --conmon "$conmon_path" rm -f "$container_id" >/dev/null 2>&1
         echo "FAIL: true command should succeed"
         return 1
     fi
 
     # Test 2: Failure case - this would fail with the regression
-    if timeout 60 podman --conmon $conmon_path exec "$container_id" false; then
-        timeout 60 podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+    if timeout 60 podman --conmon "$conmon_path" exec "$container_id" false; then
+        timeout 60 podman --conmon "$conmon_path" rm -f "$container_id" >/dev/null 2>&1
         echo "FAIL: false command should fail (regression detected!)"
         echo "This indicates the fc0a342 regression where all exec commands return 0"
         return 1
     fi
 
     # Test 3: Custom exit code - this would return 0 with the regression
-    if timeout 60 podman --conmon $conmon_path exec "$container_id" sh -c 'exit 42'; then
-        timeout 60 podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+    if timeout 60 podman --conmon "$conmon_path" exec "$container_id" sh -c 'exit 42'; then
+        timeout 60 podman --conmon "$conmon_path" rm -f "$container_id" >/dev/null 2>&1
         echo "FAIL: 'exit 42' should fail with code 42 (regression detected!)"
         echo "This indicates the fc0a342 regression where all exec commands return 0"
         return 1
     fi
 
     # Clean up
-    timeout 60 podman --conmon $conmon_path rm -f "$container_id" >/dev/null 2>&1
+    timeout 60 podman --conmon "$conmon_path" rm -f "$container_id" >/dev/null 2>&1
 
     echo "Integration test passed: exec exit codes work correctly"
 }

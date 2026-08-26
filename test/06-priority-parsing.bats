@@ -15,7 +15,7 @@ teardown() {
 run_conmon_journald() {
     local extra_args=("$@")
     run_conmon --cid "$CTR_ID" --cuuid "$CTR_ID" --runtime "$RUNTIME_BINARY" \
-               --log-path "journald:" --bundle "$BUNDLE_PATH" "${extra_args[@]}"
+        --log-path "journald:" --bundle "$BUNDLE_PATH" "${extra_args[@]}"
 }
 
 # Helper function to create a test script with priority messages
@@ -23,7 +23,7 @@ create_test_script() {
     local script_name="$1"
     local script_content="$2"
 
-    echo "$script_content" > "$ROOTFS/$script_name"
+    echo "$script_content" >"$ROOTFS/$script_name"
     chmod +x "$ROOTFS/$script_name"
 }
 
@@ -33,12 +33,13 @@ update_container_args() {
 
     # Use jq to update the config.json with new args, fallback to manual edit if jq not available
     if command -v jq >/dev/null 2>&1; then
-        jq ".process.args = [\"$script_path\"]" "$BUNDLE_PATH/config.json" > "$BUNDLE_PATH/config.json.tmp" && \
-        mv "$BUNDLE_PATH/config.json.tmp" "$BUNDLE_PATH/config.json"
+        jq ".process.args = [\"$script_path\"]" "$BUNDLE_PATH/config.json" >"$BUNDLE_PATH/config.json.tmp" &&
+            mv "$BUNDLE_PATH/config.json.tmp" "$BUNDLE_PATH/config.json"
     else
         # Fallback: recreate config with new args
-        local temp_config=$(mktemp)
-        sed "s|\"args\": \[.*\]|\"args\": [\"$script_path\"]|" "$BUNDLE_PATH/config.json" > "$temp_config"
+        local temp_config
+        temp_config=$(mktemp)
+        sed "s|\"args\": \[.*\]|\"args\": [\"$script_path\"]|" "$BUNDLE_PATH/config.json" >"$temp_config"
         mv "$temp_config" "$BUNDLE_PATH/config.json"
     fi
 }
@@ -64,7 +65,7 @@ run_priority_test() {
     if [ "$verify_journal" = "true" ] && [ -f "$CONMON_PID_FILE" ]; then
         local conmon_pid
         conmon_pid=$(cat "$CONMON_PID_FILE")
-        sleep 1  # Give journald time to process
+        sleep 1 # Give journald time to process
 
         local journal_output
         journal_output=$(get_conmon_journal_output "$conmon_pid")
@@ -72,6 +73,18 @@ run_priority_test() {
         if [ -n "$journal_output" ]; then
             echo "Journal output available for verification"
         fi
+    fi
+}
+
+# Helper function to skip test if journald is not available
+skip_if_no_journald() {
+    if ! command -v journalctl >/dev/null 2>&1; then
+        skip "journalctl not available - skipping journald test"
+    fi
+
+    # Also check if systemd logging is compiled in
+    if ! $CONMON_BINARY --help 2>&1 | grep -q "journald"; then
+        skip "conmon not compiled with journald support"
     fi
 }
 
@@ -164,7 +177,9 @@ echo ""'
 @test "priority parsing: all valid priority levels 0-7" {
     skip_if_no_journald
 
-    # Create script that tests all valid priority levels
+    # Create script that tests all valid priority levels. The body runs in
+    # the container, so $i must not be expanded here.
+    # shellcheck disable=SC2016
     create_test_script "test_all_priorities.sh" '#!/bin/bash
 for i in {0..7}; do
     echo "<$i>Priority level $i message"
@@ -212,13 +227,13 @@ echo "<6>Info message"'
     # Test with both k8s-file and journald logging
     if command -v journalctl >/dev/null 2>&1; then
         run_conmon --cid "$CTR_ID" --cuuid "$CTR_ID" --runtime "$RUNTIME_BINARY" \
-                   --bundle "$BUNDLE_PATH" --log-path "$LOG_PATH" --log-path "journald:" --terminal
+            --bundle "$BUNDLE_PATH" --log-path "$LOG_PATH" --log-path "journald:" --terminal
         assert_success
         [ -f "$LOG_PATH" ]
     else
         # Just test k8s-file if journald not available
         run_conmon --cid "$CTR_ID" --cuuid "$CTR_ID" --runtime "$RUNTIME_BINARY" \
-                   --bundle "$BUNDLE_PATH" --log-path "$LOG_PATH" --terminal
+            --bundle "$BUNDLE_PATH" --log-path "$LOG_PATH" --terminal
         assert_success
         [ -f "$LOG_PATH" ]
     fi
@@ -228,22 +243,10 @@ echo "<6>Info message"'
 @test "priority parsing: error handling with invalid log path" {
     # Test error handling when journald is not available
     run_conmon --cid "$CTR_ID" --cuuid "$CTR_ID" --runtime "$RUNTIME_BINARY" \
-               --bundle "$BUNDLE_PATH" --log-path "invalid_driver:" --terminal 2>&1 || true
+        --bundle "$BUNDLE_PATH" --log-path "invalid_driver:" --terminal 2>&1 || true
 
     # Use assert_output_contains for specific error checking
     if [ "$status" -ne 0 ]; then
         assert_output_contains "log driver"
-    fi
-}
-
-# Helper function to skip test if journald is not available
-skip_if_no_journald() {
-    if ! command -v journalctl >/dev/null 2>&1; then
-        skip "journalctl not available - skipping journald test"
-    fi
-
-    # Also check if systemd logging is compiled in
-    if ! $CONMON_BINARY --help 2>&1 | grep -q "journald"; then
-        skip "conmon not compiled with journald support"
     fi
 }

@@ -47,7 +47,7 @@ setup_suite() {
         suite_fail "failed to create a container from $UBI10_MICRO_IMAGE"
         return 1
     fi
-    if ! podman export "$ctr" > "$CONMON_TEST_ROOTFS_TAR"; then
+    if ! podman export "$ctr" >"$CONMON_TEST_ROOTFS_TAR"; then
         podman rm "$ctr" >/dev/null 2>&1 || true
         suite_fail "failed to export the rootfs from $UBI10_MICRO_IMAGE"
         return 1

@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 usage() {
-    cat << EOF
+    cat <<EOF
 Usage: $0 [OPTIONS] [TEST_FILES...]
 
 Run conmon BATS tests.
@@ -65,11 +65,11 @@ log_error() {
 check_dependencies() {
     local missing_deps=()
 
-    if ! command -v bats >& /dev/null; then
+    if ! command -v bats >&/dev/null; then
         missing_deps+=("bats")
     fi
 
-    if ! command -v socat >& /dev/null; then
+    if ! command -v socat >&/dev/null; then
         missing_deps+=("socat")
     fi
 
@@ -98,6 +98,7 @@ show_environment() {
     log_info "Running tests with:"
     log_info "  kernel:  $(uname -srm)"
     if [[ -r /etc/os-release ]]; then
+        # shellcheck source=/dev/null
         log_info "  distro:  $(. /etc/os-release && echo "$PRETTY_NAME")"
     fi
     log_info "  conmon:  $CONMON_BINARY: $("$CONMON_BINARY" --version 2>&1 | tr '\n' ' ' | sed 's/  *$//')"
@@ -126,47 +127,47 @@ main() {
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -h|--help)
-                usage
-                exit 0
-                ;;
-            -c|--conmon)
-                CONMON_BINARY="$2"
-                shift 2
-                ;;
-            -r|--runtime)
-                RUNTIME_BINARY="$2"
-                shift 2
-                ;;
-            -v|--verbose)
-                verbose=true
-                shift
-                ;;
-            -t|--tap)
-                tap=true
-                shift
-                ;;
-            -j|--jobs)
-                jobs="$2"
-                shift 2
-                ;;
-            --filter)
-                filter="$2"
-                shift 2
-                ;;
-            -s|--strict)
-                CONMON_TEST_STRICT=1
-                shift
-                ;;
-            *.bats)
-                test_files+=("$1")
-                shift
-                ;;
-            *)
-                log_error "Unknown option: $1"
-                usage
-                exit 1
-                ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        -c | --conmon)
+            CONMON_BINARY="$2"
+            shift 2
+            ;;
+        -r | --runtime)
+            RUNTIME_BINARY="$2"
+            shift 2
+            ;;
+        -v | --verbose)
+            verbose=true
+            shift
+            ;;
+        -t | --tap)
+            tap=true
+            shift
+            ;;
+        -j | --jobs)
+            jobs="$2"
+            shift 2
+            ;;
+        --filter)
+            filter="$2"
+            shift 2
+            ;;
+        -s | --strict)
+            CONMON_TEST_STRICT=1
+            shift
+            ;;
+        *.bats)
+            test_files+=("$1")
+            shift
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            usage
+            exit 1
+            ;;
         esac
     done
 
@@ -191,7 +192,7 @@ main() {
 
     # Add any additional BATS options from environment
     if [[ -n "$BATS_OPTIONS" ]]; then
-        read -ra additional_opts <<< "$BATS_OPTIONS"
+        read -ra additional_opts <<<"$BATS_OPTIONS"
         bats_args+=("${additional_opts[@]}")
     fi
 

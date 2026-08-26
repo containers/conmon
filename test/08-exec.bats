@@ -32,12 +32,12 @@ teardown() {
     # Check that the main process noticed the /tmp/test.txt.
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
-    assert "${output}" =~ "Hello there!"  "'Hello there!' found in the log"
+    assert "${output}" =~ "Hello there!" "'Hello there!' found in the log"
 
     # Check that the exec process output is stored in the log.
     assert_file_exists "$LOG_PATH.exec"
     run cat "$LOG_PATH.exec"
-    assert "${output}" =~ "Hello from exec!"  "'Hello from exec!' found in the log"
+    assert "${output}" =~ "Hello from exec!" "'Hello from exec!' found in the log"
 }
 
 @test "exec: --exec-attach without no --api-version" {
@@ -87,8 +87,8 @@ teardown() {
     wait_for_runtime_status "$CTR_ID" stopped
 
     # Check that the conmon wrote something back.
-    assert_file_exists $TEST_TMPDIR/attachpipe-output
-    run cat $TEST_TMPDIR/attachpipe-output
+    assert_file_exists "$TEST_TMPDIR/attachpipe-output"
+    run cat "$TEST_TMPDIR/attachpipe-output"
     assert_json "${output}" =~ '"data": 0'
 }
 
@@ -112,6 +112,8 @@ teardown() {
         printf 'start conmon\n' >&$w
         # Wait for the main test process to do initial asserts. It will signal
         # to this process by file creation.
+        # TEST_TMPDIR is exported, so let the child shell expand it.
+        # shellcheck disable=SC2016
         timeout 5 bash -c 'while [ ! -f $TEST_TMPDIR/startpipe-continue ]; do sleep 0.1; done;'
         # Do the second write to really start the conmon.
         printf 'start attach\n' >&$w
@@ -134,7 +136,7 @@ teardown() {
     assert "${output}" !~ "Hello from exec!"
 
     # Trigger second write to startpipeline.
-    touch $TEST_TMPDIR/startpipe-continue
+    touch "$TEST_TMPDIR/startpipe-continue"
 
     # The exec should start now.
     wait_for_runtime_status "$CTR_ID" stopped
@@ -159,7 +161,7 @@ teardown() {
 
     # Check that the conmon wrote something back.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     assert_json "${output}" =~ '"exit_code": 0'
 }
 
@@ -180,12 +182,11 @@ teardown() {
     # There should be two values with "data" key. The first one is the PID and
     # the second one is the exit code.
     wait_for_syncpipe_output 2
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"data\": $CONTAINER_PID"
     assert_json "${output}" =~ '"data": 0'
 }
-
 
 @test "exec: runtime failure is reported to the sync pipe" {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
@@ -206,7 +207,7 @@ teardown() {
     # The failure has to be reported rather than silently swallowed, and the
     # report has to carry what the runtime said about it.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     assert_json "${output}" =~ '"data": -1'
     assert "${output}" =~ "exec failed"
 }

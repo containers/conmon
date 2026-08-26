@@ -18,7 +18,7 @@ teardown() {
     # Check that log file was created
     [ -f "$LOG_PATH" ]
     run cat "$LOG_PATH"
-    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the log"
+    assert "${output}" =~ "hello from ubi10" "'hello from ubi10' found in the log"
 }
 
 @test "runtime: container execution with different log drivers" {
@@ -26,7 +26,7 @@ teardown() {
     run_conmon_with_default_args --log-path "journald:"
 
     run journalctl --user CONTAINER_ID_FULL="$CTR_ID"
-    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the journald"
+    assert "${output}" =~ "hello from ubi10" "'hello from ubi10' found in the journald"
 }
 
 @test "runtime: container execution with multiple log drivers" {
@@ -37,10 +37,10 @@ teardown() {
     [ -f "$LOG_PATH" ]
 
     run cat "$LOG_PATH"
-    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the log"
+    assert "${output}" =~ "hello from ubi10" "'hello from ubi10' found in the log"
 
     run journalctl --user CONTAINER_ID_FULL="$CTR_ID"
-    assert "${output}" =~ "hello from ubi10"  "'hello from ubi10' found in the journald"
+    assert "${output}" =~ "hello from ubi10" "'hello from ubi10' found in the journald"
 }
 
 @test "runtime: container with log size limit" {
@@ -54,7 +54,7 @@ teardown() {
     [ -f "$LOG_PATH" ]
 
     run cat "$LOG_PATH"
-    assert "${output}" !~ "hello from ubi10 11"  "'hello from ubi10 11' not in the logs"
+    assert "${output}" !~ "hello from ubi10 11" "'hello from ubi10 11' not in the logs"
 }
 
 @test "runtime: invalid runtime binary should fail" {
@@ -87,7 +87,7 @@ teardown() {
 
     # Check that the pid is sent to the sync pipe.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
 }
@@ -114,13 +114,13 @@ teardown() {
     # Give conmon some time to run the runtime and fail.
     sleep 1
 
-    assert_file_exists $CONMON_PID_FILE
+    assert_file_exists "$CONMON_PID_FILE"
     CONMON_PID=$(cat "$CONMON_PID_FILE")
     wait_for_conmon_exit "$CONMON_PID"
 
     # Check that the error is sent to the sync pipe.
     wait_for_syncpipe_output 1
-    run cat $TEST_TMPDIR/syncpipe-output
+    run cat "$TEST_TMPDIR/syncpipe-output"
     assert_json "${output}" =~ "\"pid\": -1"
     assert_json "${output}" =~ "\"message\":"
     assert_json "${output}" =~ "runc create failed"
