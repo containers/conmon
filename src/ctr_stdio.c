@@ -84,7 +84,7 @@ gboolean stdio_cb(int fd, GIOCondition condition, gpointer user_data)
 	return G_SOURCE_CONTINUE;
 }
 
-void drain_stdio()
+void drain_stdio(void)
 {
 	if (mainfd_stdout != -1) {
 		g_unix_set_fd_nonblocking(mainfd_stdout, TRUE, NULL);

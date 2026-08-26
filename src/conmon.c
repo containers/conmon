@@ -24,7 +24,7 @@
 #include <sys/stat.h>
 #include <locale.h>
 
-static void disconnect_std_streams(int dev_null_r, int dev_null_w)
+static void disconnect_std_streams(void)
 {
 	if (dup2(dev_null_r, STDIN_FILENO) < 0)
 		pexit("Failed to dup over stdin");
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 	   the parent is waiting for the stdout to end when the intermediate
 	   child dies */
 	if (!logging_is_passthrough())
-		disconnect_std_streams(dev_null_r, dev_null_w);
+		disconnect_std_streams();
 	/* Create a new session group */
 	setsid();
 
@@ -135,8 +135,7 @@ int main(int argc, char *argv[])
 	 * Set self as subreaper so we can wait for container process
 	 * and return its exit code.
 	 */
-	int ret = set_subreaper(true);
-	if (ret != 0) {
+	if (set_subreaper(true) != 0) {
 		pexit("Failed to set as subreaper");
 	}
 
@@ -287,7 +286,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (logging_is_passthrough())
-		disconnect_std_streams(dev_null_r, dev_null_w);
+		disconnect_std_streams();
 
 	if ((signal(SIGTERM, on_sig_exit) == SIG_ERR) || (signal(SIGQUIT, on_sig_exit) == SIG_ERR)
 	    || (signal(SIGINT, on_sig_exit) == SIG_ERR))

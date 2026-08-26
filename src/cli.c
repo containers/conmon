@@ -42,7 +42,7 @@ char *opt_exit_dir = NULL;
 int opt_timeout = 0;
 int64_t opt_log_size_max = -1;
 int64_t opt_log_global_size_max = -1;
-char *opt_socket_path = DEFAULT_SOCKET_PATH;
+const char *opt_socket_path = DEFAULT_SOCKET_PATH;
 gboolean opt_no_new_keyring = FALSE;
 char *opt_exit_command = NULL;
 gchar **opt_exit_args = NULL;
@@ -163,7 +163,7 @@ int initialize_cli(int argc, char *argv[])
 	return -1;
 }
 
-void process_cli()
+void process_cli(void)
 {
 	/* Command line parameters */
 	set_conmon_logs(opt_log_level, opt_cid, opt_syslog, opt_log_tag);

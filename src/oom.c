@@ -43,7 +43,7 @@ void attempt_oom_adjust(int oom_score)
 	write_oom_adjust(oom_score, &old_oom_score);
 }
 
-void reset_oom_adjust()
+void reset_oom_adjust(void)
 {
 	write_oom_adjust(old_oom_score, NULL);
 }

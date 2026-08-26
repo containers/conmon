@@ -32,7 +32,7 @@ extern gchar **opt_log_path;
 extern char *opt_exit_dir;
 extern int opt_timeout;
 extern int64_t opt_log_size_max;
-extern char *opt_socket_path;
+extern const char *opt_socket_path;
 extern gboolean opt_no_new_keyring;
 extern char *opt_exit_command;
 extern gchar **opt_exit_args;
@@ -52,6 +52,6 @@ extern GOptionEntry opt_entries[];
 extern gboolean opt_full_attach_path;
 
 int initialize_cli(int argc, char *argv[]);
-void process_cli();
+void process_cli(void);
 
 #endif // CLI_H

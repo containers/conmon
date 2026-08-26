@@ -19,7 +19,7 @@ static void resize_winsz(int height, int width);
 static gboolean read_from_ctrl_buffer(int fd, gboolean (*line_process_func)(char *));
 static gboolean process_terminal_ctrl_line(char *line);
 static gboolean process_winsz_ctrl_line(char *line);
-static void setup_fifo(int *fifo_r, int *fifo_w, char *filename, char *error_var_name);
+static void setup_fifo(int *fifo_r, int *fifo_w, const char *filename, const char *error_var_name);
 
 gboolean terminal_accept_cb(int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data)
 {
@@ -250,13 +250,13 @@ static void resize_winsz(int height, int width)
 }
 
 
-void setup_console_fifo()
+void setup_console_fifo(void)
 {
 	setup_fifo(&winsz_fd_r, &winsz_fd_w, "winsz", "window resize control fifo");
 	ndebugf("winsz read side: %d, winsz write side: %d", winsz_fd_r, winsz_fd_w);
 }
 
-int setup_terminal_control_fifo()
+int setup_terminal_control_fifo(void)
 {
 	/*
 	 * Open a dummy writer to prevent getting flood of POLLHUPs when
@@ -270,7 +270,7 @@ int setup_terminal_control_fifo()
 	return dummyfd;
 }
 
-static void setup_fifo(int *fifo_r, int *fifo_w, char *filename, char *error_var_name)
+static void setup_fifo(int *fifo_r, int *fifo_w, const char *filename, const char *error_var_name)
 {
 	_cleanup_free_ char *fifo_path = g_build_filename(opt_bundle_path, filename, NULL);
 

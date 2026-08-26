@@ -95,7 +95,7 @@ int set_pdeathsig(int sig)
 	return prctl(PR_SET_PDEATHSIG, sig);
 }
 
-int get_signal_descriptor()
+int get_signal_descriptor(void)
 {
 	sigset_t set;
 	get_signal_descriptor_mask(&set);

@@ -23,7 +23,7 @@ static void remote_sock_shutdown(struct remote_sock_s *sock, int how);
 static void schedule_local_sock_write(struct local_sock_s *local_sock);
 static void sock_try_write_to_local_sock(struct remote_sock_s *sock);
 static gboolean local_sock_write_cb(G_GNUC_UNUSED int fd, G_GNUC_UNUSED GIOCondition condition, G_GNUC_UNUSED gpointer user_data);
-static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
+static char *bind_unix_socket(const char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
 			      gboolean use_full_attach_path);
 static char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len);
 /*
@@ -210,14 +210,14 @@ void setup_notify_socket(char *socket_path)
 	g_free(symlink_dir_path);
 }
 
-static size_t max_socket_path_len()
+static size_t max_socket_path_len(void)
 {
 	struct sockaddr_un addr;
 	return sizeof(addr.sun_path);
 }
 
 /* REMEMBER to g_free() the return value! */
-static char *bind_unix_socket(char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
+static char *bind_unix_socket(const char *socket_relative_name, int sock_type, mode_t perms, struct remote_sock_s *remote_sock,
 			      gboolean use_full_attach_path)
 {
 	int socket_fd = -1;
@@ -274,7 +274,7 @@ char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 {
 	/* if we're to use the full path, ignore the socket path and only use the bundle_path */
 	if (use_full_attach_path)
-		return strdup(opt_bundle_path);
+		return g_strdup(opt_bundle_path);
 
 	char *base_path = g_build_filename(opt_socket_path, opt_cuuid, NULL);
 
@@ -307,7 +307,7 @@ char *socket_parent_dir(gboolean use_full_attach_path, size_t desired_len)
 }
 
 
-void schedule_main_stdin_write()
+void schedule_main_stdin_write(void)
 {
 	schedule_local_sock_write(&local_mainfd_stdin);
 }
@@ -486,6 +486,8 @@ static void remote_sock_shutdown(struct remote_sock_s *sock, int how)
 		sock->readable = false;
 		sock->writable = false;
 		break;
+	default:
+		break;
 	}
 	if (!sock->writable && !sock->readable) {
 		ndebugf("Closing %d", sock->fd);
@@ -585,7 +587,7 @@ static void close_sock(gpointer data, G_GNUC_UNUSED gpointer user_data)
 	sock->fd = -1;
 }
 
-void close_all_readers()
+void close_all_readers(void)
 {
 	if (local_mainfd_stdin.readers == NULL)
 		return;

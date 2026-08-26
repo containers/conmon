@@ -27,7 +27,24 @@ endif
 
 override LIBS += $(shell $(PKG_CONFIG) --libs glib-2.0)
 
-CFLAGS ?= -std=c99 -Os -Wall -Wextra -Werror
+# Returns $(1) if $(CC) understands it, nothing otherwise. Used for warnings
+# that only some compilers have, so that the build works with both gcc and
+# clang without keeping two lists in sync.
+cc-option = $(shell $(CC) -Werror $(1) -x c /dev/null -c -o /dev/null 2>/dev/null && echo $(1))
+
+WARN_CFLAGS := -Wall -Wextra -Werror \
+	-Wstrict-prototypes -Wold-style-definition -Wredundant-decls \
+	-Wmissing-prototypes -Wmissing-declarations \
+	-Wformat=2 -Wundef -Winit-self -Wshadow \
+	-Wvla -Wpointer-arith -Wswitch-default -Wwrite-strings \
+	-Wnull-dereference -Wfloat-equal -Wdouble-promotion -Walloca \
+	$(call cc-option,-Wformat-signedness) \
+	$(call cc-option,-Wjump-misses-init) \
+	$(call cc-option,-Wduplicated-cond) \
+	$(call cc-option,-Wduplicated-branches) \
+	$(call cc-option,-Wtrampolines)
+
+CFLAGS ?= -std=c99 -Os $(WARN_CFLAGS)
 override CFLAGS += $(shell $(PKG_CONFIG) --cflags glib-2.0) -DVERSION=\"$(VERSION)\" -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
 # Conditionally compile journald logging code if the libraries can be found
@@ -123,6 +140,47 @@ install.crio: bin/conmon
 install.podman: bin/conmon
 	install ${SELINUXOPT} -d -m 755 $(DESTDIR)$(LIBEXECDIR)/podman
 	install ${SELINUXOPT} -m 755 bin/conmon $(DESTDIR)$(LIBEXECDIR)/podman/conmon
+
+# Clang's static analyzer. The disabled checkers below are all false positives
+# on this code base: none of them models __attribute__((cleanup)), so every
+# _cleanup_free_ / _cleanup_close_ / _cleanup_fclose_ variable looks either
+# leaked (unix.Malloc, unix.Stream) or assigned but never read
+# (deadcode.DeadStores).
+#
+# For a browsable HTML report of everything, including the above, run
+# "scan-build make" by hand.
+#
+# Naming a checker the compiler does not know about is a hard error, and the
+# set moves between releases (unix.Stream is alpha, and thus off by default,
+# before clang 19), so the list is intersected with what this clang has.
+CLANG ?= clang
+ANALYZER_OFF := deadcode.DeadStores unix.Malloc unix.Stream
+ANALYZER_CFLAGS := --analyze -Werror -Wno-unknown-warning-option $(foreach c,\
+	$(shell $(CLANG) -cc1 -analyzer-checker-help 2>/dev/null \
+		| awk '{ print $$1 }' | grep -xF $(foreach c,$(ANALYZER_OFF),-e $(c))),\
+	-Xclang -analyzer-disable-checker -Xclang $(c))
+
+SRCS := $(OBJS:.o=.c)
+
+.PHONY: analyze
+analyze: $(SRCS) $(HEADERS)
+	@for src in $(SRCS); do \
+		echo "  ANALYZE $$src"; \
+		$(CLANG) $(CFLAGS) $(ANALYZER_CFLAGS) -o /dev/null $$src || exit 1; \
+	done
+
+# cppcheck only understands -D, -U and -I, so the flags are built separately
+# from CFLAGS. GIT_COMMIT is only there to make src/cli.c preprocess.
+CPPCHECK ?= cppcheck
+CPPCHECK_FLAGS := $(shell $(PKG_CONFIG) --cflags-only-I glib-2.0) \
+	-DVERSION=\"$(VERSION)\" -DGIT_COMMIT=\"\" -DUSE_JOURNALD=1
+
+.PHONY: cppcheck
+cppcheck:
+	$(CPPCHECK) --quiet --error-exitcode=1 --std=c99 --inline-suppr \
+		--enable=warning,performance,portability \
+		--suppress=missingIncludeSystem --suppress=checkersReport \
+		$(CPPCHECK_FLAGS) src/
 
 .PHONY: fmt
 fmt:
