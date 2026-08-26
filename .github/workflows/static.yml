@@ -79,6 +79,45 @@ jobs:
           name: conmon-${{ matrix.name }}
           path: bin/conmon
 
+  upload:
+    # Attach the binaries built above to the release for this tag, so that
+    # cutting a release does not mean downloading five artifacts by hand.
+    # Manual runs have no tag to attach to, hence the condition.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - static-binary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      # This job does not check the repository out, so gh has no git remote
+      # to infer the repository from and has to be told.
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: conmon-*
+          path: artifacts
+      - name: Rename the binaries after their architecture
+        run: |
+          mkdir assets
+          for d in artifacts/conmon-*; do
+              mv "$d/conmon" "assets/conmon.${d#artifacts/conmon-}"
+          done
+          ls -l assets
+      - name: Upload the binaries to the ${{ github.ref_name }} release
+        run: |
+          # A release created from the web UI already exists by the time the
+          # tag build finishes; a tag pushed on its own has none, so make a
+          # draft for the release notes to be written into and published --
+          # publishing is what triggers packit's downstream sync.
+          gh release view "$TAG" >/dev/null ||
+              gh release create "$TAG" --draft --title "$TAG" --generate-notes
+          gh release upload "$TAG" assets/* --clobber
+
   all-done:
     needs:
       - static-binary
