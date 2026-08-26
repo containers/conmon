@@ -177,7 +177,9 @@ echo ""'
 @test "priority parsing: all valid priority levels 0-7" {
     skip_if_no_journald
 
-    # Create script that tests all valid priority levels
+    # Create script that tests all valid priority levels. The body runs in
+    # the container, so $i must not be expanded here.
+    # shellcheck disable=SC2016
     create_test_script "test_all_priorities.sh" '#!/bin/bash
 for i in {0..7}; do
     echo "<$i>Priority level $i message"

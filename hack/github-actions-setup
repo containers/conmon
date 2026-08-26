@@ -124,6 +124,7 @@ apt_get() {
 }
 
 install_packages() {
+    # shellcheck source=/dev/null
     . /etc/os-release
     CRIU_REPO="https://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu_$VERSION_ID"
 

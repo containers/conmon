@@ -112,6 +112,8 @@ teardown() {
         printf 'start conmon\n' >&$w
         # Wait for the main test process to do initial asserts. It will signal
         # to this process by file creation.
+        # TEST_TMPDIR is exported, so let the child shell expand it.
+        # shellcheck disable=SC2016
         timeout 5 bash -c 'while [ ! -f $TEST_TMPDIR/startpipe-continue ]; do sleep 0.1; done;'
         # Do the second write to really start the conmon.
         printf 'start attach\n' >&$w

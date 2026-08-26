@@ -98,6 +98,7 @@ show_environment() {
     log_info "Running tests with:"
     log_info "  kernel:  $(uname -srm)"
     if [[ -r /etc/os-release ]]; then
+        # shellcheck source=/dev/null
         log_info "  distro:  $(. /etc/os-release && echo "$PRETTY_NAME")"
     fi
     log_info "  conmon:  $CONMON_BINARY: $("$CONMON_BINARY" --version 2>&1 | tr '\n' ' ' | sed 's/  *$//')"

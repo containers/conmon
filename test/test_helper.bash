@@ -2,6 +2,11 @@
 
 # Common test helper functions for conmon BATS tests
 
+# status and output are set by bats' run, and several variables defined here
+# are only referenced by the .bats files that load this one, so shellcheck
+# cannot see either when it looks at this file on its own.
+# shellcheck disable=SC2034,SC2154
+
 # Provide basic assertion functions if not available
 assert_success() {
     if [ "$status" -ne 0 ]; then
