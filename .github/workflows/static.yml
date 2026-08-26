@@ -49,6 +49,31 @@ jobs:
              nix-build nix/$TARGET && \
              nix-store -qR --include-outputs \$(nix-instantiate nix/$TARGET) | grep -v conmon | cachix push conmon && \
              cp -R result/bin ."
+      - name: Check the version stamped into the binary
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          # The binaries for the other architectures cannot be run here, so
+          # read the string the build baked in rather than asking conmon for
+          # it. A mismatch means the Makefile's git-vars saw something other
+          # than a clean checkout of this commit -- most likely a build step
+          # that modified a tracked file and made the tree look dirty.
+          want_version="conmon version $(cat VERSION)"
+          want_commit="commit: $SHA"
+          got_version=$(strings bin/conmon | grep -m1 '^conmon version ' || true)
+          got_commit=$(strings bin/conmon | grep -m1 '^commit: ' || true)
+          rc=0
+          if [ "$got_version" != "$want_version" ]; then
+              echo "want: $want_version"
+              echo "got:  $got_version"
+              rc=1
+          fi
+          if [ "$got_commit" != "$want_commit" ]; then
+              echo "want: $want_commit"
+              echo "got:  $got_commit"
+              rc=1
+          fi
+          exit $rc
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: conmon-${{ matrix.name }}
