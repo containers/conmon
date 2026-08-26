@@ -153,7 +153,7 @@ run_conmon_with_log_opts() {
 @test "ctr logs: journald partial message" {
     # Print a message longer than the conmon buffer.
     # It should split it into multiple partial messages.
-    setup_container_env "printf '%*s' "65535" | tr ' ' '#'"
+    setup_container_env "printf '%*s' 65535 '' | tr ' ' '#'"
     run_conmon_with_default_args \
         --log-path "journald:"
 
@@ -164,7 +164,7 @@ run_conmon_with_log_opts() {
 @test "ctr logs: k8s partial message" {
     # Print a message longer than the conmon buffer.
     # It should split it into multiple partial messages.
-    setup_container_env "printf '%*s' "65535" | tr ' ' '#'"
+    setup_container_env "printf '%*s' 65535 '' | tr ' ' '#'"
     run_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH"
 

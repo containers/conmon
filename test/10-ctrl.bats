@@ -79,7 +79,7 @@ test_resize_command_ok() {
 
 @test "ctrl: resize the terminal, too long line" {
     # Generate a very long line, longer than conmon's buffer.
-    long_line=$(printf '%*s' "65535" | tr ' ' "#")
+    long_line=$(printf '%*s' 65535 '' | tr ' ' "#")
     test_resize_command_fail "1 2 2 $long_line"
 }
 
