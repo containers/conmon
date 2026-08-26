@@ -182,6 +182,23 @@ cppcheck:
 		--suppress=missingIncludeSystem --suppress=checkersReport \
 		$(CPPCHECK_FLAGS) src/
 
+# Formatting for shell scripts. Uses a pinned image so that everyone, CI
+# included, gets identical output; run localshfmt to use a locally installed shfmt.
+# The list of files to format is shfmt's own, and covers .bats files as well
+# as shell scripts with a shebang and no extension.
+CONTAINER_ENGINE ?= podman
+SHFMT_IMAGE ?= docker.io/mvdan/shfmt:v3.13.1
+
+.PHONY: shfmt
+shfmt:
+	$(CONTAINER_ENGINE) run $(CONTAINER_ENGINE_RUN_FLAGS) \
+		--rm -v $(CURDIR):/src:z -w /src \
+		$(SHFMT_IMAGE) -d -w .
+
+.PHONY: localshfmt
+localshfmt:
+	shfmt -d -w .
+
 .PHONY: fmt
 fmt:
 	git ls-files -z \*.c \*.h | xargs -0 clang-format -i

@@ -51,7 +51,7 @@ run_conmon_k8s_log() {
     run_conmon_k8s_log --log-size-max 1024
     assert_success
     [ -f "$LOG_PATH" ]
-    [ ! -f "$LOG_PATH.1" ]  # No backup files in truncation mode
+    [ ! -f "$LOG_PATH.1" ] # No backup files in truncation mode
 }
 
 @test "log management: should enable rotation with proper flags" {
@@ -66,7 +66,7 @@ run_conmon_k8s_log() {
 
     # Test k8s log format preservation
     local k8s_entry='2023-07-23T18:00:00.000000000Z stdout F Test log message'
-    echo "$k8s_entry" > "$LOG_PATH"
+    echo "$k8s_entry" >"$LOG_PATH"
 
     local content
     content=$(<"$LOG_PATH")

@@ -20,8 +20,8 @@ teardown() {
     # Check that log file was created
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
-    assert "${output}" =~ "Hello there!"  "'Hello there!' found in the log"
-    assert "${output}" =~ "Container stopped!"  "'Container stopped!' found in the log"
+    assert "${output}" =~ "Hello there!" "'Hello there!' found in the log"
+    assert "${output}" =~ "Container stopped!" "'Container stopped!' found in the log"
 
     assert_file_not_exists "$ATTACH_PATH"
 }
@@ -37,7 +37,7 @@ teardown() {
     # Check that log file was created
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
-    assert "${output}" =~ "Container stopped!"  "'Container stopped!' found in the log"
+    assert "${output}" =~ "Container stopped!" "'Container stopped!' found in the log"
 }
 
 @test "attach: unix socket remains open with --leave-stdin-open" {
@@ -48,12 +48,12 @@ teardown() {
     # Check that log file was created
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
-    assert "${output}" =~ "Hello there!"  "'Hello there!' found in the log"
-    assert "${output}" !~ "Container stopped!"  "'Container stopped!' not found in the log"
+    assert "${output}" =~ "Hello there!" "'Hello there!' found in the log"
+    assert "${output}" !~ "Container stopped!" "'Container stopped!' not found in the log"
 
     assert_file_exists "$ATTACH_PATH"
     echo "Hello there again!" | socat STDIN "UNIX:${ATTACH_PATH},socktype=5"
     run cat "$LOG_PATH"
-    assert "${output}" =~ "Hello there again!"  "'Hello there again!' found in the log"
-    assert "${output}" !~ "Container stopped!"  "'Container stopped!' not found in the log"
+    assert "${output}" =~ "Hello there again!" "'Hello there again!' found in the log"
+    assert "${output}" !~ "Container stopped!" "'Container stopped!' not found in the log"
 }

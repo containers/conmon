@@ -99,11 +99,11 @@ generate_process_spec() {
     fi
     if [[ -z "$BUNDLE_PATH" || ! -e "$BUNDLE_PATH" ]]; then
         die "The BUNDLE_PATH directory does not exist. Ensure 'generate_process_spec'" \
-        " is called after the 'setup_test_env'"
+            " is called after the 'setup_test_env'"
     fi
     local config_path="$BUNDLE_PATH/process.json"
 
-    cat > "$config_path" << EOF
+    cat >"$config_path" <<EOF
 {
     "terminal": false,
     "user": {
@@ -161,7 +161,7 @@ generate_runtime_config() {
     host_uid=$(id -u)
     host_gid=$(id -g)
 
-    cat > "$config_path" << EOF
+    cat >"$config_path" <<EOF
 {
     "ociVersion": "1.0.0",
     "process": {
@@ -514,7 +514,7 @@ start_conmon_with_default_args() {
     # Start the container and wait until it really starts.
     run_runtime start "$CTR_ID"
     if [ "$status" -ne 0 ]; then
-	    die "$RUNTIME_BINARY start failed with $status: $output"
+        die "$RUNTIME_BINARY start failed with $status: $output"
     fi
 }
 
@@ -651,14 +651,15 @@ function assert() {
     local testname="$2"
 
     case "${#*}" in
-        0)   die "Internal error: 'assert' requires one or more arguments" ;;
-        1|2) ;;
-        3|4) actual_string="$1"
-             operator="$2"
-             expect_string="$3"
-             testname="$4"
-             ;;
-        *)   die "Internal error: too many arguments to 'assert'" ;;
+    0) die "Internal error: 'assert' requires one or more arguments" ;;
+    1 | 2) ;;
+    3 | 4)
+        actual_string="$1"
+        operator="$2"
+        expect_string="$3"
+        testname="$4"
+        ;;
+    *) die "Internal error: too many arguments to 'assert'" ;;
     esac
 
     # Comparisons.
@@ -724,25 +725,25 @@ function assert() {
         actual_split_q+=("$q")
     done
 
-    printf "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n"    >&2
-    printf "#|     FAIL: %s\n" "$testname"                        >&2
-    printf "#| expected: %s%s\n" "$op" "${expect_split_q[0]}"     >&2
+    printf "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n" >&2
+    printf "#|     FAIL: %s\n" "$testname" >&2
+    printf "#| expected: %s%s\n" "$op" "${expect_split_q[0]}" >&2
     local line
     for line in "${expect_split_q[@]:1}"; do
-        printf "#|         > %s%s\n" "$ws" "$line"                >&2
+        printf "#|         > %s%s\n" "$ws" "$line" >&2
     done
-    printf "#|   actual: %s%s\n" "$ws" "${actual_split_q[0]}"     >&2
+    printf "#|   actual: %s%s\n" "$ws" "${actual_split_q[0]}" >&2
     for line in "${actual_split_q[@]:1}"; do
-        printf "#|         > %s%s\n" "$ws" "$line"                >&2
+        printf "#|         > %s%s\n" "$ws" "$line" >&2
     done
-    printf "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"   >&2
+    printf "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n" >&2
     bail-now
 }
 
 function die() {
     # FIXME: handle multi-line output
-    echo "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"  >&2
-    echo "#| FAIL: $*"                                           >&2
+    echo "#/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv" >&2
+    echo "#| FAIL: $*" >&2
     echo "#\\^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" >&2
     bail-now
 }

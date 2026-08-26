@@ -34,7 +34,6 @@ teardown() {
     assert_failure
 }
 
-
 # Integration test that can be run manually or in CI
 @test "integration: exec exit codes work correctly" {
     # This test can only run if podman is available and configured

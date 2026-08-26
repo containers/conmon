@@ -58,6 +58,16 @@ jobs:
         sudo apt-get install -y cppcheck libglib2.0-dev pkg-config
         make cppcheck
 
+  shfmt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Check shell script formatting
+      run: make shfmt
+
   meson-build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -78,6 +88,7 @@ jobs:
       - cppcheck
       - lint
       - meson-build
+      - shfmt
     runs-on: ubuntu-latest
     steps:
     - run: echo "All jobs completed"

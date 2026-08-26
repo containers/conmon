@@ -59,7 +59,7 @@ run_conmon_k8s_file() {
 
     # Test k8s log format handling
     local k8s_content='2023-07-23T18:00:00.000000000Z stdout F Test log message'
-    echo "$k8s_content" > "$LOG_PATH"
+    echo "$k8s_content" >"$LOG_PATH"
 
     # Verify content preservation
     local content

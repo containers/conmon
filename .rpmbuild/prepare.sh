@@ -16,7 +16,7 @@ sed "s,#COMMIT#,${COMMIT},;
      s,#SHORTCOMMIT#,${COMMIT_SHORT},;
      s,#COMMITNUM#,${COMMIT_NUM},;
      s,#COMMITDATE#,${COMMIT_DATE}," \
-         contrib/spec/conmon.spec.in > contrib/spec/conmon.spec
+    contrib/spec/conmon.spec.in >contrib/spec/conmon.spec
 
 mkdir build/
 git archive --prefix "conmon-${COMMIT_SHORT}/" --format "tar.gz" HEAD -o "build/conmon-${COMMIT_SHORT}.tar.gz"

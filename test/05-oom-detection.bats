@@ -26,7 +26,7 @@ create_mock_memory_events() {
     local oom_kill_count="$2"
     local events_file="$MOCK_CGROUP_PATH/memory.events"
 
-    cat > "$events_file" << EOF
+    cat >"$events_file" <<EOF
 low 0
 high 0
 max 0
@@ -106,7 +106,7 @@ EOF
     # Test that malformed counter values are handled gracefully
     local events_file="$MOCK_CGROUP_PATH/memory.events"
 
-    cat > "$events_file" << EOF
+    cat >"$events_file" <<EOF
 low 0
 high 0
 max 0

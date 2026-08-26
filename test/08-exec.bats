@@ -32,12 +32,12 @@ teardown() {
     # Check that the main process noticed the /tmp/test.txt.
     assert_file_exists "$LOG_PATH"
     run cat "$LOG_PATH"
-    assert "${output}" =~ "Hello there!"  "'Hello there!' found in the log"
+    assert "${output}" =~ "Hello there!" "'Hello there!' found in the log"
 
     # Check that the exec process output is stored in the log.
     assert_file_exists "$LOG_PATH.exec"
     run cat "$LOG_PATH.exec"
-    assert "${output}" =~ "Hello from exec!"  "'Hello from exec!' found in the log"
+    assert "${output}" =~ "Hello from exec!" "'Hello from exec!' found in the log"
 }
 
 @test "exec: --exec-attach without no --api-version" {
@@ -185,7 +185,6 @@ teardown() {
     assert_json "${output}" =~ "\"data\": $CONTAINER_PID"
     assert_json "${output}" =~ '"data": 0'
 }
-
 
 @test "exec: runtime failure is reported to the sync pipe" {
     start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"

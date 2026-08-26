@@ -20,7 +20,7 @@ test_ctl_command() {
     wait_for_runtime_status "$CTR_ID" running
     local main_conmon_pid=$CONMON_PID
 
-    echo "$command" > ${CTL_PATH}
+    echo "$command" >${CTL_PATH}
 
     start_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH.exec" \
@@ -95,7 +95,7 @@ test_resize_command_ok() {
     # Remove the log.
     rm -f $LOG_PATH
     # The control message should reopen/recreate it.
-    echo "2 1 1" > ${CTL_PATH}
+    echo "2 1 1" >${CTL_PATH}
 
     start_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH.exec" \
@@ -179,7 +179,7 @@ test_resize_command_ok() {
     wait_for_log_line "$LOG_PATH" "before rotation"
 
     # The control message should rotate the log
-    echo "2 1 1" > ${CTL_PATH}
+    echo "2 1 1" >${CTL_PATH}
 
     run_conmon_with_default_args \
         --log-path "k8s-file:$LOG_PATH.exec" \
