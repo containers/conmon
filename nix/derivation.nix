@@ -29,7 +29,6 @@ with pkgs; stdenv.mkDerivation rec {
     ${lib.optionalString (!enableSystemd) "export DISABLE_SYSTEMD=1"}
   '';
   buildPhase = ''
-    patchShebangs .
     make
   '';
   installPhase = ''
