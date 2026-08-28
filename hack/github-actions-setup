@@ -172,9 +172,9 @@ install_conmon() {
 }
 
 install_bats() {
-    git clone https://github.com/bats-core/bats-core
+    git clone --depth 1 --branch "${VERSIONS["bats"]}" \
+        https://github.com/bats-core/bats-core
     pushd bats-core
-    git checkout "${VERSIONS["bats"]}"
     sudo ./install.sh /usr/local
     popd
     rm -rf bats-core
@@ -264,7 +264,10 @@ install_testdeps() {
     pushd "$CLONE_PATH"
 
     URL=https://github.com/cri-o/cri-o
-    git clone $URL
+    # Only the default branch's tree is used (scripts/versions, the test
+    # suites, and the vendored ginkgo), so there is no need to fetch the
+    # history of a repository this size.
+    git clone --depth 1 $URL
     pushd cri-o
     make "$(pwd)"/build/bin/ginkgo
     sudo cp build/bin/ginkgo /usr/bin
