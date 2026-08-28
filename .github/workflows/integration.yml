@@ -139,7 +139,14 @@ jobs:
               # No -f: a file cri-o renames must fail the job, not be skipped.
               rm "$CRIO_DIR/test/$t.bats"
           done
-          sudo sh -c "cd $CRIO_DIR; RUN_CRITEST=${{ matrix.critest }} ./test/test_runner.sh"
+          # cri-o's test_runner.sh defaults JOBS to nproc, which is 4 on a
+          # GitHub-hosted runner. The suite spends most of its time waiting --
+          # for cri-o to come up, for container state to settle, for stop
+          # timeouts -- rather than on the CPU, so oversubscribing the cores
+          # shortens the run. BATS_TEST_RETRIES, which test_runner.sh sets,
+          # absorbs a flake or two from the added load.
+          jobs=$(( $(nproc) * 2 ))
+          sudo sh -c "cd $CRIO_DIR; JOBS=$jobs RUN_CRITEST=${{ matrix.critest }} ./test/test_runner.sh"
 
   all-done:
     needs:
