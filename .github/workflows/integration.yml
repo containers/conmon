@@ -31,6 +31,22 @@ jobs:
           # See https://github.com/cri-o/cri-o/pull/10103#issuecomment-5400108050
           go-version: '1.26'
           cache: false
+      # The setup script builds runc, ginkgo, critest and crictl from source,
+      # and the cri-o job builds cri-o itself; all of that is Go, and all of it
+      # recompiles the standard library and the vendored trees from scratch on
+      # every run. setup-go's own cache is keyed on a go.sum this repository
+      # does not have, hence caching GOCACHE and the module cache by hand.
+      #
+      # The key follows the dependency versions pinned in the setup script, so
+      # a bump gets a fresh cache; restore-keys then still seeds it from the
+      # previous one, which keeps that first build incremental.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ github.job }}-${{ hashFiles('hack/github-actions-setup') }}
+          restore-keys: ${{ runner.os }}-go-${{ github.job }}-
       - run: hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
@@ -57,6 +73,22 @@ jobs:
           # See https://github.com/cri-o/cri-o/pull/10103#issuecomment-5400108050
           go-version: '1.26'
           cache: false
+      # The setup script builds runc, ginkgo, critest and crictl from source,
+      # and the cri-o job builds cri-o itself; all of that is Go, and all of it
+      # recompiles the standard library and the vendored trees from scratch on
+      # every run. setup-go's own cache is keyed on a go.sum this repository
+      # does not have, hence caching GOCACHE and the module cache by hand.
+      #
+      # The key follows the dependency versions pinned in the setup script, so
+      # a bump gets a fresh cache; restore-keys then still seeds it from the
+      # previous one, which keeps that first build incremental.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ github.job }}-${{ hashFiles('hack/github-actions-setup') }}
+          restore-keys: ${{ runner.os }}-go-${{ github.job }}-
       - run: hack/github-actions-setup
       - name: Run CRI-O integration tests (critest=${{ matrix.critest }})
         run: |
