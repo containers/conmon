@@ -28,6 +28,22 @@ jobs:
         with:
           go-version: stable
           cache: false
+      # The setup script builds runc, ginkgo, critest and crictl from source,
+      # and the cri-o job builds cri-o itself; all of that is Go, and all of it
+      # recompiles the standard library and the vendored trees from scratch on
+      # every run. setup-go's own cache is keyed on a go.sum this repository
+      # does not have, hence caching GOCACHE and the module cache by hand.
+      #
+      # The key follows the dependency versions pinned in the setup script, so
+      # a bump gets a fresh cache; restore-keys then still seeds it from the
+      # previous one, which keeps that first build incremental.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ github.job }}-${{ hashFiles('hack/github-actions-setup') }}
+          restore-keys: ${{ runner.os }}-go-${{ github.job }}-
       - run: hack/github-actions-setup
       - name: Run conmon integration tests
         run: |
@@ -51,6 +67,22 @@ jobs:
         with:
           go-version: stable
           cache: false
+      # The setup script builds runc, ginkgo, critest and crictl from source,
+      # and the cri-o job builds cri-o itself; all of that is Go, and all of it
+      # recompiles the standard library and the vendored trees from scratch on
+      # every run. setup-go's own cache is keyed on a go.sum this repository
+      # does not have, hence caching GOCACHE and the module cache by hand.
+      #
+      # The key follows the dependency versions pinned in the setup script, so
+      # a bump gets a fresh cache; restore-keys then still seeds it from the
+      # previous one, which keeps that first build incremental.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ github.job }}-${{ hashFiles('hack/github-actions-setup') }}
+          restore-keys: ${{ runner.os }}-go-${{ github.job }}-
       - run: hack/github-actions-setup
       - name: Run CRI-O integration tests (critest=${{ matrix.critest }})
         run: |
@@ -101,7 +133,14 @@ jobs:
               # No -f: a file cri-o renames must fail the job, not be skipped.
               rm "$CRIO_DIR/test/$t.bats"
           done
-          sudo sh -c "cd $CRIO_DIR; RUN_CRITEST=${{ matrix.critest }} ./test/test_runner.sh"
+          # cri-o's test_runner.sh defaults JOBS to nproc, which is 4 on a
+          # GitHub-hosted runner. The suite spends most of its time waiting --
+          # for cri-o to come up, for container state to settle, for stop
+          # timeouts -- rather than on the CPU, so oversubscribing the cores
+          # shortens the run. BATS_TEST_RETRIES, which test_runner.sh sets,
+          # absorbs a flake or two from the added load.
+          jobs=$(( $(nproc) * 2 ))
+          sudo sh -c "cd $CRIO_DIR; JOBS=$jobs RUN_CRITEST=${{ matrix.critest }} ./test/test_runner.sh"
 
   all-done:
     needs:

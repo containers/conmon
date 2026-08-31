@@ -1,0 +1,8 @@
+# cache-poisoning fires on integration.yml because a tag push can trigger it,
+# and a poisoned cache could then end up inside a published artifact. That
+# workflow only runs tests and publishes nothing -- the release build lives in
+# static.yml, which does not cache -- so the finding does not apply here.
+rules:
+  cache-poisoning:
+    ignore:
+      - integration.yml
