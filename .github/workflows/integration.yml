@@ -139,6 +139,6 @@ jobs:
     needs:
       - conmon
       - cri-o
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
     - run: echo "All jobs completed"
