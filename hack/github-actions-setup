@@ -8,7 +8,7 @@ declare -A VERSIONS=(
     # a test suite ends up being empty, which breaks the cri-o test runner.
     ["bats"]=v1.13.0
     # renovate: datasource=github-releases depName=opencontainers/runc
-    ["runc"]=v1.5.1
+    ["runc"]=v1.5.2
     # renovate: datasource=github-releases depName=containers/crun
     ["crun"]=1.26
 )
