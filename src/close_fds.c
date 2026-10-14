@@ -109,3 +109,53 @@ void close_all_fds_ge_than(int firstfd)
 	}
 	closedir(d);
 }
+
+static int parse_fd_count(const char *value, const char *name)
+{
+	char *end;
+	long count;
+
+	errno = 0;
+	count = strtol(value, &end, 10);
+	if (errno != 0 || end == value || *end != '\0' || count < 0 || count > INT_MAX - 3)
+		_pexitf("Invalid %s %.10s", name, value);
+	return (int)count;
+}
+
+void close_runtime_fds(void)
+{
+	const char *listenfds = getenv("LISTEN_FDS");
+	int nfds = listenfds ? parse_fd_count(listenfds, "LISTEN_FDS") : 0;
+	int preserved_fds = 0;
+
+	if (opt_runtime_opts) {
+		for (size_t i = 0; opt_runtime_opts[i]; i++) {
+			const char *arg = opt_runtime_opts[i];
+
+			if (strcmp(arg, "--preserve-fds") == 0) {
+				if (opt_runtime_opts[i + 1] == NULL)
+					_pexitf("Missing value for %s", arg);
+				preserved_fds = parse_fd_count(opt_runtime_opts[++i], "--preserve-fds");
+			} else if (g_str_has_prefix(arg, "--preserve-fds=")) {
+				preserved_fds = parse_fd_count(arg + strlen("--preserve-fds="), "--preserve-fds");
+			}
+		}
+	}
+
+	nfds += preserved_fds;
+
+	/* The runtime already inherited these variables; do not leak them any further.  */
+	unsetenv("LISTEN_FDS");
+	unsetenv("LISTEN_PID");
+	unsetenv("LISTEN_FDNAMES");
+
+	/* Only close inherited descriptors, and forget them before their numbers can be reused.  */
+	if (open_files_set == NULL)
+		return;
+	for (int fd = 3; fd < 3 + nfds && fd <= open_files_max_fd; fd++) {
+		if (FD_ISSET(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE]))) {
+			close(fd);
+			FD_CLR(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE]));
+		}
+	}
+}
