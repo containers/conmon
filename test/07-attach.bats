@@ -57,3 +57,30 @@ teardown() {
     assert "${output}" =~ "Hello there again!" "'Hello there again!' found in the log"
     assert "${output}" !~ "Container stopped!" "'Container stopped!' not found in the log"
 }
+
+@test "attach: stdin backpressure does not produce a warning" {
+    skip_if_no_journald
+
+    create_test_script "slow_stdin.sh" '#!/bin/sh
+sleep 2
+cat >/dev/null'
+    update_container_args "/slow_stdin.sh"
+
+    start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH" --stdin
+    wait_for_runtime_status "$CTR_ID" running
+
+    # Keep the container stdin pipe full while its reader is sleeping.
+    head -c 8388608 /dev/zero | socat -u STDIN "UNIX:${ATTACH_PATH},socktype=5"
+
+    wait_for_runtime_status "$CTR_ID" stopped
+    wait_for_conmon_exit "$CONMON_PID"
+    sleep 1 # Give journald time to process the final messages.
+
+    local journal_output
+    journal_output=$(get_conmon_journal_output "$CONMON_PID")
+    if [[ "$journal_output" == *"Failed to write to fd container stdin"* ]]; then
+        echo "Unexpected stdin write warning in journal:"
+        echo "$journal_output"
+        return 1
+    fi
+}

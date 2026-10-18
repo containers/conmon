@@ -76,18 +76,6 @@ run_priority_test() {
     fi
 }
 
-# Helper function to skip test if journald is not available
-skip_if_no_journald() {
-    if ! command -v journalctl >/dev/null 2>&1; then
-        skip "journalctl not available - skipping journald test"
-    fi
-
-    # Also check if systemd logging is compiled in
-    if ! $CONMON_BINARY --help 2>&1 | grep -q "journald"; then
-        skip "conmon not compiled with journald support"
-    fi
-}
-
 @test "priority parsing: valid priority prefixes are parsed correctly" {
     skip_if_no_journald
 
