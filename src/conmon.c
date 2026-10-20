@@ -285,6 +285,8 @@ int main(int argc, char *argv[])
 		exit(127);
 	}
 
+	close_runtime_fds();
+
 	if (logging_is_passthrough())
 		disconnect_std_streams();
 
