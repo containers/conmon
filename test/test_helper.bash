@@ -24,6 +24,42 @@ assert_failure() {
     fi
 }
 
+# Create a script in the container rootfs for a test.
+create_test_script() {
+    local script_name="$1"
+    local script_content="$2"
+
+    echo "$script_content" >"$ROOTFS/$script_name"
+    chmod +x "$ROOTFS/$script_name"
+}
+
+# Update the OCI process arguments to run a test script.
+update_container_args() {
+    local script_path="$1"
+
+    # Use jq to update the config.json, falling back to a manual edit.
+    if command -v jq >/dev/null 2>&1; then
+        jq ".process.args = [\"$script_path\"]" "$BUNDLE_PATH/config.json" >"$BUNDLE_PATH/config.json.tmp" &&
+            mv "$BUNDLE_PATH/config.json.tmp" "$BUNDLE_PATH/config.json"
+    else
+        local temp_config
+        temp_config=$(mktemp)
+        sed "s|\"args\": \\[.*\\]|\"args\": [\"$script_path\"]|" "$BUNDLE_PATH/config.json" >"$temp_config"
+        mv "$temp_config" "$BUNDLE_PATH/config.json"
+    fi
+}
+
+# Skip tests that verify journald output when journald is unavailable.
+skip_if_no_journald() {
+    if ! command -v journalctl >/dev/null 2>&1; then
+        skip "journalctl not available - skipping journald test"
+    fi
+
+    if ! $CONMON_BINARY --help 2>&1 | grep -q "journald"; then
+        skip "conmon not compiled with journald support"
+    fi
+}
+
 # Default paths and variables
 CONMON_BINARY="${CONMON_BINARY:-/usr/bin/conmon}"
 RUNTIME_BINARY="${RUNTIME_BINARY:-/usr/bin/runc}"
