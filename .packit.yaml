@@ -5,6 +5,23 @@
 downstream_package_name: conmon
 upstream_tag_template: v{version}
 
+# These files get synced from upstream to downstream (Fedora / CentOS Stream) on every
+# propose-downstream job. This is done so tests maintained upstream can be run
+# downstream in Zuul CI and Bodhi.
+# Ref: https://packit.dev/docs/configuration#files_to_sync
+files_to_sync:
+  - src: rpm/gating.yaml
+    dest: gating.yaml
+    delete: true
+  - src: plans/
+    dest: plans/
+    delete: true
+    mkpath: true
+  - src: .fmf/
+    dest: .fmf/
+    delete: true
+  - .packit.yaml
+
 packages:
   conmon-fedora:
     pkg_tool: fedpkg
@@ -12,7 +29,7 @@ packages:
   conmon-centos:
     pkg_tool: centpkg
     specfile_path: rpm/conmon.spec
-  conmon-rhel:
+  conmon-eln:
     specfile_path: rpm/conmon.spec
 
 jobs:
@@ -23,9 +40,16 @@ jobs:
       failure_comment:
         message: "Ephemeral COPR build failed. @containers/packit-build please check."
     enable_net: true
-    targets:
+    targets: &fedora_copr_targets
       - fedora-all-aarch64
       - fedora-all-x86_64
+
+  - job: copr_build
+    trigger: pull_request
+    packages: [conmon-eln]
+    notifications: *copr_build_failure_notification
+    enable_net: true
+    targets:
       - fedora-eln-aarch64
       - fedora-eln-x86_64
 
@@ -34,20 +58,11 @@ jobs:
     packages: [conmon-centos]
     notifications: *copr_build_failure_notification
     enable_net: true
-    targets:
+    targets: &centos_copr_targets
       - centos-stream-10-aarch64
       - centos-stream-10-x86_64
       - centos-stream-9-aarch64
       - centos-stream-9-x86_64
-
-  - job: copr_build
-    trigger: pull_request
-    packages: [conmon-rhel]
-    notifications: *copr_build_failure_notification
-    enable_net: true
-    targets:
-      - epel-9-aarch64
-      - epel-9-x86_64
 
   # Run on commit to main branch
   - job: copr_build
@@ -59,6 +74,19 @@ jobs:
     owner: rhcontainerbot
     project: podman-next
     enable_net: true
+
+  - job: tests
+    trigger: pull_request
+    packages: [conmon-fedora]
+    targets:
+      - fedora-all-aarch64
+      - fedora-all-x86_64
+    enable_net: true
+    tf_extra_params:
+      environments:
+        - artifacts:
+          - type: repository-file
+            id: https://copr.fedorainfracloud.org/coprs/rhcontainerbot/podman-next/repo/fedora-$releasever/rhcontainerbot-podman-next-fedora-$releasever.repo
 
   # Downstream sync for Fedora
   - job: propose_downstream
@@ -75,6 +103,7 @@ jobs:
     update_release: false
     dist_git_branches:
       - c10s
+      - c9s
 
   - job: koji_build
     trigger: commit
