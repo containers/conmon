@@ -23,6 +23,7 @@
 
 #include <sys/stat.h>
 #include <locale.h>
+#include <poll.h>
 
 static void disconnect_std_streams(void)
 {
@@ -331,8 +332,9 @@ int main(int argc, char *argv[])
 	if (workerfd_stderr > -1)
 		close(workerfd_stderr);
 
+	guint console_tag = 0;
 	if (csname != NULL) {
-		g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
+		console_tag = g_unix_fd_add(console_socket_fd, G_IO_IN, terminal_accept_cb, csname);
 		/* Process any SIGCHLD we may have missed before the signal handler was in place.  */
 		if (!opt_exec || !opt_terminal || container_status < 0) {
 			GHashTable *exit_status_cache = g_hash_table_new_full(g_int_hash, g_int_equal, g_free, g_free);
@@ -380,6 +382,19 @@ int main(int argc, char *argv[])
 			write_or_close_sync_fd(&sync_pipe_fd, to_report, error_msg);
 		}
 		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
+	}
+
+	/* The runtime may have sent the terminal and exited before the main loop accepted it. */
+	if (opt_terminal && mainfd_stdout == -1 && console_tag != 0) {
+		struct pollfd pfd = {.fd = console_socket_fd, .events = POLLIN};
+		int ready;
+		do
+			ready = poll(&pfd, 1, 0);
+		while (ready < 0 && errno == EINTR);
+		if (ready > 0) {
+			g_source_remove(console_tag);
+			terminal_accept_cb(console_socket_fd, G_IO_IN, csname);
+		}
 	}
 
 	if (opt_terminal && mainfd_stdout == -1) {
