@@ -439,7 +439,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_timeout > 0) {
-		g_timeout_add_seconds(opt_timeout, timeout_cb, NULL);
+		/*
+		 * Do not use g_timeout_add_seconds here: it rounds the expiration
+		 * to a whole second boundary, and may fire up to 250ms early.
+		 */
+		if ((guint)opt_timeout <= G_MAXUINT / 1000)
+			g_timeout_add((guint)opt_timeout * 1000, timeout_cb, NULL);
+		else /* Too long for g_timeout_add, imprecision does not matter. */
+			g_timeout_add_seconds(opt_timeout, timeout_cb, NULL);
 	}
 
 	if (data.exit_status_cache) {
