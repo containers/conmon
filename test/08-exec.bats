@@ -211,3 +211,65 @@ teardown() {
     assert_json "${output}" =~ '"data": -1'
     assert "${output}" =~ "exec failed"
 }
+
+@test "exec: --terminal when the runtime exits before conmon accepts the console" {
+    if ! command -v cc >/dev/null; then
+        skip "test requires a C compiler"
+    fi
+    if ! ldd "$CONMON_BINARY" 2>/dev/null | grep -q "=>"; then
+        skip "test requires a dynamically linked conmon"
+    fi
+    local shim="$TEST_TMPDIR/waitpid_shim.so"
+    local mark="$TEST_TMPDIR/waitpid-mark"
+    local runtime_pid="$TEST_TMPDIR/runtime-pid"
+    cc -shared -fPIC -o "$shim" "$BATS_TEST_DIRNAME/waitpid_shim.c" -ldl ||
+        die "failed to build $shim"
+
+    # conmon accepts the console from its main loop, and quits the loop when
+    # it reaps the runtime. Start the runtime only once conmon has polled the
+    # console socket and gone to reap a child, and hold that waitpid() until
+    # the runtime has connected, sent the terminal and exited.
+    cat >"$TEST_TMPDIR/conmon" <<EOF
+#!/bin/sh
+LD_PRELOAD="$shim" CONMON_TEST_WAITPID_MARK="$mark" CONMON_TEST_RUNTIME_PIDFILE="$runtime_pid" exec "$CONMON_BINARY" "\$@"
+EOF
+    cat >"$TEST_TMPDIR/runtime" <<EOF
+#!/bin/bash
+echo \$\$ >"$runtime_pid.tmp" && mv "$runtime_pid.tmp" "$runtime_pid"
+for i in {1..100}; do
+    [ -e "$mark" ] && exec "$RUNTIME_BINARY" "\$@"
+    sleep 0.1
+done
+echo "conmon did not call waitpid()" >&2
+exit 1
+EOF
+    chmod +x "$TEST_TMPDIR/conmon" "$TEST_TMPDIR/runtime"
+
+    start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH"
+    wait_for_runtime_status "$CTR_ID" running
+    start_oci_sync_pipe_reader
+    sed -i 's/"terminal": false/"terminal": true/' "$BUNDLE_PATH/process.json"
+
+    CONMON_BINARY="$TEST_TMPDIR/conmon" RUNTIME_BINARY="$TEST_TMPDIR/runtime" \
+        _run_conmon \
+        --log-path "k8s-file:$LOG_PATH.exec" \
+        --api-version 1 \
+        --terminal \
+        --exec \
+        --exec-process-spec "${BUNDLE_PATH}/process.json" 6>"$OCI_SYNCPIPE_PATH"
+    assert_success
+    wait_for_conmon_exit "$(cat "$CONMON_PIDFILE")"
+    [ -e "$mark" ] || die "the waitpid() shim did not run in conmon"
+
+    wait_for_syncpipe_output 1
+    run cat "$TEST_TMPDIR/syncpipe-output"
+    assert "${output}" !~ "Runtime did not set up terminal"
+    wait_for_syncpipe_output 2
+    run cat "$TEST_TMPDIR/syncpipe-output"
+    CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
+    assert_json "${output}" =~ "\"data\": $CONTAINER_PID"
+    assert_json "${output}" =~ '"data": 0'
+
+    run cat "$LOG_PATH.exec"
+    assert "${output}" =~ "Hello from exec!"
+}
