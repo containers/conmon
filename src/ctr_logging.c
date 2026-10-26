@@ -1132,6 +1132,12 @@ static int validate_and_lock_rotation(int *parent_fd)
 
 	if (!validate_fd_path_security(old_fd, k8s_log_path)) {
 		nwarnf("File descriptor security validation failed");
+		lock_info.l_type = F_UNLCK;
+		if (fcntl(old_fd, F_SETLK, &lock_info) == -1) {
+			nwarnf("Cannot release log file lock: %m");
+		}
+		close(*parent_fd);
+		*parent_fd = -1;
 		return -1;
 	}
 
