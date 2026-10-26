@@ -124,7 +124,7 @@ GOptionEntry opt_entries[] = {
 
 int initialize_cli(int argc, char *argv[])
 {
-	GOptionContext *context = g_option_context_new("- conmon utility");
+	GOptionContext *context = g_option_context_new("- OCI container runtime monitor");
 	g_option_context_add_main_entries(context, opt_entries, "conmon");
 
 	GError *error = NULL;
