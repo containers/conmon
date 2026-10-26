@@ -122,7 +122,13 @@ static int parse_fd_count(const char *value, const char *name)
 	return (int)count;
 }
 
-void close_runtime_fds(void)
+static void limit_to(int *limit, int fd)
+{
+	if (fd > 2 && fd < *limit)
+		*limit = fd;
+}
+
+void close_runtime_fds(int start_pipe_fd)
 {
 	const char *listenfds = getenv("LISTEN_FDS");
 	int nfds = listenfds ? parse_fd_count(listenfds, "LISTEN_FDS") : 0;
@@ -144,6 +150,14 @@ void close_runtime_fds(void)
 
 	nfds += preserved_fds;
 
+	/* The caller passes the runtime descriptors before conmon's own ones,
+	 * so stop at the first of those.  Anything from there on is either used
+	 * by conmon itself or is not ours to close (e.g. reserved ports).  */
+	int limit = 3 + nfds;
+	limit_to(&limit, sync_pipe_fd);
+	limit_to(&limit, start_pipe_fd);
+	limit_to(&limit, attach_pipe_fd);
+
 	/* The runtime already inherited these variables; do not leak them any further.  */
 	unsetenv("LISTEN_FDS");
 	unsetenv("LISTEN_PID");
@@ -152,7 +166,7 @@ void close_runtime_fds(void)
 	/* Only close inherited descriptors, and forget them before their numbers can be reused.  */
 	if (open_files_set == NULL)
 		return;
-	for (int fd = 3; fd < 3 + nfds && fd <= open_files_max_fd; fd++) {
+	for (int fd = 3; fd < limit && fd <= open_files_max_fd; fd++) {
 		if (FD_ISSET(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE]))) {
 			close(fd);
 			FD_CLR(fd % FD_SETSIZE, &(open_files_set[fd / FD_SETSIZE]));

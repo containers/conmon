@@ -92,6 +92,22 @@ teardown() {
     assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
 }
 
+@test "runtime: LISTEN_FDS does not close _OCI_SYNCPIPE" {
+    # Like podman with socket activation: the runtime fds come first,
+    # followed by conmon's own sync pipe. LISTEN_PID does not match, so
+    # the runtime ignores LISTEN_FDS, but conmon still closes these fds.
+    start_oci_sync_pipe_reader
+    LISTEN_FDS=2 LISTEN_PID=1 run_conmon_with_default_args \
+        --runtime-opt --preserve-fds=2 \
+        --log-path "k8s-file:$LOG_PATH" 3</dev/null 4</dev/null 6>"$OCI_SYNCPIPE_PATH"
+
+    # Check that the pid is sent to the sync pipe.
+    wait_for_syncpipe_output 1
+    run cat "$TEST_TMPDIR/syncpipe-output"
+    CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
+    assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
+}
+
 @test "runtime: runc error with _OCI_SYNCPIPE defined" {
     if [[ $(basename "$RUNTIME_BINARY") != "runc" ]]; then
         skip "test requires runc"

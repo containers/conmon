@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 		exit(127);
 	}
 
-	close_runtime_fds();
+	close_runtime_fds(start_pipe_fd);
 
 	if (logging_is_passthrough())
 		disconnect_std_streams();
