@@ -128,11 +128,32 @@ static void limit_to(int *limit, int fd)
 		*limit = fd;
 }
 
+/* The runtime only takes LISTEN_FDS if LISTEN_PID is its own pid, which
+ * is only the case if we replaced it (see the runtime child in main).  */
+static bool runtime_takes_listen_fds(void)
+{
+	const char *listenpid = getenv("LISTEN_PID");
+	char *end;
+	long pid;
+
+	if (listenpid == NULL)
+		return false;
+	if (opt_replace_listen_pid)
+		return true;
+
+	errno = 0;
+	pid = strtol(listenpid, &end, 10);
+	return errno == 0 && end != listenpid && *end == '\0' && pid == getpid();
+}
+
 void close_runtime_fds(int start_pipe_fd)
 {
 	const char *listenfds = getenv("LISTEN_FDS");
-	int nfds = listenfds ? parse_fd_count(listenfds, "LISTEN_FDS") : 0;
+	int nfds = 0;
 	int preserved_fds = 0;
+
+	if (listenfds && runtime_takes_listen_fds())
+		nfds = parse_fd_count(listenfds, "LISTEN_FDS");
 
 	if (opt_runtime_opts) {
 		for (size_t i = 0; opt_runtime_opts[i]; i++) {

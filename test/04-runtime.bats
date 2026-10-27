@@ -92,20 +92,62 @@ teardown() {
     assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
 }
 
-@test "runtime: LISTEN_FDS does not close _OCI_SYNCPIPE" {
-    # Like podman with socket activation: the runtime fds come first,
-    # followed by conmon's own sync pipe. LISTEN_PID does not match, so
-    # the runtime ignores LISTEN_FDS, but conmon still closes these fds.
+# Print the files conmon has open.
+conmon_open_files() {
+    local fd
+    for fd in /proc/"$CONMON_PID"/fd/*; do
+        readlink "$fd"
+    done
+}
+
+@test "runtime: LISTEN_FDS for another process are not counted" {
+    # Like podman with socket activation, which passes the LISTEN_FDS
+    # sockets via --preserve-fds, and also leaves LISTEN_* (with its own
+    # pid) in the environment. The runtime only gets --preserve-fds, so
+    # conmon must only close those, and keep fd 5 and its sync pipe.
+    setup_container_env "sleep 30"
+    touch "$TEST_TMPDIR"/{preserved1,preserved2,other}
     start_oci_sync_pipe_reader
-    LISTEN_FDS=2 LISTEN_PID=1 run_conmon_with_default_args \
+    LISTEN_FDS=2 LISTEN_PID=1 start_conmon_with_default_args \
         --runtime-opt --preserve-fds=2 \
-        --log-path "k8s-file:$LOG_PATH" 3</dev/null 4</dev/null 6>"$OCI_SYNCPIPE_PATH"
+        --log-path "k8s-file:$LOG_PATH" \
+        3<"$TEST_TMPDIR/preserved1" 4<"$TEST_TMPDIR/preserved2" \
+        5<"$TEST_TMPDIR/other" 6>"$OCI_SYNCPIPE_PATH"
 
     # Check that the pid is sent to the sync pipe.
     wait_for_syncpipe_output 1
     run cat "$TEST_TMPDIR/syncpipe-output"
     CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
     assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
+
+    run conmon_open_files
+    assert "$output" !~ "preserved" "conmon closes the fds passed to the runtime"
+    assert "$output" =~ "$TEST_TMPDIR/other" "conmon keeps other fds"
+}
+
+@test "runtime: LISTEN_FDS with --replace-listen-pid are closed" {
+    # With --replace-listen-pid, the runtime gets LISTEN_FDS (fds 3 and 4)
+    # followed by --preserve-fds (fd 5), so conmon must close all these,
+    # and keep fd 6 and its sync pipe.
+    setup_container_env "sleep 30"
+    touch "$TEST_TMPDIR"/{listen1,listen2,preserved,other}
+    _start_pipe_reader "$OCI_SYNCPIPE_PATH" "_OCI_SYNCPIPE" 7 "$TEST_TMPDIR/syncpipe-output"
+    LISTEN_FDS=2 LISTEN_PID=1 start_conmon_with_default_args \
+        --replace-listen-pid --runtime-opt --preserve-fds=1 \
+        --log-path "k8s-file:$LOG_PATH" \
+        3<"$TEST_TMPDIR/listen1" 4<"$TEST_TMPDIR/listen2" \
+        5<"$TEST_TMPDIR/preserved" 6<"$TEST_TMPDIR/other" \
+        7>"$OCI_SYNCPIPE_PATH"
+
+    # Check that the pid is sent to the sync pipe.
+    wait_for_syncpipe_output 1
+    run cat "$TEST_TMPDIR/syncpipe-output"
+    CONTAINER_PID=$(cat "$CONTAINER_PIDFILE")
+    assert_json "${output}" =~ "\"pid\": $CONTAINER_PID"
+
+    run conmon_open_files
+    assert "$output" !~ "listen|preserved" "conmon closes the fds passed to the runtime"
+    assert "$output" =~ "$TEST_TMPDIR/other" "conmon keeps other fds"
 }
 
 @test "runtime: runc error with _OCI_SYNCPIPE defined" {
