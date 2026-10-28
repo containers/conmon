@@ -57,7 +57,7 @@ pid_t waitpid(pid_t pid, int *status, int options)
 	static pid_t (*real_waitpid)(pid_t, int *, int);
 
 	if (real_waitpid == NULL)
-		real_waitpid = (pid_t(*)(pid_t, int *, int))dlsym(RTLD_NEXT, "waitpid");
+		real_waitpid = (pid_t (*)(pid_t, int *, int))dlsym(RTLD_NEXT, "waitpid");
 
 	if (mark != NULL && pid == -1) {
 		pid_t runtime = read_runtime_pid();
