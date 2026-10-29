@@ -172,3 +172,15 @@ run_conmon_with_log_opts() {
     run cat "$LOG_PATH"
     assert "${output}" =~ "stdout P"
 }
+
+@test "ctr logs: should keep only log-max-files backup files" {
+    # The container's output rotates the 1024-byte log several times over, so
+    # with --log-max-files 1 a backup must exist, and it must be the only one
+    # left: rotation must atomically replace .1, not shift it to .2.
+    run_conmon_with_default_args \
+        --log-path "k8s-file:$LOG_PATH" \
+        --log-rotate --log-max-files 1 --log-size-max 1024
+
+    backups=("$LOG_PATH".*)
+    assert "${backups[*]}" == "$LOG_PATH.1" "only one backup file is left"
+}
