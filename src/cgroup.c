@@ -314,7 +314,6 @@ gboolean check_cgroup2_oom(void)
 	_cleanup_free_ char *line = NULL;
 	size_t len = 0;
 	ssize_t read;
-	gboolean oom_detected = FALSE;
 	while ((read = getline(&line, &len, fp)) != -1) {
 		long int counter;
 		const size_t oom_len = 4, oom_kill_len = 9;
@@ -348,12 +347,12 @@ gboolean check_cgroup2_oom(void)
 		if (counter != *last_counter) {
 			if (create_oom_files() == 0) {
 				*last_counter = counter;
-				oom_detected = TRUE;
 			}
 		}
 	}
 
-	return oom_detected ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
+	/* A modification can change only non-OOM counters. Keep watching for later OOMs. */
+	return G_SOURCE_CONTINUE;
 }
 
 /* create the appropriate files to tell the caller there was an oom event
