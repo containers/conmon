@@ -57,3 +57,34 @@ teardown() {
     assert "${output}" =~ "Hello there again!" "'Hello there again!' found in the log"
     assert "${output}" !~ "Container stopped!" "'Container stopped!' not found in the log"
 }
+
+@test "attach: stdin backpressure does not produce a warning" {
+    skip_if_no_journald
+
+    create_test_script "slow_stdin.sh" '#!/bin/sh
+sleep 2
+wc -c'
+    update_container_args "/slow_stdin.sh"
+
+    start_conmon_with_default_args --log-path "k8s-file:$LOG_PATH" --stdin
+    wait_for_runtime_status "$CTR_ID" running
+
+    # Keep the container stdin pipe full while its reader is sleeping.
+    head -c 1048576 /dev/zero | socat -u STDIN "UNIX:${ATTACH_PATH},socktype=5"
+
+    wait_for_runtime_status "$CTR_ID" stopped
+    wait_for_conmon_exit "$CONMON_PID"
+    sleep 1 # Give journald time to process the final messages.
+
+    # The delayed reader must count every byte: on EAGAIN the write is
+    # retried and no input may be lost.
+    run cat "$LOG_PATH"
+    assert "${output}" =~ "F 1048576$" "all input bytes reached the container"
+
+    # The negative check is only meaningful if the journal actually
+    # contains conmon output for this run.
+    local journal_output
+    journal_output=$(get_conmon_journal_output "$CONMON_PID")
+    [ -n "$journal_output" ] || die "no journal output for conmon $CONMON_PID"
+    assert "$journal_output" !~ "Failed to write to fd container stdin"
+}
