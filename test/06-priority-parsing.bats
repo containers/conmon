@@ -18,32 +18,6 @@ run_conmon_journald() {
         --log-path "journald:" --bundle "$BUNDLE_PATH" "${extra_args[@]}"
 }
 
-# Helper function to create a test script with priority messages
-create_test_script() {
-    local script_name="$1"
-    local script_content="$2"
-
-    echo "$script_content" >"$ROOTFS/$script_name"
-    chmod +x "$ROOTFS/$script_name"
-}
-
-# Helper function to update container args to run a specific script
-update_container_args() {
-    local script_path="$1"
-
-    # Use jq to update the config.json with new args, fallback to manual edit if jq not available
-    if command -v jq >/dev/null 2>&1; then
-        jq ".process.args = [\"$script_path\"]" "$BUNDLE_PATH/config.json" >"$BUNDLE_PATH/config.json.tmp" &&
-            mv "$BUNDLE_PATH/config.json.tmp" "$BUNDLE_PATH/config.json"
-    else
-        # Fallback: recreate config with new args
-        local temp_config
-        temp_config=$(mktemp)
-        sed "s|\"args\": \[.*\]|\"args\": [\"$script_path\"]|" "$BUNDLE_PATH/config.json" >"$temp_config"
-        mv "$temp_config" "$BUNDLE_PATH/config.json"
-    fi
-}
-
 # Helper function to run a priority test with verification
 run_priority_test() {
     local script_name="$1"
@@ -73,18 +47,6 @@ run_priority_test() {
         if [ -n "$journal_output" ]; then
             echo "Journal output available for verification"
         fi
-    fi
-}
-
-# Helper function to skip test if journald is not available
-skip_if_no_journald() {
-    if ! command -v journalctl >/dev/null 2>&1; then
-        skip "journalctl not available - skipping journald test"
-    fi
-
-    # Also check if systemd logging is compiled in
-    if ! $CONMON_BINARY --help 2>&1 | grep -q "journald"; then
-        skip "conmon not compiled with journald support"
     fi
 }
 
