@@ -143,17 +143,14 @@ int initialize_cli(int argc, char *argv[])
 
 	/* Validate log rotation parameters */
 	if (opt_log_max_files < 0) {
-		fprintf(stderr, "conmon: log-max-files must be non-negative, got %d\n", opt_log_max_files);
-		exit(EXIT_FAILURE);
+		nexitf("log-max-files must be non-negative, got %d", opt_log_max_files);
 	}
 	if (opt_log_max_files > INT_MAX) {
-		fprintf(stderr, "conmon: log-max-files cannot exceed %d, got %d\n", INT_MAX, opt_log_max_files);
-		exit(EXIT_FAILURE);
+		nexitf("log-max-files cannot exceed %d, got %d", INT_MAX, opt_log_max_files);
 	}
 	/* When log rotation is enabled, ensure at least 1 backup file is configured */
 	if (opt_log_rotate && opt_log_max_files == 0) {
-		fprintf(stderr, "conmon: log-max-files must be at least 1 when log-rotate is enabled, got %d\n", opt_log_max_files);
-		exit(EXIT_FAILURE);
+		nexitf("log-max-files must be at least 1 when log-rotate is enabled, got %d", opt_log_max_files);
 	}
 
 	if (opt_cid == NULL || opt_cid[0] == '\0') {
