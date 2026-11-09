@@ -24,6 +24,12 @@ teardown() {
     assert_output_contains "Container ID not provided. Use --cid"
 }
 
+@test "empty container ID should fail" {
+    run_conmon --cid ""
+    assert_failure
+    assert_output_contains "Container ID not provided. Use --cid"
+}
+
 @test "no container UUID should fail" {
     run_conmon --cid "$CTR_ID"
     assert_failure
