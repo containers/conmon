@@ -156,9 +156,8 @@ int initialize_cli(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (opt_cid == NULL) {
-		fprintf(stderr, "conmon: Container ID not provided. Use --cid\n");
-		exit(EXIT_FAILURE);
+	if (opt_cid == NULL || opt_cid[0] == '\0') {
+		nexit("Container ID not provided. Use --cid");
 	}
 	return -1;
 }
