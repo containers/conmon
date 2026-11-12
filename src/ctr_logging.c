@@ -1155,6 +1155,18 @@ static int setup_rotation_files(int parent_fd, char **temp_path, char **backup_p
 	}
 
 	int new_fd = openat(parent_fd, temp_basename, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0640);
+	if (new_fd < 0 && errno == EEXIST) {
+		/*
+		 * A temporary file left over from a previous run (e.g. a conmon that
+		 * was killed between creating it and renaming it into place) makes
+		 * every following rotation fail with EEXIST, which in turn makes
+		 * conmon ignore the log size limit and let the log file grow
+		 * indefinitely. Get rid of the stale file and try again.
+		 */
+		nwarnf("Removing stale temporary log file: %s", *temp_path);
+		if (unlinkat(parent_fd, temp_basename, 0) == 0)
+			new_fd = openat(parent_fd, temp_basename, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0640);
+	}
 	if (new_fd < 0) {
 		nwarnf("Failed to create new log file: %m");
 	}
