@@ -283,7 +283,11 @@ int main(int argc, char *argv[])
 		// We don't want runc to be unkillable so we reset the oom_score_adj back to 0
 		reset_oom_adjust();
 		execv(g_ptr_array_index(runtime_argv, 0), (char **)runtime_argv->pdata);
-		exit(127);
+		/* Must use _exit() to avoid running atexit handlers in the
+		 * child process. Running them here would write a bogus
+		 * fallback message to the sync pipe before the parent gets
+		 * a chance to report the real error. */
+		_exit(127);
 	}
 
 	close_runtime_fds(start_pipe_fd);
