@@ -3,8 +3,16 @@
 #include "cli.h"
 
 #include <glib.h>
+#include <stdlib.h>
 
 int sync_pipe_fd = -1;
+
+/*
+ * Tracks whether we have already written to the sync pipe.
+ * Used by the atexit handler to avoid sending a fallback message
+ * when the normal code path already reported success or error.
+ */
+static gboolean sync_pipe_written = FALSE;
 
 static char *escape_json_string(const char *str);
 
@@ -39,8 +47,12 @@ void write_or_close_sync_fd(int *fd, int res, const char *message)
 
 	ssize_t len;
 
-	if (*fd == -1)
+	if (*fd == -1) {
+		nwarnf("write_or_close_sync_fd: fd is -1, not writing (res=%d, message=%s)", res, message ? message : "NULL");
 		return;
+	}
+
+	ninfof("write_or_close_sync_fd: fd=%d, res=%d, message=%s", *fd, res, message ? message : "NULL");
 
 	_cleanup_free_ char *json = NULL;
 	if (message && strlen(message) > 0) {
@@ -62,14 +74,25 @@ void write_or_close_sync_fd(int *fd, int res, const char *message)
 	}
 
 	len = strlen(json);
-	if (write_all(*fd, json, len) != len) {
+	ninfof("write_or_close_sync_fd: attempting to write %zd bytes: %s", len, json);
+	ssize_t written = write_all(*fd, json, len);
+	if (written != len) {
 		if (errno == EPIPE) {
+			nwarnf("Got EPIPE when writing to sync_pipe_fd (fd=%d), wrote %zd of %zd bytes, closing it", *fd, written, len);
 			close(*fd);
 			*fd = -1;
 			return;
 		}
+		nwarnf("Failed to write to sync_pipe_fd (fd=%d): wrote %zd of %zd bytes, errno=%d (%s)", *fd, written, len, errno,
+		       strerror(errno));
 		pexit("Unable to send container stderr message to parent");
 	}
+	ninfof("write_or_close_sync_fd: successfully wrote %zd bytes to fd=%d", written, *fd);
+
+	/* Track that we successfully wrote to the sync pipe so the
+	 * atexit handler knows not to send a fallback error message. */
+	if (fd == &sync_pipe_fd)
+		sync_pipe_written = TRUE;
 }
 
 static char *escape_json_string(const char *str)
@@ -122,4 +145,33 @@ static char *escape_json_string(const char *str)
 	}
 
 	return g_string_free(escaped, FALSE);
+}
+
+/*
+ * Send a fallback error message on the sync pipe if no message has been
+ * written yet. This ensures the caller (podman/cri-o) always gets a
+ * JSON response instead of reading EOF on an empty pipe.
+ *
+ * This function is safe to call multiple times - it only writes once.
+ * It is called explicitly from do_exit_command() (which runs first as
+ * an atexit handler and closes all fds >= 3) and also from the atexit
+ * handler as a safety net.
+ */
+void report_sync_pipe_if_needed(void)
+{
+	if (sync_pipe_written || sync_pipe_fd < 0)
+		return;
+
+	nwarnf("sync pipe was not written to before exit, sending fallback error (fd=%d)", sync_pipe_fd);
+	write_or_close_sync_fd(&sync_pipe_fd, -1, "conmon exited before reporting back to the caller");
+}
+
+static void sync_pipe_atexit_handler(void)
+{
+	report_sync_pipe_if_needed();
+}
+
+void setup_sync_pipe_atexit(void)
+{
+	atexit(sync_pipe_atexit_handler);
 }

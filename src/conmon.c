@@ -116,6 +116,14 @@ int main(int argc, char *argv[])
 	/* Environment variables */
 	sync_pipe_fd = get_pipe_fd_from_env("_OCI_SYNCPIPE");
 
+	/* Register the atexit handler now that sync_pipe_fd is set.
+	 * This must be registered BEFORE atexit(do_exit_command) so that
+	 * the sync pipe handler runs AFTER do_exit_command in reverse order.
+	 * However, do_exit_command also calls report_sync_pipe_if_needed()
+	 * explicitly before closing fds, so the atexit handler serves as
+	 * a safety net for exits that bypass do_exit_command. */
+	setup_sync_pipe_atexit();
+
 	if (opt_attach) {
 		attach_pipe_fd = get_pipe_fd_from_env("_OCI_ATTACHPIPE");
 		if (attach_pipe_fd < 0) {
@@ -283,7 +291,11 @@ int main(int argc, char *argv[])
 		// We don't want runc to be unkillable so we reset the oom_score_adj back to 0
 		reset_oom_adjust();
 		execv(g_ptr_array_index(runtime_argv, 0), (char **)runtime_argv->pdata);
-		exit(127);
+		/* Must use _exit() to avoid running atexit handlers in the
+		 * child process. Running them here would write a bogus
+		 * fallback message to the sync pipe before the parent gets
+		 * a chance to report the real error. */
+		_exit(127);
 	}
 
 	close_runtime_fds(start_pipe_fd);
@@ -362,6 +374,7 @@ int main(int argc, char *argv[])
 	/* For exec operations, a non-zero runtime exit status reflects the exit status of the exec'd command,
 	 * which is expected behavior, not a runtime failure. Only treat non-zero exit as failure for create/run operations. */
 	if (!opt_exec && (!WIFEXITED(runtime_status) || WEXITSTATUS(runtime_status) != 0)) {
+		ninfof("Runtime failed: runtime_status=%d, sync_pipe_fd=%d", runtime_status, sync_pipe_fd);
 		/*
 		 * Read from container stderr for any error and send it to parent
 		 * We send -1 as pid to signal to parent that create container has failed.
@@ -374,12 +387,16 @@ int main(int argc, char *argv[])
 			error_msg = buf;
 		}
 		/* Always report failure to parent, even if we couldn't read stderr */
-		if (sync_pipe_fd > 0) {
+		if (sync_pipe_fd >= 0) {
 			int to_report = -1;
 			if (opt_exec && container_status > 0) {
 				to_report = -1 * container_status;
 			}
+			ninfof("About to write runtime failure to sync_pipe_fd=%d", sync_pipe_fd);
 			write_or_close_sync_fd(&sync_pipe_fd, to_report, error_msg);
+			ninfof("After writing runtime failure, sync_pipe_fd=%d", sync_pipe_fd);
+		} else {
+			nwarnf("sync_pipe_fd is -1, cannot write runtime failure error");
 		}
 		nexitf("Failed to create container: exit status %d", get_exit_status(runtime_status));
 	}
@@ -398,7 +415,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_terminal && mainfd_stdout == -1) {
-		if (sync_pipe_fd > 0)
+		if (sync_pipe_fd >= 0)
 			write_or_close_sync_fd(&sync_pipe_fd, -1, "Runtime did not set up terminal");
 		nexit("Runtime did not set up terminal");
 	}
