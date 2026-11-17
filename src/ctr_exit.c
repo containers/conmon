@@ -150,9 +150,11 @@ int get_exit_status(int status)
 
 void runtime_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer user_data)
 {
+	ninfof("runtime_exit_cb called: pid=%d, status=%d, sync_pipe_fd=%d", pid, status, sync_pipe_fd);
 	runtime_status = status;
 	create_pid = -1;
 	g_main_loop_quit(main_loop);
+	ninfof("runtime_exit_cb: quitting main loop");
 }
 
 void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointer user_data)
@@ -177,6 +179,15 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 
 void do_exit_command(void)
 {
+	/*
+	 * Report sync pipe error before closing file descriptors.
+	 * Since atexit handlers run in reverse registration order and
+	 * do_exit_command is registered after the sync pipe handler,
+	 * this function runs first. We must write the fallback error
+	 * message now, while the sync pipe fd is still open.
+	 */
+	report_sync_pipe_if_needed();
+
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
