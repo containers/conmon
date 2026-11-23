@@ -116,6 +116,9 @@ int main(int argc, char *argv[])
 	/* Environment variables */
 	sync_pipe_fd = get_pipe_fd_from_env("_OCI_SYNCPIPE");
 
+	/* Fallback: write an error to the sync pipe if conmon exits without reporting status. */
+	setup_sync_pipe_atexit();
+
 	if (opt_attach) {
 		attach_pipe_fd = get_pipe_fd_from_env("_OCI_ATTACHPIPE");
 		if (attach_pipe_fd < 0) {
@@ -283,7 +286,11 @@ int main(int argc, char *argv[])
 		// We don't want runc to be unkillable so we reset the oom_score_adj back to 0
 		reset_oom_adjust();
 		execv(g_ptr_array_index(runtime_argv, 0), (char **)runtime_argv->pdata);
-		exit(127);
+		/* Must use _exit() to avoid running atexit handlers in the
+		 * child process. Running them here would write a bogus
+		 * fallback message to the sync pipe before the parent gets
+		 * a chance to report the real error. */
+		_exit(127);
 	}
 
 	close_runtime_fds(start_pipe_fd);

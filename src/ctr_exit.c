@@ -177,6 +177,9 @@ void container_exit_cb(G_GNUC_UNUSED GPid pid, int status, G_GNUC_UNUSED gpointe
 
 void do_exit_command(void)
 {
+	/* Write a fallback error to the sync pipe before closing fds. */
+	report_sync_pipe_if_needed();
+
 	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
 		_pexit("Failed to reset signal for SIGCHLD");
 	}
