@@ -3,8 +3,16 @@
 #include "cli.h"
 
 #include <glib.h>
+#include <stdlib.h>
 
 int sync_pipe_fd = -1;
+
+/*
+ * Tracks whether we have already written to the sync pipe.
+ * Used by the atexit handler to avoid sending a fallback message
+ * when the normal code path already reported success or error.
+ */
+static gboolean sync_pipe_written = FALSE;
 
 static char *escape_json_string(const char *str);
 
@@ -70,6 +78,11 @@ void write_or_close_sync_fd(int *fd, int res, const char *message)
 		}
 		pexit("Unable to send container stderr message to parent");
 	}
+
+	/* Track that we successfully wrote to the sync pipe so the
+	 * atexit handler knows not to send a fallback error message. */
+	if (fd == &sync_pipe_fd)
+		sync_pipe_written = TRUE;
 }
 
 static char *escape_json_string(const char *str)
@@ -122,4 +135,42 @@ static char *escape_json_string(const char *str)
 	}
 
 	return g_string_free(escaped, FALSE);
+}
+
+/*
+ * Send a fallback error message on the sync pipe if no message has been
+ * written yet. This ensures the caller (podman/cri-o) always gets a
+ * JSON response instead of reading EOF on an empty pipe.
+ *
+ * This function is safe to call multiple times - it only writes once.
+ * It is called explicitly from do_exit_command() before it closes fds,
+ * and also registered as an atexit handler for exits that bypass
+ * do_exit_command.
+ *
+ * IMPORTANT: This may run from an atexit handler, so it must never call
+ * exit() (which write_or_close_sync_fd can do via pexit on write
+ * failure). Use raw write() with best-effort semantics instead.
+ */
+void report_sync_pipe_if_needed(void)
+{
+	if (sync_pipe_written || sync_pipe_fd < 0)
+		return;
+
+	static const char fallback_json[] = "{\"pid\": -1, \"message\": \"conmon exited before reporting back to the caller\"}\n";
+
+	/* Best-effort write - ignore errors. We must not call pexit/exit
+	 * here because this may be running inside an atexit handler, and
+	 * calling exit() from exit() is undefined behavior. */
+	gssize ret __attribute__((unused)) = write(sync_pipe_fd, fallback_json, sizeof(fallback_json) - 1);
+	sync_pipe_written = TRUE;
+}
+
+static void sync_pipe_atexit_handler(void)
+{
+	report_sync_pipe_if_needed();
+}
+
+void setup_sync_pipe_atexit(void)
+{
+	atexit(sync_pipe_atexit_handler);
 }
